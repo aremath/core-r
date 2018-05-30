@@ -12,6 +12,16 @@
           Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
           Lexing.pos_bol = pos.Lexing.pos_cnum;
       }
+
+  let filter_numeric =
+    let
+      len = length str
+    in
+      if len = 0
+        then ""
+        else if contains "iL" (get str (len - 1))
+          then String.sub str 0 (len - 1)
+          else str
 }
 
 let hex_digit =
@@ -24,7 +34,7 @@ let digit =
   ['0'-'9']
 
 let int =
-  digit+
+  digit+ 'L'?
 
 let exp =
   ['e' 'E'] ['+' '-']? int
@@ -159,15 +169,11 @@ rule tokenize = parse
   | user_op     { USEROP (Lexing.lexeme lexbuf) }
   | string      { STRING (Lexing.lexeme lexbuf) }
   | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
-  | int         { INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | int         { INT (int_of_string
+                        (filter_numeric (Lexing.lexeme lexbuf))) }
   | float       { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
-  | complex     { COMPLEX (let
-                             yytext = Lexing.lexeme lexbuf
-                             yylen = String.length yytext
-                           in
-                             if yylen < 2
-                               then 0
-                               else String.sub yytext 0 (yylen - 1)) }
+  | complex     { COMPLEX (float_of_string
+                            (filter_numeric (Lexing.lexeme lexbuf))) }
 
   (* To be skipped *)
   | comment     { tokenize lexbuf }
