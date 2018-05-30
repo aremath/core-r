@@ -80,9 +80,6 @@ let ident =
     '.' (alpha | '_' | '.') (alpha | digit | '_' | '.')*
   | alpha (alpha | digit | '_' | '.')*
 
-let qual_ident =
-  ident ("::" | ":::") ident
-
 (* Missing the %in% matring operator *)
 let user_op =
   '%' [^ '/' '*' 'o' 'x']+ '%'
@@ -128,7 +125,8 @@ rule tokenize = parse
   | "%x%"       { KRONECKERPROD }
   | "<"         { LT }
   | ">"         { GT }
-  | "=="        { EQ }
+  | "=="        { EQEQ }
+  | "!="        { NEQ }
   | ">="        { GE }
   | "<="        { LE }
   | "&"         { ANDVEC }
@@ -140,11 +138,12 @@ rule tokenize = parse
   | "$"         { LISTSUBSET }
 
   (* Additional operators (cf 10.4.2) *)
-  | "::"        { NAMESPACE }
+  | "::"        { COLONCOLON }
+  | ":::"       { COLONCOLONCOLON }
   | "@"         { ATTRIBUTE }
   | "<<-"       { LSUPASSIGN }
   | "->>"       { RSUPASSIGN }
-  | "="         { ASSIGN }
+  | "="         { EQASSIGN }
 
   (* Were not listed but likely relevant *)
   | ";"         { SEMICOLON }
@@ -169,7 +168,7 @@ rule tokenize = parse
   | "FALSE"     { FALSE }
 
   (* Valued tokens *)
-  | qual_ident  { IDENT (Lexing.lexeme lexbuf) }
+  | ident       { IDENT (Lexing.lexeme lexbuf) }
   | user_op     { USEROP (Lexing.lexeme lexbuf) }
   | string      { STRING (Lexing.lexeme lexbuf) }
   | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
@@ -181,8 +180,10 @@ rule tokenize = parse
 
   (* To be skipped *)
   | comment     { tokenize lexbuf }
-  | newline     { incr_line_count; tokenize lexbuf; }
+  | newline     { incr_line_count; Lexing.lexeme lexbuf}
   | whitespace  { tokenize lexbuf }
+
+  | ','         { COMMA }
 
   (* Everybody's favorite thing that's technically not a char some times *)
   | eof         { EOF }
