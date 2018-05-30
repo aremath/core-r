@@ -3,25 +3,27 @@
 *)
 
 {
-  let incr_line_count lexbuf =
-    let
-      pos = lexbuf.Lexing.lex_curr_p
-    in
-      lexbuf.Lexing.lex_curr_p <- {
-        pos with
-          Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
-          Lexing.pos_bol = pos.Lexing.pos_cnum;
-      }
+  let incr_line_count : Lexing.lexbuf -> unit =
+    fun lexbuf ->
+      let
+        pos = lexbuf.Lexing.lex_curr_p
+      in
+        lexbuf.Lexing.lex_curr_p <- {
+          pos with
+            Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
+            Lexing.pos_bol = pos.Lexing.pos_cnum;
+        }
 
-  let filter_numeric =
-    let
-      len = length str
-    in
-      if len = 0
-        then ""
-        else if contains "iL" (get str (len - 1))
-          then String.sub str 0 (len - 1)
-          else str
+  let filter_numeric : string -> string =
+    fun str ->
+      let
+        len = String.length str
+      in
+        if len = 0
+          then ""
+          else if String.contains "iL" (String.get str (len - 1))
+            then String.sub str 0 (len - 1)
+            else str
 }
 
 let hex_digit =
