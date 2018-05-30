@@ -15,7 +15,7 @@ module A = RAst
 %token UNOT
 %token TILDE
 %token HELP
-%token SEQUENCE
+%token COLON
 %token MULT
 %token DIV
 %token EXP
@@ -36,6 +36,8 @@ module A = RAst
 %token LASSIGN
 %token RASSIGN
 %token LISTSUBSET
+
+%token SEMICOLON
 
 %token NAMESPACE
 %token ATTRIBUTE

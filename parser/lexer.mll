@@ -87,49 +87,52 @@ let whitespace =
 (* Parsing *)
 rule tokenize = parse
   (* Delimiters *)
-  | '('         { LPAREN }
-  | ')'         { RPAREN }
+  | "("         { LPAREN }
+  | ")"         { RPAREN }
 
-  | '['         { LBRACKET }
-  | ']'         { RBRACKET }
+  | "["         { LBRACKET }
+  | "]"         { RBRACKET }
 
-  | '{'         { LBRACE }
-  | '}'         { RBRACE }
+  | "{"         { LBRACE }
+  | "}"         { RBRACE }
 
   (* Operators (cf 3.1.4) *)
-  | '-'         { MINUS }
-  | '+'         { PLUS }
-  | '!'         { UNOT }
-  | '~'         { TILDE } 
-  | '?'         { HELP } 
-  | ':'         { SEQUENCE }
-  | '*'         { MULT }
-  | '/'         { DIV }
-  | '^'         { EXP }
+  | "-"         { MINUS }
+  | "+"         { PLUS }
+  | "!"         { UNOT }
+  | "~"         { TILDE }
+  | "?"         { HELP }
+  | ":"         { COLON }
+  | "*"         { MULT }
+  | "/"         { DIV }
+  | "^"         { EXP }
   | "%%"        { MODULUS }
   | "%/%"       { INTDIV }
   | "%*%"       { MATRIXMULT }
   | "%o%"       { OUTERPROD }
   | "%x%"       { KRONECKERPROD }
-  | '<'         { LT }
-  | '>'         { GT }
+  | "<"         { LT }
+  | ">"         { GT }
   | "=="        { EQ }
   | ">="        { GE }
   | "<="        { LE }
-  | '&'         { ANDVEC }
+  | "&"         { ANDVEC }
   | "&&"        { ANDNOVEC }
-  | '|'         { ORVEC }
+  | "|"         { ORVEC }
   | "||"        { ORNOVEC }
   | "<-"        { LASSIGN }
   | "->"        { RASSIGN }
-  | '$'         { LISTSUBSET }
+  | "$"         { LISTSUBSET }
 
   (* Additional operators (cf 10.4.2) *)
   | "::"        { NAMESPACE }
-  | '@'         { ATTRIBUTE }
+  | "@"         { ATTRIBUTE }
   | "<<-"       { LSUPASSIGN }
   | "->>"       { RSUPASSIGN }
-  | '='         { ASSIGN }
+  | "="         { ASSIGN }
+
+  (* Were not listed but likely relevant *)
+  | ";"         { SEMICOLON }
 
   (* Keywords *)
   | "function"  { FUNCTION }
