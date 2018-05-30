@@ -79,8 +79,7 @@ let ident =
   | alpha (alpha | digit | '_' | '.')*
 
 let qual_ident =
-  (ident ("::" | ":::"))* ident
-
+  ident ("::" | ":::") ident
 
 (* Missing the %in% matring operator *)
 let user_op =
