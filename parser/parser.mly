@@ -38,6 +38,7 @@ module A = RAst
 %token LISTSUBSET
 
 %token SEMICOLON
+%token COLONEQ
 
 %token NAMESPACE
 %token ATTRIBUTE

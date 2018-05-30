@@ -143,6 +143,7 @@ rule tokenize = parse
 
   (* Were not listed but likely relevant *)
   | ";"         { SEMICOLON }
+  | ":="        { COLONEQ }
 
   (* Keywords *)
   | "function"  { FUNCTION }
