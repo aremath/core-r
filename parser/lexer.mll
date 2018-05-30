@@ -107,7 +107,7 @@ rule tokenize = parse
   | '/'         { DIV }
   | '^'         { EXP }
   | "%%"        { MODULUS }
-  | "%/%"       { INTDIVISION }
+  | "%/%"       { INTDIV }
   | "%*%"       { MATRIXMULT }
   | "%o%"       { OUTERPROD }
   | "%x%"       { KRONECKERPROD }
@@ -152,7 +152,7 @@ rule tokenize = parse
   | "FALSE"     { FALSE }
 
   (* Valued tokens *)
-  | ident       { ID (Lexing.lexeme lexbuf) }
+  | ident       { IDENT (Lexing.lexeme lexbuf) }
   | user_op     { USEROP (Lexing.lexeme lexbuf) }
   | string      { STRING (Lexing.lexeme lexbuf) }
   | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
