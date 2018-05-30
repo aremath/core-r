@@ -1,20 +1,33 @@
+(*
+  Adapted from: https://github.com/antlr/grammars-v4/blob/master/r/R.g4
+*)
 
-{ }
+{
+  let incr_line_count lexbuf =
+    let
+      pos = lexbuf.Lexing.lex_curr_p
+    in
+      lexbuf.Lexing.lex_curr_p <- {
+        pos with
+          Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
+          Lexing.pos_bol = pos.Lexing.pos_cnum;
+      }
+}
 
-let hex =
+let hex_digit =
   ['0'-'9' 'a'-'f' 'A'-'F']
 
-let hex_int =
-  '0' ['x' 'X'] hex+
+let hex =
+  '0' ['x' 'X'] hex_digit+
 
 let digit =
   ['0'-'9']
 
-let dec_int =
+let int =
   digit+
 
 let exp =
-  ['e' 'E'] ['+' '-']? dec_int
+  ['e' 'E'] ['+' '-']? int
 
 let float =
     digit+ '.' digit* exp?
@@ -22,7 +35,7 @@ let float =
   | '.' digit+ exp?
 
 let complex =
-    dec_int 'i'
+    int 'i'
   | float 'i'
 
 let oct_esc =
@@ -51,7 +64,7 @@ let string =
 let letter =
     ['a'-'z' 'A'-'Z']
 
-let id =
+let ident =
     '.' (letter | '_' | '.') (letter | digit | '_' | '.')*
   | letter (letter | digit | '_' | '.')*
 
@@ -74,55 +87,91 @@ let whitespace =
 (* Parsing *)
 rule tokenize = parse
   (* Delimiters *)
-  | '('       { LPAREN }
-  | ')'       { RPAREN }
+  | '('         { LPAREN }
+  | ')'         { RPAREN }
 
-  | '['       { LBRACKET }
-  | ']'       { RBRACKET }
+  | '['         { LBRACKET }
+  | ']'         { RBRACKET }
 
-  | '{'       { LBRACE }
-  | '}'       { RBRACE }
+  | '{'         { LBRACE }
+  | '}'         { RBRACE }
 
   (* Operators (cf 3.1.4) *)
-  | '-'       { MINUS }
-  | '+'       { PLUS }
-  | '!'       { UNOT }
-  | '~'       { TILDE } 
-  | '?'       { HELP } 
-  | ':'       { SEQUENCE }
-  | '*'       { MULT }
-  | '/'       { DIV }
-  | '^'       { EXP }
-  | "%%"      { MODULUS }
-  | "%/%"     { INTDIVISION }
-  | "%*%"     { MATRIXMULT }
-  | "%o%"     { OUTERPROD }
-  | "%x%"     { KRONECKERPROD }
-  | '<'       { LT }
-  | '>'       { GT }
-  | "=="      { EQ }
-  | ">="      { GE }
-  | "<="      { LE }
-  | '&'       { ANDVEC }
-  | "&&"      { ANDNOVEC }
-  | '|'       { ORVEC }
-  | "||"      { ORNOVEC }
-  | "<-"      { LASSIGN }
-  | "->"      { RASSIGN }
-  | '$'       { LISTSUBSET }
+  | '-'         { MINUS }
+  | '+'         { PLUS }
+  | '!'         { UNOT }
+  | '~'         { TILDE } 
+  | '?'         { HELP } 
+  | ':'         { SEQUENCE }
+  | '*'         { MULT }
+  | '/'         { DIV }
+  | '^'         { EXP }
+  | "%%"        { MODULUS }
+  | "%/%"       { INTDIVISION }
+  | "%*%"       { MATRIXMULT }
+  | "%o%"       { OUTERPROD }
+  | "%x%"       { KRONECKERPROD }
+  | '<'         { LT }
+  | '>'         { GT }
+  | "=="        { EQ }
+  | ">="        { GE }
+  | "<="        { LE }
+  | '&'         { ANDVEC }
+  | "&&"        { ANDNOVEC }
+  | '|'         { ORVEC }
+  | "||"        { ORNOVEC }
+  | "<-"        { LASSIGN }
+  | "->"        { RASSIGN }
+  | '$'         { LISTSUBSET }
 
   (* Additional operators (cf 10.4.2) *)
-  | "::"      { NAMESPACE }
-  | '@'       { ATTRIBUTE }
-  | "<<-"     { LSUPASSIGN }
-  | "->>"     { RSUPASSIGN }
-  | '='       { ASSIGN }
+  | "::"        { NAMESPACE }
+  | '@'         { ATTRIBUTE }
+  | "<<-"       { LSUPASSIGN }
+  | "->>"       { RSUPASSIGN }
+  | '='         { ASSIGN }
 
   (* Keywords *)
+  | "function"  { FUNCTION }
+  | "return"    { RETURN }
+    (* These are stored as function calls (cf 10.4.5)
+      | "if"        { IF }
+      | "for"       { FOR }
+      | "while"     { WHILE }
+      | "repeat"    { REPEAT }
+      | "next"      { NEXT }
+      | "break"     { BREAK }
+    *)
 
+  (* Native values *)
+  | "NULL"      { NULL }
+  | "NA"        { NA }
+  | "Inf"       { INFINITY }
+  | "NaN"       { NAN }
+  | "TRUE"      { TRUE }
+  | "FALSE"     { FALSE }
 
-  (* End of file *)
-  | eof       { EOF }
+  (* Valued tokens *)
+  | ident       { ID (Lexing.lexeme lexbuf) }
+  | user_op     { USEROP (Lexing.lexeme lexbuf) }
+  | string      { STRING (Lexing.lexeme lexbuf) }
+  | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | int         { INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | float       { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
+  | complex     { COMPLEX (let
+                             yytext = Lexing.lexeme lexbuf
+                             yylen = String.length yytext
+                           in
+                             if yylen < 2
+                               then 0
+                               else String.sub yytext 0 (yylen - 1)) }
 
+  (* To be skipped *)
+  | comment     { tokenize lexbuf }
+  | newline     { incr_line_count; tokenize lexbuf; }
+  | whitespace  { tokenize lexbuf }
+
+  (* Everybody's favorite thing that's technically not a char some times *)
+  | eof         { EOF }
 
 
