@@ -48,6 +48,12 @@ module A = RAst
 
 %token FUNCTION
 %token RETURN
+%token IF
+%token FOR
+%token WHILE
+%token REPEAT
+%token NEXT
+%token BREAK
 
 %token NULL
 %token NA

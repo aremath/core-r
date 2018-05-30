@@ -152,14 +152,12 @@ rule tokenize = parse
   (* Keywords *)
   | "function"  { FUNCTION }
   | "return"    { RETURN }
-    (* These are stored as function calls (cf 10.4.5)
-      | "if"        { IF }
-      | "for"       { FOR }
-      | "while"     { WHILE }
-      | "repeat"    { REPEAT }
-      | "next"      { NEXT }
-      | "break"     { BREAK }
-    *)
+  | "if"        { IF }
+  | "for"       { FOR }
+  | "while"     { WHILE }
+  | "repeat"    { REPEAT }
+  | "next"      { NEXT }
+  | "break"     { BREAK }
 
   (* Native values *)
   | "NULL"      { NULL }
