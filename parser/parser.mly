@@ -122,12 +122,12 @@ expr:
                                     String.sub $1 (String.rindex $1 ':')
                                                   (String.length $1))
                               else (None, $1) }
-  | expr LISTSUBSET IDENT { A.ListProj ($1, [ A.ArgExpr (A.ConstS $3)
-                                            , A.IdAssign
-                                                 ( { A.default_ident with
-                                                       name = "exact" }
-                                                 , A.ConstL false ) ]) }
-  | expr ATTRIBUTE IDENT  { A.ObjAttr ($1, A.Ident $2) }
+  | expr LISTSUBSET IDENT { A.ListProj
+                              ($1, [ A.ArgExpr (A.ConstS $3)
+                              , A.IdAssign ({ A.default_ident with
+                                                name = "exact" }
+                                           , A.ConstL false ) ]) }
+  | expr ATTRIBUTE IDENT  { A.ObjAttr ($1, A.Ident $3) }
 
   /* Binary operators */
   | expr PLUS expr        { A.BinOp (A.Plus, $1, $3) }
@@ -142,6 +142,8 @@ expr:
   | expr EQEQ expr        { A.BinOp (A.Eq, $1, $3) }
   | expr NEQ expr         { A.BinOp (A.Neq, $1, $3) }
   | expr TILDE expr       { A.BinOp (A.Form, $1, $3) }
+
+  /* Unary operators */
 
 
 
