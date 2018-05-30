@@ -71,12 +71,16 @@ let string =
   | '\'' (esc | [^ '\''])* '\''
   | '`' (esc | [^ '`'])* '`'
 
-let letter =
+let alpha =
     ['a'-'z' 'A'-'Z']
 
 let ident =
-    '.' (letter | '_' | '.') (letter | digit | '_' | '.')*
-  | letter (letter | digit | '_' | '.')*
+    '.' (alpha | '_' | '.') (alpha | digit | '_' | '.')*
+  | alpha (alpha | digit | '_' | '.')*
+
+let qual_ident =
+  (ident ("::" | ":::"))* ident
+
 
 (* Missing the %in% matring operator *)
 let user_op =
@@ -166,7 +170,7 @@ rule tokenize = parse
   | "FALSE"     { FALSE }
 
   (* Valued tokens *)
-  | ident       { IDENT (Lexing.lexeme lexbuf) }
+  | qual_ident  { IDENT (Lexing.lexeme lexbuf) }
   | user_op     { USEROP (Lexing.lexeme lexbuf) }
   | string      { STRING (Lexing.lexeme lexbuf) }
   | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
