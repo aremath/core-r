@@ -15,7 +15,7 @@ module A = RAst
 %token UNOT
 %token TILDE
 %token HELP
-%token SEQUENCE
+%token COLON
 %token MULT
 %token DIV
 %token EXP
@@ -37,6 +37,9 @@ module A = RAst
 %token RASSIGN
 %token LISTSUBSET
 
+%token SEMICOLON
+%token COLONEQ
+
 %token NAMESPACE
 %token ATTRIBUTE
 %token LSUPASSIGN
@@ -45,6 +48,12 @@ module A = RAst
 
 %token FUNCTION
 %token RETURN
+%token IF
+%token FOR
+%token WHILE
+%token REPEAT
+%token NEXT
+%token BREAK
 
 %token NULL
 %token NA

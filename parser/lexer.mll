@@ -12,6 +12,16 @@
           Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
           Lexing.pos_bol = pos.Lexing.pos_cnum;
       }
+
+  let filter_numeric =
+    let
+      len = length str
+    in
+      if len = 0
+        then ""
+        else if contains "iL" (get str (len - 1))
+          then String.sub str 0 (len - 1)
+          else str
 }
 
 let hex_digit =
@@ -24,7 +34,7 @@ let digit =
   ['0'-'9']
 
 let int =
-  digit+
+  digit+ 'L'?
 
 let exp =
   ['e' 'E'] ['+' '-']? int
@@ -61,12 +71,16 @@ let string =
   | '\'' (esc | [^ '\''])* '\''
   | '`' (esc | [^ '`'])* '`'
 
-let letter =
+let alpha =
     ['a'-'z' 'A'-'Z']
 
 let ident =
-    '.' (letter | '_' | '.') (letter | digit | '_' | '.')*
-  | letter (letter | digit | '_' | '.')*
+    '.' (alpha | '_' | '.') (alpha | digit | '_' | '.')*
+  | alpha (alpha | digit | '_' | '.')*
+
+let qual_ident =
+  (ident ("::" | ":::"))* ident
+
 
 (* Missing the %in% matring operator *)
 let user_op =
@@ -87,61 +101,63 @@ let whitespace =
 (* Parsing *)
 rule tokenize = parse
   (* Delimiters *)
-  | '('         { LPAREN }
-  | ')'         { RPAREN }
+  | "("         { LPAREN }
+  | ")"         { RPAREN }
 
-  | '['         { LBRACKET }
-  | ']'         { RBRACKET }
+  | "["         { LBRACKET }
+  | "]"         { RBRACKET }
 
-  | '{'         { LBRACE }
-  | '}'         { RBRACE }
+  | "{"         { LBRACE }
+  | "}"         { RBRACE }
 
   (* Operators (cf 3.1.4) *)
-  | '-'         { MINUS }
-  | '+'         { PLUS }
-  | '!'         { UNOT }
-  | '~'         { TILDE } 
-  | '?'         { HELP } 
-  | ':'         { SEQUENCE }
-  | '*'         { MULT }
-  | '/'         { DIV }
-  | '^'         { EXP }
+  | "-"         { MINUS }
+  | "+"         { PLUS }
+  | "!"         { UNOT }
+  | "~"         { TILDE }
+  | "?"         { HELP }
+  | ":"         { COLON }
+  | "*"         { MULT }
+  | "/"         { DIV }
+  | "^"         { EXP }
   | "%%"        { MODULUS }
   | "%/%"       { INTDIV }
   | "%*%"       { MATRIXMULT }
   | "%o%"       { OUTERPROD }
   | "%x%"       { KRONECKERPROD }
-  | '<'         { LT }
-  | '>'         { GT }
+  | "<"         { LT }
+  | ">"         { GT }
   | "=="        { EQ }
   | ">="        { GE }
   | "<="        { LE }
-  | '&'         { ANDVEC }
+  | "&"         { ANDVEC }
   | "&&"        { ANDNOVEC }
-  | '|'         { ORVEC }
+  | "|"         { ORVEC }
   | "||"        { ORNOVEC }
   | "<-"        { LASSIGN }
   | "->"        { RASSIGN }
-  | '$'         { LISTSUBSET }
+  | "$"         { LISTSUBSET }
 
   (* Additional operators (cf 10.4.2) *)
   | "::"        { NAMESPACE }
-  | '@'         { ATTRIBUTE }
+  | "@"         { ATTRIBUTE }
   | "<<-"       { LSUPASSIGN }
   | "->>"       { RSUPASSIGN }
-  | '='         { ASSIGN }
+  | "="         { ASSIGN }
+
+  (* Were not listed but likely relevant *)
+  | ";"         { SEMICOLON }
+  | ":="        { COLONEQ }
 
   (* Keywords *)
   | "function"  { FUNCTION }
   | "return"    { RETURN }
-    (* These are stored as function calls (cf 10.4.5)
-      | "if"        { IF }
-      | "for"       { FOR }
-      | "while"     { WHILE }
-      | "repeat"    { REPEAT }
-      | "next"      { NEXT }
-      | "break"     { BREAK }
-    *)
+  | "if"        { IF }
+  | "for"       { FOR }
+  | "while"     { WHILE }
+  | "repeat"    { REPEAT }
+  | "next"      { NEXT }
+  | "break"     { BREAK }
 
   (* Native values *)
   | "NULL"      { NULL }
@@ -152,19 +168,15 @@ rule tokenize = parse
   | "FALSE"     { FALSE }
 
   (* Valued tokens *)
-  | ident       { IDENT (Lexing.lexeme lexbuf) }
+  | qual_ident  { IDENT (Lexing.lexeme lexbuf) }
   | user_op     { USEROP (Lexing.lexeme lexbuf) }
   | string      { STRING (Lexing.lexeme lexbuf) }
   | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
-  | int         { INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | int         { INT (int_of_string
+                        (filter_numeric (Lexing.lexeme lexbuf))) }
   | float       { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
-  | complex     { COMPLEX (let
-                             yytext = Lexing.lexeme lexbuf
-                             yylen = String.length yytext
-                           in
-                             if yylen < 2
-                               then 0
-                               else String.sub yytext 0 (yylen - 1)) }
+  | complex     { COMPLEX (float_of_string
+                            (filter_numeric (Lexing.lexeme lexbuf))) }
 
   (* To be skipped *)
   | comment     { tokenize lexbuf }
