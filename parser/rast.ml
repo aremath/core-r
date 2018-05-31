@@ -19,6 +19,12 @@ let default_ident =
   ; src  = None
   ; tag  = None }
 
+type numeric =
+    Unconverted of string
+    Int of int
+    Float of float
+    Complex of float * float
+
 
 type uop =
     UMinus (* - *)
@@ -89,10 +95,8 @@ and 'a param =
 
 and 'a expr =
   (* Constants *)
-    ConstInt of int
+    ConstNum of numeric
   | ConstString of string
-  | ConstFloat of float
-  | ConstComplex of float
   | ConstBool of bool
   (* Valued constants *)
   | Null
