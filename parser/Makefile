@@ -17,6 +17,9 @@ parser.cmi: parser.mli rast.cmo
 parser.cmo: parser.ml parser.cmi rast.cmo
 	ocamlc -c parser.ml
 
+absyn_generate: rast.cmo parser.cmo lexer.cmo
+	ocamlc -o absyn_generate.ml
+
 clean:
 	rm -f *.cmi *.cmo lexer.ml parser.ml parser.mli parser.conflicts parser.automaton
     

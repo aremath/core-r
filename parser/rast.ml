@@ -135,6 +135,7 @@ let string_of_ident : 'a ident -> string =
       Some pkg -> pkg ^ "::" ^ id.name
     | None -> "" ^ id.name
 
+let string_of_constnum : 
 
 let string_of_uop : uop -> string =
   function
@@ -171,15 +172,13 @@ let string_of_binop =
     | Form          -> "~"
     | Assign        -> "<-"
     | SuperAssign   -> "<<-"
-    | ListProj      -> "[[]]"
-    | ListSub       -> "[]"
     | ObjAttr       -> "@"
     | Range         -> ":"
     | Help          -> "?"
 
 
 let rec string_of_expr = function
-    | ConstInt i     -> "ConstInt " ^ (string_of_int i)
+    | ConstNum i     -> "ConstNum " ^ (string_of_constnum i)
     | ConstString s  -> "ConstString " ^ s
     | ConstFloat f   -> "ConstFloat " ^ (string_of_float f)
     | ConstComplex c -> "ConstComplex " ^ (string_of_float c)
