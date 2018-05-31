@@ -7,7 +7,7 @@ type token =
   | RBRACE
   | MINUS
   | PLUS
-  | UNOT
+  | BANG
   | TILDE
   | HELP
   | COLON
@@ -19,6 +19,7 @@ type token =
   | MATRIXMULT
   | OUTERPROD
   | KRONECKERPROD
+  | MATCH
   | LT
   | GT
   | EQEQ
@@ -34,8 +35,9 @@ type token =
   | LISTSUBSET
   | SEMICOLON
   | COLONEQ
-  | COLONCOLON
-  | COLONCOLONCOLON
+  | DOT3
+  | COLON2
+  | COLON3
   | ATTRIBUTE
   | LSUPASSIGN
   | RSUPASSIGN

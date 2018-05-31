@@ -7,17 +7,17 @@ type source =
 
 
 type 'a ident =
-  { package : string option
-  ; name    : string
-  ; src     : source option
-  ; tag     : 'a option }
+  { pkg  : string option
+  ; name : string
+  ; src  : source option
+  ; tag  : 'a option }
 
 
 let default_ident =
-  { package = None
-  ; name    = ""
-  ; src     = None
-  ; tag     = None }
+  { pkg  = None
+  ; name = ""
+  ; src  = None
+  ; tag  = None }
 
 
 type uop =
@@ -25,7 +25,7 @@ type uop =
   | UPlus  (* + *)
   | Not    (* ! *)
   | UForm  (* ~ *)
-  | Help   (* ? *)
+  | UHelp  (* ? *)
 
 
 type binop =
@@ -35,6 +35,12 @@ type binop =
   | Mult
   | Div
   | Exp
+  | Mod
+  | IntDiv
+  | MatrixMult
+  | OuterProd
+  | KroneckerProd
+  | Match
   (* Boolean *)
   | Gt
   | Ge
@@ -42,8 +48,17 @@ type binop =
   | Le
   | Eq
   | Neq
+  (* Assignment *)
+  | Assign
+  | SuperAssign
+  (* List access *)
+  | ListProj
+  | ListSub
+  | ObjAttr
   (* What the hell is this *)
   | Form
+  (* Help?? *)
+  | Help
 
 
 type 'a arg = 
@@ -68,25 +83,19 @@ and 'a param =
 
 and 'a expr =
   (* Constants *)
-    ConstI of int
-  | ConstS of string
-  | ConstF of float
-  | ConstC of float (* complex *)
-  | ConstL of bool  (* 'logical' *)
+    ConstInt of int
+  | ConstString of string
+  | ConstFloat of float
+  | ConstComplex of float
+  | ConstBool of bool
   (* Valued constants *)
   | Null
   | Na
-  (* Identifiers and assignments *)
+  (* Identifiers *)
   | Ident of 'a ident
-  | Assign of 'a ident * 'a expr
-  | SuperAssign of 'a ident * 'a expr
   (* Unary and binary operators *)
   | Uop of uop * 'a expr
   | Bop of binop * 'a expr * 'a expr
-  (* Property and index accessors *)
-  | ListProj of 'a expr * ('a arg) list (* [[]], $ *)
-  | ListSub of 'a expr * ('a arg) list  (* [] *)
-  | ObjAttr of 'a expr * 'a ident
   (* Function declaration and calls *)
   | FuncCall of 'a expr * ('a arg) list
   | FuncDec of 'a expr * ('a param) list
@@ -99,6 +108,7 @@ and 'a expr =
   | Repeat of 'a expr
   | Next
   | Break
+  (* ? *)
 
 
 type 'a prog = ('a expr) list
@@ -107,7 +117,7 @@ type 'a prog = ('a expr) list
 (* Useful string conversion functions *)
 
 let string_of_ident : 'a ident -> string =
-  fun id -> match id.package with
+  fun id -> match id.pkg with
       Some pkg -> pkg ^ "::" ^ id.name
     | None -> "" ^ id.name
 
@@ -118,50 +128,52 @@ let string_of_uop : uop -> string =
     | UPlus  -> "+"
     | Not    -> "!"
     | UForm  -> "~"
-    | Help   -> "?"
+    | UHelp   -> "?"
 
 
 let string_of_binop =
   function
-    | Plus  -> "+"
-    | Minus -> "-"
-    | Mult  -> "*"
-    | Div   -> "/"
-    | Exp   -> "^"
-    | Gt    -> ">"
-    | Ge    -> ">="
-    | Lt    -> "<"
-    | Le    -> "<="
-    | Eq    -> "=="
-    | Neq   -> "!="
-    | Form  -> "~"
+    | Plus          -> "+"
+    | Minus         -> "-"
+    | Mult          -> "*"
+    | Div           -> "/"
+    | Exp           -> "^"
+    | Mod           -> "%%"
+    | IntDiv        -> "%/%"
+    | MatrixMult    -> "%*%"
+    | OuterProd     -> "%*%"
+    | KroneckerProd -> "%x"
+    | Match         -> "%in%"
+    | Gt            -> ">"
+    | Ge            -> ">="
+    | Lt            -> "<"
+    | Le            -> "<="
+    | Eq            -> "=="
+    | Neq           -> "!="
+    | Form          -> "~"
+    | Assign        -> "<-"
+    | SuperAssign -> "<<-"
+    | ListProj    -> "[[]]"
+    | ListSub     -> "[]"
+    | ObjAttr     -> "@"
+    | Help        -> "?"
 
 
 let rec string_of_expr = function
-    | ConstI i -> "ConstI " ^ (string_of_int i)
-    | ConstS s -> "ConstS " ^ s
-    | ConstF f -> "ConstF " ^ (string_of_float f)
-    | ConstC c -> "ConstC " ^ (string_of_float c)
-    | ConstL l -> "ConstL " ^ (string_of_bool l)
-    | Null -> "Null"
-    | Na -> "NA"
+    | ConstInt i     -> "ConstInt " ^ (string_of_int i)
+    | ConstString s  -> "ConstString " ^ s
+    | ConstFloat f   -> "ConstFloat " ^ (string_of_float f)
+    | ConstComplex c -> "ConstComplex " ^ (string_of_float c)
+    | ConstBool l    -> "ConstBool " ^ (string_of_bool l)
+    | Null           -> "Null"
+    | Na             -> "NA"
 
     | Ident i -> string_of_ident i
-    | Assign (i, e) -> "Assign(" ^ (string_of_ident i) ^ "," ^
-                                   (string_of_expr e) ^ ")"
-    | SuperAssign (i, e) -> "SuperAssign(" ^ (string_of_ident i) ^ "," ^
-                                             (string_of_expr e) ^ ")"
     | Uop (u, e) -> "Uop(" ^ (string_of_uop u) ^ "," ^
                              (string_of_expr e) ^ ")"
     | Bop (b, e1, e2) -> "Bop(" ^ (string_of_binop b) ^ "," ^
                                   (string_of_expr e1) ^ "," ^
                                   (string_of_expr e2) ^ ")"
-    | ListProj (e, args) -> "ListProj(" ^ (string_of_expr e) ^ ", [" ^
-        String.concat "," (List.map string_of_arg args) ^ "])"
-    | ListSub (e, args) -> "ListSub(" ^ (string_of_expr e) ^ ", [" ^
-        String.concat "," (List.map string_of_arg args) ^ "])"
-    | ObjAttr (e, i) -> "ObjAttr(" ^ (string_of_expr e) ^ "," ^
-                                     (string_of_ident i) ^ ")"
 
     | FuncCall (e, args) -> "FuncCall(" ^ (string_of_expr e) ^ ", [" ^
         String.concat "," (List.map string_of_arg args) ^ "])"
@@ -183,7 +195,6 @@ let rec string_of_expr = function
     | Break -> "Break"
 
 
-
 and string_of_arg = function
     | ArgExpr e        -> string_of_expr e
     | IdAssignEmpty i  -> "i="
@@ -193,6 +204,7 @@ and string_of_arg = function
     | NullAssignEmpty  -> "Null="
     | NullAssign e     -> "Null=" ^ (string_of_expr e)
     | ArgDots          -> "..."
+
 
 and string_of_param = function
     | Param i      -> string_of_ident i

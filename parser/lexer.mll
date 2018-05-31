@@ -111,7 +111,7 @@ rule tokenize = parse
   (* Operators (cf 3.1.4) *)
   | "-"         { MINUS }
   | "+"         { PLUS }
-  | "!"         { UNOT }
+  | "!"         { BANG }
   | "~"         { TILDE }
   | "?"         { HELP }
   | ":"         { COLON }
@@ -123,6 +123,7 @@ rule tokenize = parse
   | "%*%"       { MATRIXMULT }
   | "%o%"       { OUTERPROD }
   | "%x%"       { KRONECKERPROD }
+  | "%in%"      { MATCH }
   | "<"         { LT }
   | ">"         { GT }
   | "=="        { EQEQ }
@@ -138,8 +139,8 @@ rule tokenize = parse
   | "$"         { LISTSUBSET }
 
   (* Additional operators (cf 10.4.2) *)
-  | "::"        { COLONCOLON }
-  | ":::"       { COLONCOLONCOLON }
+  | "::"        { COLON2 }
+  | ":::"       { COLON3 }
   | "@"         { ATTRIBUTE }
   | "<<-"       { LSUPASSIGN }
   | "->>"       { RSUPASSIGN }
@@ -148,6 +149,7 @@ rule tokenize = parse
   (* Were not listed but likely relevant *)
   | ";"         { SEMICOLON }
   | ":="        { COLONEQ }
+  | "..."       { DOT3 }
 
   (* Keywords *)
   | "function"  { FUNCTION }
