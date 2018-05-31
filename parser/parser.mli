@@ -4,6 +4,8 @@
 type token = 
   | WHILE
   | USEROP of (string)
+  | UNARY_PLUS
+  | UNARY_MINUS
   | TRUE
   | TILDE
   | STRING of (string)
@@ -41,6 +43,7 @@ type token =
   | INTDIV
   | INT of (int)
   | INFINITY
+  | IN
   | IF
   | IDENT of (string)
   | HELP
@@ -74,4 +77,4 @@ exception Error
 
 (* The monolithic API. *)
 
-val program: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (expr)
+val program: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (expr list)

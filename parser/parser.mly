@@ -10,7 +10,9 @@ module A = RAst
 %token RBRACE
 
 %token MINUS
+%token UNARY_MINUS
 %token PLUS
+%token UNARY_PLUS
 %token BANG
 %token TILDE
 %token HELP
@@ -53,6 +55,7 @@ module A = RAst
 %token RETURN
 %token IF
 %token FOR
+%token IN
 %token WHILE
 %token REPEAT
 %token NEXT
@@ -76,10 +79,32 @@ module A = RAst
 %token EOF
 
 
+/* Operator precedence */
+%left  HELP
+%left  WHILE, FOR, REPEAT
+%left  LASSIGN, LSUPASSIGN
+%left  EQASSIGN
+%right RASSIGN, RSUPASSIGN
+%left  TILDE
+%left  OR, ORVEC
+%left  AND, ANDVEC
+%left  BANG
+%left  LT, LE, GT, GE, EQEQ, NEQ
+%left  PLUS, MINUS
+%left  MULT, DIV
+%left  USEROP, MODULUS, INTDIV, KRONECKERPROD, MATRIXMULT, OUTERPROD
+%left  COLON
+%left  UNARY_MINUS, UNARY_PLUS 
+%left  EXP
+%left  LISTSUBSET, ATTRIBUTE
+%left  COLON2, COLON3
+%left  LPAREN
+%left  LBRACKET
+
 
 %start program
 
-%type <expr> program
+%type <expr list> program
 
 %%
 
@@ -196,10 +221,13 @@ expr:
 
 
   /* Unary operators */
-  | MINUS expr            { A.Uop (A.Plus $2) }
-  | PLUS expr             { A.Uop (A.Plus $2) }
   | BANG expr             { A.Uop (A.Plus $2) }
   | TILDE expr            { A.Uop (A.Plus $2) }
+  | HELP expr             { A.Bop (A.Null, $2) }
+  | MINUS expr %prec UNARY_MINUS
+                          { A.Uop (A.Plus $2) }
+  | PLUS expr  %prec UNARY_PLUS
+                          { A.Uop (A.Plus $2) }
 
   | expr USEROP expr      { A.FuncCall ( A.Ident { A.default_ident with
                                                     name = $2 }
@@ -209,8 +237,10 @@ expr:
   /* Keyworded expressions */
   | IF expr expr          { A.If ($2, $3, A.Null) }
   | IF expr expr expr     { A.If ($2, $3, $4) }
-  | FOR ident expr expr   { A.For ($2, $3, $4) }
-  | WHILE expr expr       { A.While ($2, $3) }
+  | FOR LPAREN ident IN expr RPAREN expr
+                          { A.For ($3, $5, $7) }
+  | WHILE LPAREN expr RPAREN expr
+                          { A.While ($3, $5) }
   | REPEAT expr           { A.Repeat $2 }
   | NEXT                  { A.Next }
   | BREAK                 { A.Break }
@@ -222,7 +252,7 @@ expr:
                           { A.FuncDec ($3, $5) }
 
   /* Blocks */
-  | LBRACE exprseq RBRACE { A.Block $1 }
+  | LBRACE exprseq RBRACE { A.Block $2 }
 
 
 exprseqtail:
@@ -235,8 +265,13 @@ exprseq:
   | expr exprseqtail      { $1 :: $2 }
 
 
+exprs:
+                          { [] }
+  | expr exprs            { $1 :: $2 }
+
+
 program:
-    expr EOF { $1 }
+    exprs EOF             { $1 }
 
 
 

@@ -1,0 +1,317 @@
+
+** Conflict (shift/reduce) in state 160.
+** Tokens involved: USEROP TILDE RSUPASSIGN RASSIGN PLUS OUTERPROD ORVEC OR NEQ MULT MODULUS MINUS MATRIXMULT LT LPAREN LISTSUBSET LE LBRACKET KRONECKERPROD INTDIV HELP GT GE EXP EQEQ DIV COLON ATTRIBUTE ANDVEC AND
+** The following explanations concentrate on token USEROP.
+** This state is reached from program after reading:
+
+WHILE LPAREN expr RPAREN expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+expr exprs 
+(?)
+
+** In state 160, looking ahead at USEROP, shifting is permitted
+** because of the following sub-derivation:
+
+WHILE LPAREN expr RPAREN expr 
+                         expr . USEROP expr 
+
+** In state 160, looking ahead at USEROP, reducing production
+** expr -> WHILE LPAREN expr RPAREN expr 
+** is permitted because of the following sub-derivation:
+
+expr USEROP expr // lookahead token appears
+WHILE LPAREN expr RPAREN expr . 
+
+** Conflict (shift/reduce) in state 146.
+** Tokens involved: USEROP TILDE RSUPASSIGN RASSIGN PLUS OUTERPROD ORVEC OR NEQ MULT MODULUS MINUS MATRIXMULT LT LPAREN LISTSUBSET LE LBRACKET KRONECKERPROD INTDIV HELP GT GE EXP EQEQ DIV COLON ATTRIBUTE ANDVEC AND
+** The following explanations concentrate on token USEROP.
+** This state is reached from program after reading:
+
+IF expr expr expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+expr exprs 
+(?)
+
+** In state 146, looking ahead at USEROP, shifting is permitted
+** because of the following sub-derivation:
+
+IF expr expr expr 
+             expr . USEROP expr 
+
+** In state 146, looking ahead at USEROP, reducing production
+** expr -> IF expr expr expr 
+** is permitted because of the following sub-derivation:
+
+expr USEROP expr // lookahead token appears
+IF expr expr expr . 
+
+** Conflict (shift/reduce) in state 145.
+** Tokens involved: WHILE USEROP TRUE TILDE RSUPASSIGN REPEAT RASSIGN PLUS OUTERPROD ORVEC OR NULL NEXT NEQ NA MULT MODULUS MINUS MATRIXMULT LT LPAREN LISTSUBSET LE LBRACKET LBRACE KRONECKERPROD INTDIV INT IF IDENT HELP GT GE FUNCTION FOR FLOAT FALSE EXP EQEQ DIV COMPLEX COLON BREAK BANG ATTRIBUTE ANDVEC AND
+** The following explanations concentrate on token WHILE.
+** This state is reached from program after reading:
+
+IF expr expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+(?)
+
+** In state 145, looking ahead at WHILE, reducing production
+** expr -> IF expr expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs // lookahead token appears because exprs can begin with WHILE
+IF expr expr . 
+
+** In state 145, looking ahead at WHILE, shifting is permitted
+** because of the following sub-derivation:
+
+expr exprs 
+IF expr expr expr 
+             . WHILE LPAREN expr RPAREN expr 
+
+** Conflict (shift/reduce/reduce) in state 144.
+** Tokens involved: WHILE TRUE SEMICOLON RPAREN REPEAT RBRACKET RBRACE NULL NEXT NA LBRACE INT IF IDENT HELP FUNCTION FOR FLOAT FALSE EOF COMPLEX COMMA BREAK BANG
+** The following explanations concentrate on token HELP.
+** This state is reached from program after reading:
+
+expr HELP expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+(?)
+
+** In state 144, looking ahead at HELP, shifting is permitted
+** because of the following sub-derivation:
+
+expr exprs 
+expr HELP expr 
+          expr . HELP expr 
+
+** In state 144, looking ahead at HELP, reducing production
+** expr -> expr HELP expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs // lookahead token appears because exprs can begin with HELP
+expr HELP expr . 
+
+** In state 144, looking ahead at HELP, reducing production
+** expr -> HELP expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs 
+     expr exprs // lookahead token appears because exprs can begin with HELP
+     HELP expr . 
+
+** Conflict (shift/reduce/reduce) in state 142.
+** Tokens involved: WHILE USEROP TRUE TILDE SEMICOLON RSUPASSIGN RPAREN REPEAT RBRACKET RBRACE RASSIGN PLUS OUTERPROD ORVEC OR NULL NEXT NEQ NA MULT MODULUS MINUS MATRIXMULT LT LE LBRACE KRONECKERPROD INTDIV INT IF IDENT HELP GT GE FUNCTION FOR FLOAT FALSE EQEQ EOF DIV COMPLEX COMMA COLON BREAK BANG ANDVEC AND
+** The following explanations concentrate on token USEROP.
+** This state is reached from program after reading:
+
+expr MINUS expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+(?)
+
+** In state 142, looking ahead at USEROP, reducing production
+** expr -> expr MINUS expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs 
+expr USEROP expr // lookahead token appears
+expr MINUS expr . 
+
+** In state 142, looking ahead at USEROP, reducing production
+** expr -> MINUS expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs 
+     expr exprs 
+     expr USEROP expr // lookahead token appears
+     MINUS expr . 
+
+** In state 142, looking ahead at USEROP, shifting is permitted
+** because of the following sub-derivation:
+
+expr exprs 
+expr MINUS expr 
+           expr . USEROP expr 
+
+** Conflict (shift/reduce/reduce) in state 140.
+** Tokens involved: WHILE USEROP TRUE TILDE SEMICOLON RSUPASSIGN RPAREN REPEAT RBRACKET RBRACE RASSIGN PLUS OUTERPROD ORVEC OR NULL NEXT NEQ NA MULT MODULUS MINUS MATRIXMULT LT LE LBRACE KRONECKERPROD INTDIV INT IF IDENT HELP GT GE FUNCTION FOR FLOAT FALSE EQEQ EOF DIV COMPLEX COMMA COLON BREAK BANG ANDVEC AND
+** The following explanations concentrate on token USEROP.
+** This state is reached from program after reading:
+
+expr PLUS expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+(?)
+
+** In state 140, looking ahead at USEROP, reducing production
+** expr -> expr PLUS expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs 
+expr USEROP expr // lookahead token appears
+expr PLUS expr . 
+
+** In state 140, looking ahead at USEROP, reducing production
+** expr -> PLUS expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs 
+     expr exprs 
+     expr USEROP expr // lookahead token appears
+     PLUS expr . 
+
+** In state 140, looking ahead at USEROP, shifting is permitted
+** because of the following sub-derivation:
+
+expr exprs 
+expr PLUS expr 
+          expr . USEROP expr 
+
+** Conflict (shift/reduce/reduce) in state 138.
+** Tokens involved: WHILE TRUE TILDE SEMICOLON RSUPASSIGN RPAREN REPEAT RBRACKET RBRACE RASSIGN NULL NEXT NA LBRACE INT IF IDENT HELP FUNCTION FOR FLOAT FALSE EOF COMPLEX COMMA BREAK BANG
+** The following explanations concentrate on token TILDE.
+** This state is reached from program after reading:
+
+expr TILDE expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+(?)
+
+** In state 138, looking ahead at TILDE, shifting is permitted
+** because of the following sub-derivation:
+
+expr exprs 
+expr TILDE expr 
+           expr . TILDE expr 
+
+** In state 138, looking ahead at TILDE, reducing production
+** expr -> expr TILDE expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs // lookahead token appears because exprs can begin with TILDE
+expr TILDE expr . 
+
+** In state 138, looking ahead at TILDE, reducing production
+** expr -> TILDE expr 
+** is permitted because of the following sub-derivation:
+
+expr exprs 
+     expr exprs // lookahead token appears because exprs can begin with TILDE
+     TILDE expr . 
+
+** Conflict (shift/reduce) in state 129.
+** Tokens involved: USEROP TILDE RSUPASSIGN RASSIGN PLUS OUTERPROD ORVEC OR NEQ MULT MODULUS MINUS MATRIXMULT LT LPAREN LISTSUBSET LE LBRACKET KRONECKERPROD INTDIV HELP GT GE EXP EQEQ DIV COLON ATTRIBUTE ANDVEC AND
+** The following explanations concentrate on token USEROP.
+** This state is reached from program after reading:
+
+FUNCTION LPAREN params RPAREN expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+expr exprs 
+(?)
+
+** In state 129, looking ahead at USEROP, shifting is permitted
+** because of the following sub-derivation:
+
+FUNCTION LPAREN params RPAREN expr 
+                              expr . USEROP expr 
+
+** In state 129, looking ahead at USEROP, reducing production
+** expr -> FUNCTION LPAREN params RPAREN expr 
+** is permitted because of the following sub-derivation:
+
+expr USEROP expr // lookahead token appears
+FUNCTION LPAREN params RPAREN expr . 
+
+** Conflict (shift/reduce) in state 124.
+** Tokens involved: USEROP TILDE RSUPASSIGN RASSIGN PLUS OUTERPROD ORVEC OR NEQ MULT MODULUS MINUS MATRIXMULT LT LPAREN LISTSUBSET LE LBRACKET KRONECKERPROD INTDIV HELP GT GE EXP EQEQ DIV COLON ATTRIBUTE ANDVEC AND
+** The following explanations concentrate on token USEROP.
+** This state is reached from program after reading:
+
+FOR LPAREN ident IN expr RPAREN expr 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+expr exprs 
+(?)
+
+** In state 124, looking ahead at USEROP, shifting is permitted
+** because of the following sub-derivation:
+
+FOR LPAREN ident IN expr RPAREN expr 
+                                expr . USEROP expr 
+
+** In state 124, looking ahead at USEROP, reducing production
+** expr -> FOR LPAREN ident IN expr RPAREN expr 
+** is permitted because of the following sub-derivation:
+
+expr USEROP expr // lookahead token appears
+FOR LPAREN ident IN expr RPAREN expr . 
+
+** Conflict (shift/reduce) in state 101.
+** Token involved: EQASSIGN
+** This state is reached from program after reading:
+
+expr LPAREN IDENT 
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+program 
+exprs EOF 
+expr exprs 
+expr LPAREN args RPAREN 
+            arg argstail 
+            (?)
+
+** In state 101, looking ahead at EQASSIGN, shifting is permitted
+** because of the following sub-derivation:
+
+IDENT . EQASSIGN 
+
+** In state 101, looking ahead at EQASSIGN, reducing production
+** ident -> IDENT 
+** is permitted because of the following sub-derivation:
+
+expr 
+ident EQASSIGN expr // lookahead token appears
+IDENT . 

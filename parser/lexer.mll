@@ -156,6 +156,7 @@ rule tokenize = parse
   | "return"    { RETURN }
   | "if"        { IF }
   | "for"       { FOR }
+  | "in"        { IN }
   | "while"     { WHILE }
   | "repeat"    { REPEAT }
   | "next"      { NEXT }
