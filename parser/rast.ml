@@ -21,9 +21,10 @@ let default_ident =
 
 type numeric =
     Unconverted of string
-    Int of int
-    Float of float
-    Complex of float * float
+  | Int of int
+  | Float of float
+  | Complex of float * float
+  | Na
 
 
 type uop =
