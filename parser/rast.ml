@@ -1,21 +1,23 @@
 module RAst = struct
 
+type source =
+  { file : string
+  ; line : int
+  ; col  : int }
+
+
 type 'a ident =
-  { package  : string option
-  ; name     : string
-  ; src_file : string option
-  ; src_line : int option
-  ; src_col  : int option
-  ; tag      : 'a option }
+  { package : string option
+  ; name    : string
+  ; src     : source option
+  ; tag     : 'a option }
 
 
 let default_ident =
-  { package  = None
-  ; name     = ""
-  ; src_file = None
-  ; src_line = None
-  ; src_col  = None
-  ; tag      = None }
+  { package = None
+  ; name    = ""
+  ; src     = None
+  ; tag     = None }
 
 
 type uop =
