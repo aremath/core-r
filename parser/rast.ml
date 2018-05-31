@@ -63,8 +63,6 @@ type binop =
   | Assign
   | SuperAssign
   (* List access *)
-  | ListProj
-  | ListSub
   | ObjAttr
   (* List ranges *)
   | Range
@@ -72,6 +70,8 @@ type binop =
   | Form
   (* Help?? *)
   | Help
+  | GetPackage
+  | GetPackageInt
 
 
 type 'a arg =
@@ -101,7 +101,6 @@ and 'a expr =
   | ConstBool of bool
   (* Valued constants *)
   | Null
-  | Na
   (* Identifiers *)
   | Ident of 'a ident
   (* Unary and binary operators *)
@@ -112,8 +111,12 @@ and 'a expr =
   | FuncDec of ('a param) list * 'a expr
   (* Expression blocks *)
   | Block of 'a expr list            (* {} *)
+  (* List Operations *)
+  | ListProj of 'a expr * ('a arg) list
+  | ListSub of 'a expr * ('a arg) list
   (* Control structures *)
-  | If of 'a expr * 'a expr * 'a expr (* empty block is like {NA}?*)
+  | If of 'a expr * 'a expr (* empty block is like {NA}?*)
+  | IfElse of 'a expr * 'a expr * 'a expr
   | For of 'a ident * 'a expr * 'a expr
   | While of 'a expr * 'a expr
   | Repeat of 'a expr
