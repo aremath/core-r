@@ -5,14 +5,16 @@ module A = RAst
 %token         END_OF_INPUT (* ERROR *)
 %token<string> STRING_CONST SYMBOL
 %token<string> USER_OP
+%token         MOD INT_DIV MATRIX_MULT OUTER_PROD KRON_PROD MATCH
 %token<int>    INT_CONST
 %token<float>  FLOAT_CONST COMPLEX_CONST
-%token         NA_CONST
-%token         FUNCTION NULL_CONST
+%token         NA NAN INFINITY
+%token         FUNCTION NULL
 (*
-  %token      INCOMPLETE_STRING
+  %token         LOW
+  %token         INCOMPLETE_STRING
 *)
-%token         LEFT_ASSIGN EQ_ASSIGN RIGHT_ASSIGN
+%token         LASSIGN EQ_ASSIGN RASSIGN
 %token         FOR IN IF ELSE WHILE NEXT BREAK REPEAT
 %token         GT GE LT LE EQ NE AND OR AND2 OR2
 %token         NS_GET NS_GET_INT
@@ -28,17 +30,22 @@ module A = RAst
 
 %token         QUESTION DOLLAR CARAT PLUS MINUS DIV MULT TILDE COLON BANG AT
 %token         LPAREN RPAREN LBRACE RBRACE LBRACK RBRACK COMMA SEMI NEWLINE
-%token         RIGHT_SUPER_ASSIGN LEFT_SUPER_ASSIGN
+%token         RSUPER_ASSIGN LSUPER_ASSIGN
 %token         TRUE FALSE
 
 /* This is the precedence table, low to high */
 %left     QUESTION
-%left     LOW WHILE FOR REPEAT
+(* 
+  %left     LOW
+  %left     WHILE FOR REPEAT
+*)
 %right    IF
 %left     ELSE
-%right    LEFT_ASSIGN LEFT_SUPER_ASSIGN
-%right    EQ_ASSIGN
-%left     RIGHT_ASSIGN RIGHT_SUPER_ASSIGN
+%right    LASSIGN LSUPER_ASSIGN
+(*
+  %right    EQ_ASSIGN
+*)
+%left     RASSIGN RSUPER_ASSIGN
 %left     TILDE
 %left     OR OR2
 %left     AND AND2
@@ -46,16 +53,19 @@ module A = RAst
 %nonassoc GT GE LT LE EQ NE
 %left     PLUS MINUS
 %left     MULT DIV
-%left     USER_OP
+%left     USER_OP MOD INT_DIV MATRIX_MULT OUTER_PROD KRON_PROD MATCH
 %left     COLON
 %left     UMINUS UPLUS
 %right    CARAT
 %left     DOLLAR AT
-%left     NS_GET NS_GET_INT
-%nonassoc LPAREN LBRACE LBRACK
+(*
+  %left     NS_GET NS_GET_INT
+  %nonassoc LBRACE
+*)
+%nonassoc LPAREN LBRACK
 
 %start prog
-%type <expr> prog
+%type <unit A.expr> prog
 
 %%
 
@@ -79,12 +89,14 @@ expr:
   (* Constants *)
     INT_CONST     { A.NumConst (A.Int $1) }(* { $$ = $1; setId( $$, @$); } *)
   | FLOAT_CONST   { A.NumConst (A.Float $1) }
+  | NAN           { A.NumConst (A.Float nan) }
+  | INFINITY      { A.NumConst (A.Float infinity) }
   | COMPLEX_CONST { A.NumConst (A.Complex 0 $1) }
-  | NA_CONST      { A.NumConst (A.Na) }
+  | NA            { A.NumConst (A.Na) }
   | TRUE          { A.BoolConst true }
   | FALSE         { A.BoolConst false }
   | STRING_CONST  { A.StringConst $1 } (* { $$ = $1; setId( $$, @$); } *)
-  | NULL_CONST    { A.Null } (* { $$ = $1; setId( $$, @$); } *)
+  | NULL          { A.Null } (* { $$ = $1; setId( $$, @$); } *)
 
   (* Identifier *)
   | SYMBOL { A.Ident { A.default_ident where name = $1 } } (* { $$ = $1; setId( $$, @$); } *)
@@ -117,34 +129,48 @@ expr:
   | expr OR expr            { A.Bop (A.OrVec, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
   | expr AND2 expr          { A.Bop (A.And, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
   | expr OR2 expr           { A.Bop (A.Or, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
+  | expr MOD expr           { A.Bop (A.Mod, $1, $3) }
+  | expr INT_DIV expr       { A.Bop (A.IntDiv, $1, $3) }
+  | expr MATRIX_MULT expr   { A.Bop (A.MatrixMult, $1, $3) }
+  | expr OUTER_PROD expr    { A.Bop (A.OuterProd, $1, $3) }
+  | expr KRON_PROD expr     { A.Bop (A.KronProd, $1, $3) }
+  | expr MATCH expr         { A.Bop (A.Match, $1, $3) }
 
   (* Directional assignment *)
-  | expr LEFT_ASSIGN expr        { A.Bop (A.Assign, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr RIGHT_ASSIGN expr       { A.Bop (A.Assign, $3, $1) } (* { $$ = xxbinary($2,$3,$1);  setId( $$, @$); } *)
-  | expr LEFT_SUPER_ASSIGN expr  { A.Bop (A.SuperAssign, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr RIGHT_SUPER_ASSIGN expr { A.Bop (A.SuperAssign, $3, $1) } (* { $$ = xxbinary($2,$3,$1);  setId( $$, @$); } *)
+  | expr LASSIGN expr       { A.Bop (A.Assign, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
+  | expr RASSIGN expr       { A.Bop (A.Assign, $3, $1) } (* { $$ = xxbinary($2,$3,$1);  setId( $$, @$); } *)
+  | expr LSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
+  | expr RSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $3, $1) } (* { $$ = xxbinary($2,$3,$1);  setId( $$, @$); } *)
 
   (* Grouping *)
   | LPAREN expr_or_assign RPAREN { $2 } (* { $$ = xxparen($1,$2); setId( $$, @$); } *)
 
   (* Functions *)
   | expr LPAREN sublist RPAREN { A.FuncCall $1, $3} (* { $$ = xxfuncall($1,$3);  setId( $$, @$); modif_token( &@1, SYMBOL_FUNCTION_CALL ) ; } *)
-  | FUNCTION LPAREN formlist RPAREN expr_or_assign %prec LOW
+  (* 
+    | FUNCTION LPAREN formlist RPAREN expr_or_assign %prec LOW
+  *)
+  | FUNCTION LPAREN formlist RPAREN expr_or_assign
                                { A.FuncDec $3, $5} (* { $$ = xxdefun($1,$3,$6,&@$);   setId( $$, @$); } *)
 
   (* Control flow *)
-  | NEXT                      { A.Next }(* { $$ = xxnxtbrk($1); setId( $$, @$); } *)
-  | BREAK                     { A.Break }(* { $$ = xxnxtbrk($1); setId( $$, @$); } *)
+  | NEXT                      { A.Next } (* { $$ = xxnxtbrk($1); setId( $$, @$); } *)
+  | BREAK                     { A.Break } (* { $$ = xxnxtbrk($1); setId( $$, @$); } *)
   | WHILE cond expr_or_assign { A.While $2, $3 } (* { $$ = xxwhile($1,$2,$3); setId( $$, @$); } *)
   | REPEAT expr_or_assign     { A.Repeat $2 } (* { $$ = xxrepeat($1,$2); setId( $$, @$); } *)
   | IF cond expr_or_assign    { A.If $2, $3 } (* { $$ = xxif($1,$2,$3); setId( $$, @$); } *)
   | IF cond expr_or_assign ELSE expr_or_assign
                               { A.IfElse $2, $3, $5 }(* { $$ = xxifelse($1,$2,$3,$5);   setId( $$, @$); } *)
-  | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign %prec FOR
+  (*
+    | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign %prec FOR
+  *)
+  | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign
                               { A.For {A.default_ident with name=$3}, $5, $7 } (* { $$ = xxfor($1,$2,$3); setId( $$, @$); } *)
 
+  (* Block *)
+  | LBRACE exprlist RBRACE     { A.Block $2 } (* { $$ = xxexprlist($1,&@1,$2); setId( $$, @$); } *)
+
   (* List access *)
-  | LBRACK exprlist RBRACK     { A.Block $2 } (* { $$ = xxexprlist($1,&@1,$2); setId( $$, @$); } *)
   | expr LBRACK LBRACK sublist RBRACK RBRACK
                                { A.ListProj $1, $3 } (* { $$ = xxsubscript($1,$2,$3);   setId( $$, @$); } *)
   | expr LBRACK sublist RBRACK { A.ListSub $1, $3 } (* { $$ = xxsubscript($1,$2,$3);   setId( $$, @$); } *)
@@ -197,8 +223,8 @@ sub :                               (* { $$ = xxsub0(); } *)
   | SYMBOL EQ_ASSIGN expr       { A.IdentAssign {A.default_ident with name=$1}, $3 } (* { $$ = xxsymsub1($1,$3, &@1); modif_token( &@2, EQ_SUB ) ; modif_token( &@1, SYMBOL_SUB ) ; } *)
   | STRING_CONST EQ_ASSIGN      { A.StringAssignEmpty $1 } (* { $$ = xxsymsub0($1, &@1);  modif_token( &@2, EQ_SUB ) ; } *)
   | STRING_CONST EQ_ASSIGN expr { A.StringAssign $1, $3 } (* { $$ = xxsymsub1($1,$3, &@1);   modif_token( &@2, EQ_SUB ) ; } *)
-  | NULL_CONST EQ_ASSIGN        { A.NullAssignEmpty } (* { $$ = xxnullsub0(&@1);     modif_token( &@2, EQ_SUB ) ; } *)
-  | NULL_CONST EQ_ASSIGN expr   { A.NullAssign $3 } (* { $$ = xxnullsub1($3, &@1);     modif_token( &@2, EQ_SUB ) ; } *)
+  | NULL EQ_ASSIGN              { A.NullAssignEmpty } (* { $$ = xxnullsub0(&@1);     modif_token( &@2, EQ_SUB ) ; } *)
+  | NULL EQ_ASSIGN expr         { A.NullAssign $3 } (* { $$ = xxnullsub1($3, &@1);     modif_token( &@2, EQ_SUB ) ; } *)
   ;
 
 formlist:

@@ -3,6 +3,8 @@
 *)
 
 {
+  open Parser
+
   let incr_line_count : Lexing.lexbuf -> unit =
     fun lexbuf ->
       let
@@ -102,8 +104,8 @@ rule tokenize = parse
   | "("         { LPAREN }
   | ")"         { RPAREN }
 
-  | "["         { LBRACKET }
-  | "]"         { RBRACKET }
+  | "["         { LBRACK }
+  | "]"         { RBRACK }
 
   | "{"         { LBRACE }
   | "}"         { RBRACE }
@@ -118,11 +120,11 @@ rule tokenize = parse
   | "*"         { MULT }
   | "/"         { DIV }
   | "^"         { CARAT }
-  | "%%"        { MODULUS }
-  | "%/%"       { INTDIV }
-  | "%*%"       { MATRIXMULT }
-  | "%o%"       { OUTERPROD }
-  | "%x%"       { KRONECKERPROD }
+  | "%%"        { MOD }
+  | "%/%"       { INT_DIV }
+  | "%*%"       { MATRIX_MULT }
+  | "%o%"       { OUTER_PROD }
+  | "%x%"       { KRON_PROD }
   | "%in%"      { MATCH }
   | "<"         { LT }
   | ">"         { GT }
@@ -136,18 +138,18 @@ rule tokenize = parse
   | "|"         { OR2 }
   | "<-"        { LASSIGN }
   | "->"        { RASSIGN }
-  | "$"         { LISTSUBSET }
+  | "$"         { DOLLAR }
 
   (* Additional operators (cf 10.4.2) *)
   | "::"        { COLON2 }
   | ":::"       { COLON3 }
   | "@"         { ATTRIBUTE }
-  | "<<-"       { LSUPASSIGN }
-  | "->>"       { RSUPASSIGN }
-  | "="         { EQASSIGN }
+  | "<<-"       { LSUPER_ASSIGN }
+  | "->>"       { RSUPER_ASSIGN }
+  | "="         { EQ_ASSIGN }
 
   (* Were not listed but likely relevant *)
-  | ";"         { SEMICOLON }
+  | ";"         { SEMI }
   | ":="        { COLONEQ }
   | "..."       { DOT3 }
 
@@ -171,21 +173,19 @@ rule tokenize = parse
   | "FALSE"     { FALSE }
 
   (* Valued tokens *)
-  | ident       { IDENT (Lexing.lexeme lexbuf) }
+  | ident       { SYMBOL (Lexing.lexeme lexbuf) }
   | user_op     { USEROP (Lexing.lexeme lexbuf) }
-  | string      { STRING (Lexing.lexeme lexbuf) }
-  | hex         { INT (int_of_string (Lexing.lexeme lexbuf)) }
-  | int         { INT (int_of_string
-                        (filter_numeric (Lexing.lexeme lexbuf))) }
-  | float       { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
-  | complex     { COMPLEX (float_of_string
-                            (filter_numeric (Lexing.lexeme lexbuf))) }
+  | string      { STRING_CONST (Lexing.lexeme lexbuf) }
+  | hex         { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
+  | int         { INT_CONST (int_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
+  | float       { FLOAT_CONST (float_of_string (Lexing.lexeme lexbuf)) }
+  | complex     { COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
 
-  (* To be skipped *)
+  (* To be skipped, maybe *)
   | comment     { tokenize lexbuf }
-  | newline     { incr_line_count; Lexing.lexeme lexbuf}
   | whitespace  { tokenize lexbuf }
 
+  | newline     { incr_line_count; NEWLINE }
   | ','         { COMMA }
 
   (* Everybody's favorite thing that's technically not a char some times *)

@@ -47,7 +47,7 @@ type binop =
   | IntDiv
   | MatrixMult
   | OuterProd
-  | KroneckerProd
+  | KronProd
   | Match
   (* Boolean *)
   | Gt
@@ -166,7 +166,7 @@ let string_of_binop : binop -> string =
     | IntDiv        -> "%/%"
     | MatrixMult    -> "%*%"
     | OuterProd     -> "%*%"
-    | KroneckerProd -> "%x"
+    | KronProd      -> "%x"
     | Match         -> "%in%"
     | Gt            -> ">"
     | Ge            -> ">="
@@ -229,6 +229,12 @@ let rec string_of_expr : 'a expr -> string =
     | Next -> "Next"
     | Break -> "Break"
     (* List acessing *)
+    | ListProj (e, args) ->
+        "ListProj(" ^ (string_of_expr e) ^ ",[" ^
+                      (String.concat "," (List.map string_of_arg args)) ^ "])"
+    | ListSub (e, args) ->
+        "ListSub(" ^ (string_of_expr e) ^ ",[" ^
+                     (String.concat "," (List.map string_of_arg args)) ^ "])"
 
 
 and string_of_arg : 'a arg -> string =
