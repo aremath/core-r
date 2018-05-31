@@ -91,7 +91,7 @@ let symbol =
   | alpha (alpha | digit | '_' | '.')*
 
 (* Missing the %in% matring operator *)
-let user_op =
+let userop =
   '%' [^ '/' '*' 'o' 'x']+ '%'
 
 let newline =
@@ -111,15 +111,18 @@ let whitespace =
 
 (* Parsing *)
 rule tokenize = parse
-  | string      { STR_CONST (Lexing.lexeme lexbuf) }
+  | string      { STRING_CONST (Lexing.lexeme lexbuf) }
 	| hex         { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
   | int         { INT_CONST (int_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
 	| float       { FLOAT_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
-  | complex     { COMPLEX_CONST (0, float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
+  | complex     { COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
   | na          { NA_CONST }
   | "NULL"      { NULL_CONST }
   | symbol      { SYMBOL (Lexing.lexeme lexbuf) }
+  | userop      { USEROP (let s = Lexing.lexeme lexbuf in String.sub s 1 ((String.length s) - 2)) }
   | "function"  { FUNCTION }
+  | "TRUE"      { TRUE }
+  | "FALSE"     { FALSE }
 
   | "<-"        { LEFT_ASSIGN }
   | "<<-"       { LEFT_SUPER_ASSIGN }
@@ -143,13 +146,40 @@ rule tokenize = parse
   | "<="        { LE }
   | "=="        { EQ }
   | "!="        { NE }
+  | "&&"        { AND }
+  | "&"         { ANDVEC }
+  | "||"        { OR }
+  | "|"         { ORVEC }
+
+  | "+"         { PLUS }
+  | "-"         { MINUS }
+  | "*"         { MULT }
+  | "/"         { DIV }
+  | "%/%"       { INTDIV }
+  | "%*%"       { MATRIXMULT }
+  | "%o%"       { OUTERPROD }
+  | "%x%"       { KRONECKERPROD }
+  | "%in%"      { IN }
 
   | "::"        { NS_GET }
   | ":::"       { NS_GET_INT }
 
-  | "@"         { SLOT }
-  | "[["        { LBB }
+  | "("         { LPAREN }
+  | ")"         { RPAREN }
+  | "{"         { LBRACE }
+  | "}"         { RBRACE }
+  | "["         { LBRACK }
+  | "]"         { RBRACK }
 
+  | ":"         { COLON }
+  | ";"         { SEMI }
+  | "?"         { QUESTION }
+  | "!"         { BANG }
+  | "$"         { DOLLAR }
+  | "@"         { AT }
+  | "~"         { TILDE }
+  | ","         { COMMA }
+  
   (* INCOMPLETE_STRING *)
   (* SYMBOL_FORMALS *)
   (* EQ_FORMALS *)
@@ -158,11 +188,9 @@ rule tokenize = parse
   (* SYMBOL_FUNCTION_CALL *)
   (* SYMBOL_PACKAGE *)
 
-  (* Spacing *)
   | comment     { tokenize lexbuf }
   | directive   { tokenize lexbuf }
-  | newline     { incr_line_count; Lexing.lexeme lexbuf }
   | whitespace  { tokenize lexbuf }
+  | newline     { NEWLINE }
   | eof         { END_OF_INPUT }
-
 
