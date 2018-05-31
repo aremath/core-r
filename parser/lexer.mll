@@ -117,7 +117,7 @@ rule tokenize = parse
   | ":"         { COLON }
   | "*"         { MULT }
   | "/"         { DIV }
-  | "^"         { EXP }
+  | "^"         { CARAT }
   | "%%"        { MODULUS }
   | "%/%"       { INTDIV }
   | "%*%"       { MATRIXMULT }
@@ -131,9 +131,9 @@ rule tokenize = parse
   | ">="        { GE }
   | "<="        { LE }
   | "&&"        { AND }
-  | "&"         { ANDVEC }
+  | "&"         { AND2 }
   | "||"        { OR }
-  | "|"         { ORVEC }
+  | "|"         { OR2 }
   | "<-"        { LASSIGN }
   | "->"        { RASSIGN }
   | "$"         { LISTSUBSET }

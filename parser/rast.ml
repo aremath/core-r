@@ -19,6 +19,7 @@ let default_ident =
   ; src  = None
   ; tag  = None }
 
+
 type numeric =
     Unconverted of string
   | Int of int
@@ -27,7 +28,7 @@ type numeric =
   | Na
 
 
-type uop =
+type unop =
     UMinus (* - *)
   | UPlus  (* + *)
   | Not    (* ! *)
@@ -68,20 +69,21 @@ type binop =
   | Range
   (* What the hell is this *)
   | Form
-  (* Help?? *)
-  | Help
+  (* Qualified namespace lookup *)
   | GetPackage
   | GetPackageInt
+  (* Help?? *)
+  | Help
 
 
 type 'a arg =
   (* Expression *)
     ExprArg of 'a expr
   (* Assignments *)
-  | IdAssignEmpty of 'a ident
-  | IdAssign of 'a ident * 'a expr
-  | StrAssignEmpty of string
-  | StrAssign of string * 'a expr
+  | IdentAssignEmpty of 'a ident
+  | IdentAssign of 'a ident * 'a expr
+  | StringAssignEmpty of string
+  | StringAssign of string * 'a expr
   | NullAssignEmpty
   | NullAssign of 'a expr
   (* Variadic argument *)
@@ -96,15 +98,15 @@ and 'a param =
 
 and 'a expr =
   (* Constants *)
-    ConstNum of numeric
-  | ConstString of string
-  | ConstBool of bool
+    NumConst of numeric
+  | StringConst of string
+  | BoolConst of bool
   (* Valued constants *)
   | Null
   (* Identifiers *)
   | Ident of 'a ident
   (* Unary and binary operators *)
-  | Uop of uop * 'a expr
+  | Uop of unop * 'a expr
   | Bop of binop * 'a expr * 'a expr
   (* Function declaration and calls *)
   | FuncCall of 'a expr * ('a arg) list
@@ -135,20 +137,27 @@ let string_of_ident : 'a ident -> string =
       Some pkg -> pkg ^ "::" ^ id.name
     | None -> "" ^ id.name
 
-let string_of_constnum : 
+let string_of_numeric : numeric -> string =
+  function
+      Na             -> "NA"
+    | Unconverted s  -> "Unconverted " ^ s
+    | Int i          -> "Int " ^ (string_of_int i)
+    | Float f        -> "Float " ^ (string_of_float f)
+    | Complex (r, i) -> "Complex (" ^ (string_of_float r) ^ ", " ^
+                                      (string_of_float i) ^ ")"
 
-let string_of_uop : uop -> string =
+let string_of_unop : unop -> string =
   function
       UMinus -> "-"
     | UPlus  -> "+"
     | Not    -> "!"
     | UForm  -> "~"
-    | UHelp   -> "?"
+    | UHelp  -> "?"
 
 
-let string_of_binop =
+let string_of_binop : binop -> string =
   function
-    | Plus          -> "+"
+      Plus          -> "+"
     | Minus         -> "-"
     | Mult          -> "*"
     | Div           -> "/"
@@ -175,60 +184,70 @@ let string_of_binop =
     | ObjAttr       -> "@"
     | Range         -> ":"
     | Help          -> "?"
+    | GetPackage    -> "::"
+    | GetPackageInt -> ":::"
 
 
-let rec string_of_expr = function
-    | ConstNum i     -> "ConstNum " ^ (string_of_constnum i)
-    | ConstString s  -> "ConstString " ^ s
-    | ConstFloat f   -> "ConstFloat " ^ (string_of_float f)
-    | ConstComplex c -> "ConstComplex " ^ (string_of_float c)
-    | ConstBool l    -> "ConstBool " ^ (string_of_bool l)
+let rec string_of_expr : 'a expr -> string =
+  function
+    (* Values *)
+    | NumConst i     -> "NumConst " ^ (string_of_numeric i)
+    | StringConst s  -> "StringConst " ^ s
+    | BoolConst l    -> "BoolConst " ^ (string_of_bool l)
     | Null           -> "Null"
-    | Na             -> "NA"
-
+    (* Identifiers *)
     | Ident i -> string_of_ident i
-    | Uop (u, e) -> "Uop(" ^ (string_of_uop u) ^ "," ^
-                             (string_of_expr e) ^ ")"
-    | Bop (b, e1, e2) -> "Bop(" ^ (string_of_binop b) ^ "," ^
-                                  (string_of_expr e1) ^ "," ^
-                                  (string_of_expr e2) ^ ")"
+    (* Operators *)
+    | Uop (u, e) ->
+        "Uop(" ^ (string_of_unop u) ^ "," ^ (string_of_expr e) ^ ")"
+    | Bop (b, e1, e2) ->
+        "Bop(" ^ (string_of_binop b) ^ "," ^
+                 (string_of_expr e1) ^ "," ^ (string_of_expr e2) ^ ")"
+    (* Functions *)
+    | FuncCall (e, args) ->
+        "FuncCall(" ^ (string_of_expr e) ^ ", [" ^
+                      (String.concat "," (List.map string_of_arg args)) ^ "])"
+    | FuncDec (ps, e) ->
+        "FuncDec([" ^ (String.concat "," (List.map string_of_param ps)) ^"],"^
+                      (string_of_expr e) ^ ")"
 
-    | FuncCall (e, args) -> "FuncCall(" ^ (string_of_expr e) ^ ", [" ^
-        String.concat "," (List.map string_of_arg args) ^ "])"
-    | FuncDec (params, e) -> "FuncDec([" ^
-                 String.concat "," (List.map string_of_param params) ^
-                 "], " ^ (string_of_expr e) ^ ")"
-    | Block (es) -> "Block([" ^
-                    (String.concat "," (List.map string_of_expr es)) ^"])"
-    | If (e1, e2, e3) -> "If(" ^ (string_of_expr e1) ^ "," ^
-                                 (string_of_expr e2) ^ "," ^
-                                 (string_of_expr e3) ^ ")"
-    | For (i, e2, e3) -> "For(" ^ (string_of_ident i) ^ "," ^
-                                  (string_of_expr e2) ^ "," ^
-                                  (string_of_expr e3) ^ ")"
-    | While (e1, e2) -> "While(" ^ (string_of_expr e1) ^ "," ^
-                                   (string_of_expr e2) ^ "," ^ ")"
+    (* Block of expressions *)
+    | Block (es) ->
+        "Block([" ^ (String.concat "," (List.map string_of_expr es)) ^ "])"
+    (* Control expressions *)
+    | If (c, et) ->
+        "If(" ^ (string_of_expr c) ^ "," ^ (string_of_expr et) ^ ")"
+    | IfElse (c, et, ef) ->
+        "IfElse(" ^ (string_of_expr c) ^ "," ^
+                    (string_of_expr et) ^ "," ^ (string_of_expr ef) ^ ")"
+    | For (i, e2, e3) ->
+        "For(" ^ (string_of_ident i) ^ "," ^ (string_of_expr e2) ^ "," ^
+                 (string_of_expr e3) ^ ")"
+    | While (e1, e2) ->
+        "While(" ^ (string_of_expr e1) ^ "," ^ (string_of_expr e2) ^ ")"
     | Repeat (e) -> "Repeat(" ^ (string_of_expr e) ^ ")"
-
     | Next -> "Next"
     | Break -> "Break"
+    (* List acessing *)
 
 
-and string_of_arg = function
-    | ExprArg e        -> string_of_expr e
-    | IdAssignEmpty i  -> "i="
-    | IdAssign (i, e)  -> "i=" ^ (string_of_expr e)
-    | StrAssignEmpty s -> s ^ "="
-    | StrAssign (s, e) -> s ^ "=" ^ (string_of_expr e)
-    | NullAssignEmpty  -> "Null="
-    | NullAssign e     -> "Null=" ^ (string_of_expr e)
-    | ArgDots          -> "..."
+and string_of_arg : 'a arg -> string =
+  function
+    | ExprArg e           -> string_of_expr e
+    | IdentAssignEmpty i  -> "i="
+    | IdentAssign (i, e)  -> "i=" ^ (string_of_expr e)
+    | StringAssignEmpty s -> s ^ "="
+    | StringAssign (s, e) -> s ^ "=" ^ (string_of_expr e)
+    | NullAssignEmpty     -> "Null="
+    | NullAssign e        -> "Null=" ^ (string_of_expr e)
+    | ArgDots             -> "..."
 
 
-and string_of_param = function
-    | Param i      -> string_of_ident i
+and string_of_param : 'a param -> string =
+  function
+    | Param i             -> string_of_ident i
     | DefaultParam (i, e) -> (string_of_ident i) ^ "=" ^ (string_of_expr e)
-    | ParamDots    -> "..."
+    | ParamDots           -> "..."
 
 
 end
