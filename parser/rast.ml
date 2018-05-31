@@ -48,6 +48,10 @@ type binop =
   | Le
   | Eq
   | Neq
+  | AndVec
+  | And
+  | Or
+  | OrVec
   (* Assignment *)
   | Assign
   | SuperAssign
@@ -55,15 +59,17 @@ type binop =
   | ListProj
   | ListSub
   | ObjAttr
+  (* List ranges *)
+  | Range
   (* What the hell is this *)
   | Form
   (* Help?? *)
   | Help
 
 
-type 'a arg = 
+type 'a arg =
   (* Expression *)
-    ArgExpr of 'a expr
+    ExprArg of 'a expr
   (* Assignments *)
   | IdAssignEmpty of 'a ident
   | IdAssign of 'a ident * 'a expr
@@ -98,7 +104,7 @@ and 'a expr =
   | Bop of binop * 'a expr * 'a expr
   (* Function declaration and calls *)
   | FuncCall of 'a expr * ('a arg) list
-  | FuncDec of 'a expr * ('a param) list
+  | FuncDec of ('a param) list * 'a expr
   (* Expression blocks *)
   | Block of 'a expr list            (* {} *)
   (* Control structures *)
@@ -150,13 +156,18 @@ let string_of_binop =
     | Le            -> "<="
     | Eq            -> "=="
     | Neq           -> "!="
+    | And           -> "&&"
+    | AndVec        -> "&"
+    | Or            -> "||"
+    | OrVec         -> "|"
     | Form          -> "~"
     | Assign        -> "<-"
-    | SuperAssign -> "<<-"
-    | ListProj    -> "[[]]"
-    | ListSub     -> "[]"
-    | ObjAttr     -> "@"
-    | Help        -> "?"
+    | SuperAssign   -> "<<-"
+    | ListProj      -> "[[]]"
+    | ListSub       -> "[]"
+    | ObjAttr       -> "@"
+    | Range         -> ":"
+    | Help          -> "?"
 
 
 let rec string_of_expr = function
@@ -177,8 +188,9 @@ let rec string_of_expr = function
 
     | FuncCall (e, args) -> "FuncCall(" ^ (string_of_expr e) ^ ", [" ^
         String.concat "," (List.map string_of_arg args) ^ "])"
-    | FuncDec (e, params) -> "FuncDec(" ^ (string_of_expr e) ^ ", [" ^
-        String.concat "," (List.map string_of_param params) ^ "])"
+    | FuncDec (params, e) -> "FuncDec([" ^
+                 String.concat "," (List.map string_of_param params) ^
+                 "], " ^ (string_of_expr e) ^ ")"
     | Block (es) -> "Block([" ^
                     (String.concat "," (List.map string_of_expr es)) ^"])"
     | If (e1, e2, e3) -> "If(" ^ (string_of_expr e1) ^ "," ^
@@ -196,7 +208,7 @@ let rec string_of_expr = function
 
 
 and string_of_arg = function
-    | ArgExpr e        -> string_of_expr e
+    | ExprArg e        -> string_of_expr e
     | IdAssignEmpty i  -> "i="
     | IdAssign (i, e)  -> "i=" ^ (string_of_expr e)
     | StrAssignEmpty s -> s ^ "="

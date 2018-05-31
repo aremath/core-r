@@ -1,69 +1,77 @@
-type token =
-  | LPAREN
-  | RPAREN
-  | LBRACKET
-  | RBRACKET
-  | LBRACE
-  | RBRACE
-  | MINUS
-  | PLUS
-  | BANG
+
+(* The type of tokens. *)
+
+type token = 
+  | WHILE
+  | USEROP of (string)
+  | TRUE
   | TILDE
-  | HELP
-  | COLON
-  | MULT
-  | DIV
-  | EXP
-  | MODULUS
-  | INTDIV
-  | MATRIXMULT
+  | STRING of (string)
+  | SEMICOLON
+  | RSUPASSIGN
+  | RPAREN
+  | RETURN
+  | REPEAT
+  | RBRACKET
+  | RBRACE
+  | RASSIGN
+  | PLUS
   | OUTERPROD
-  | KRONECKERPROD
+  | ORVEC
+  | OR
+  | NULL
+  | NEXT
+  | NEQ
+  | NAN
+  | NA
+  | MULT
+  | MODULUS
+  | MINUS
+  | MATRIXMULT
   | MATCH
   | LT
-  | GT
-  | EQEQ
-  | NEQ
-  | GE
-  | LE
-  | ANDVEC
-  | ANDNOVEC
-  | ORVEC
-  | ORNOVEC
-  | LASSIGN
-  | RASSIGN
-  | LISTSUBSET
-  | SEMICOLON
-  | COLONEQ
-  | DOT3
-  | COLON2
-  | COLON3
-  | ATTRIBUTE
   | LSUPASSIGN
-  | RSUPASSIGN
-  | EQASSIGN
-  | FUNCTION
-  | RETURN
-  | IF
-  | FOR
-  | WHILE
-  | REPEAT
-  | NEXT
-  | BREAK
-  | NULL
-  | NA
-  | INFINITY
-  | NAN
-  | TRUE
-  | FALSE
-  | IDENT of (string)
-  | USEROP of (string)
-  | STRING of (string)
+  | LPAREN
+  | LISTSUBSET
+  | LE
+  | LBRACKET
+  | LBRACE
+  | LASSIGN
+  | KRONECKERPROD
+  | INTDIV
   | INT of (int)
+  | INFINITY
+  | IF
+  | IDENT of (string)
+  | HELP
+  | GT
+  | GE
+  | FUNCTION
+  | FOR
   | FLOAT of (float)
+  | FALSE
+  | EXP
+  | EQEQ
+  | EQASSIGN
+  | EOF
+  | DOT3
+  | DIV
   | COMPLEX of (float)
   | COMMA
-  | EOF
+  | COLONEQ
+  | COLON3
+  | COLON2
+  | COLON
+  | BREAK
+  | BANG
+  | ATTRIBUTE
+  | ANDVEC
+  | AND
 
-val program :
-  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> expr
+(* This exception is raised by the monolithic API functions. *)
+
+exception Error
+
+(* The monolithic API. *)
+
+val program: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (expr)

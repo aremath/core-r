@@ -130,10 +130,10 @@ rule tokenize = parse
   | "!="        { NEQ }
   | ">="        { GE }
   | "<="        { LE }
+  | "&&"        { AND }
   | "&"         { ANDVEC }
-  | "&&"        { ANDNOVEC }
+  | "||"        { OR }
   | "|"         { ORVEC }
-  | "||"        { ORNOVEC }
   | "<-"        { LASSIGN }
   | "->"        { RASSIGN }
   | "$"         { LISTSUBSET }

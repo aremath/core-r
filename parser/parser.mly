@@ -30,10 +30,10 @@ module A = RAst
 %token NEQ
 %token GE
 %token LE
+%token AND
 %token ANDVEC
-%token ANDNOVEC
+%token OR
 %token ORVEC
-%token ORNOVEC
 %token LASSIGN
 %token RASSIGN
 %token LISTSUBSET
@@ -94,7 +94,7 @@ ident:
 
 
 arg:
-    expr                    { A.ArgExpr $1 }
+    expr                    { A.ExprArg $1 }
   | IDENT EQASSIGN          { A.IdAssignEmpty $1 }
   | IDENT EQASSIGN expr     { A.IdAssign ($1, $3) }
   | STRING EQASSIGN         { A.StrAssignEmpty $1 }
@@ -104,7 +104,7 @@ arg:
 
 
 argstail:
-    COMMA arg               { [$2] }
+                            { [] }
   | COMMA arg argstail      { $2 :: $3 }
 
 
@@ -122,7 +122,7 @@ param:
                                              , $3 ) }
 
 paramstail:
-    COMMA param             { [$2] }
+                            { [] }
   | COMMA param paramstail  { $2 :: $3 }
 
 params:
@@ -160,6 +160,11 @@ expr:
   | expr LE expr          { A.Bop (A.Le, $1, $3) }
   | expr EQEQ expr        { A.Bop (A.Eq, $1, $3) }
   | expr NEQ expr         { A.Bop (A.Neq, $1, $3) }
+  | expr AND expr         { A.Bop (A.And, $1, $3) }
+  | expr ANDVEC expr      { A.Bop (A.AndVec, $1, $3) }
+  | expr OR expr          { A.Bop (A.Or, $1, $3) }
+  | expr ORVEC expr       { A.Bop (A.OrVec, $1, $3) }
+
   | expr MODULUS expr     { A.Bop (A.Mod, $1, $3) }
   | expr INTDIV expr      { A.Bop (A.IntDiv, $1, $3) }
   | expr MATRIXMULT expr  { A.Bop (A.MatrixMult, $1, $3) }
@@ -170,10 +175,11 @@ expr:
   | ident LASSIGN expr    { A.Assign ($1, $3) }
   | expr RASSIGN ident    { A.Assign ($3, $1) }
   | ident LSUPASSIGN expr { A.SuperAssign ($1, $3) }
-  | expr LSUPASSIGN ident { A.SuperAssign ($3, $1) }
+  | expr RSUPASSIGN ident { A.SuperAssign ($3, $1) }
   | expr TILDE expr       { A.Bop (A.Form, $1, $3) }
   | expr HELP expr        { A.Bop (A.Help ($1, $3)) }
   | expr ATTRIBUTE IDENT  { A.Bop (A.ObjAttr, $1, A.Ident $3) }
+  | expr COLON expr       { A.Bop (A.Range $1, $3) }
 
 
 
@@ -183,10 +189,10 @@ expr:
                           { A.Bop (A.ListProj, $1, $4) }
   | expr LISTSUBSET IDENT { A.Bop ( A.ListProj
                                   , $1
-                                  , [ A.ArgExpr (A.ConstS $3)
+                                  , [ A.ExprArg (A.ConstS $3)
                                         , A.IdAssign ( { A.default_ident with
-                                                      name = "exact" }
-                                                , A.ConstL false ) ]) }
+                                                           name = "exact" }
+                                                     , A.ConstL false ) ]) }
 
 
   /* Unary operators */
@@ -194,6 +200,11 @@ expr:
   | PLUS expr             { A.Uop (A.Plus $2) }
   | BANG expr             { A.Uop (A.Plus $2) }
   | TILDE expr            { A.Uop (A.Plus $2) }
+
+  | expr USEROP expr      { A.FuncCall ( A.Ident { A.default_ident with
+                                                    name = $2 }
+                                       , [A.ExprArg $1, A.ExprArg $3] ) }
+                                       
 
   /* Keyworded expressions */
   | IF expr expr          { A.If ($2, $3, A.Null) }
@@ -207,24 +218,25 @@ expr:
   /* Function call and declarations */
   | expr LPAREN args RPAREN
                           { A.FuncCall ($1, $3) }
-  | expr LPAREN params RPAREN
-                          { A.FuncDec ($1, $3) }
+  | FUNCTION LPAREN params RPAREN expr
+                          { A.FuncDec ($3, $5) }
+
+  /* Blocks */
+  | LBRACE exprseq RBRACE { A.Block $1 }
 
 
 exprseqtail:
-    SEMICOLON expr
-      { [$2] }
+                          { [] }
   | SEMICOLON expr exprseqtail
-      { $2 :: $3 }
+                          { $2 :: $3 }
 
 exprseq:
-      { [] }
-  | expr exprseqtail
-      { $1 :: $2 }
+                          { [] }
+  | expr exprseqtail      { $1 :: $2 }
 
 
 program:
-    expr { $1 }
+    expr EOF { $1 }
 
 
 
