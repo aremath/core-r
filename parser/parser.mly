@@ -1,5 +1,4 @@
 %{
-module A = RAst
 %}
 
 %token         END_OF_INPUT (* ERROR *)
@@ -65,7 +64,7 @@ module A = RAst
 %nonassoc LPAREN LBRACK
 
 %start prog
-%type <unit A.expr> prog
+%type <unit RAst.expr> prog
 
 %%
 

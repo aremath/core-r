@@ -11,10 +11,10 @@ r_ast.cmo: r_ast.ml
 parser.mli parser.ml: parser.mly
 	menhir --dump --explain parser.mly
 
-parser.cmi: parser.mli r_ast.cmo
+parser.cmi: r_ast.cmo parser.mli
 	ocamlc -c parser.mli
 
-parser.cmo: parser.ml parser.cmi r_ast.cmo
+parser.cmo: r_ast.cmo parser.ml parser.cmi
 	ocamlc -c parser.ml
 
 absyn_generator: r_ast.cmo parser.cmo lexer.cmo
