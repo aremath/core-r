@@ -1,11 +1,10 @@
-
     
 let parseFile filename =
   let channel = open_in filename  in
   let lexbuf = Lexing.from_channel channel   in
   let absyn =
      try
-       Parser.program Lexer.tokenize lexbuf
+       Parser.prog Lexer.tokenize lexbuf
      with _ ->
           let pos = lexbuf.Lexing.lex_curr_p in
             begin
@@ -22,13 +21,13 @@ let parseFile filename =
   absyn
 
 let main () =
-  print_string "invoked main\n";
   let args = Array.to_list Sys.argv  in
   let in_filename = match args with
                   | [_; arg] -> arg
                   | _     -> failwith "exactly one filename expected"  in
   (* Parsing *)
   let absyn = parseFile in_filename  in
-  print_endline (Absyn.string_of_program absyn)
+  print_endline (Rast.string_of_program absyn);;
 
-main()
+main ()
+

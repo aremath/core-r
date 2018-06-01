@@ -125,7 +125,7 @@ and 'a expr =
   (* ? *)
 
 
-type 'a prog = ('a expr) list
+type 'a program = ('a expr) list
 
 
 (* Useful string conversion functions *)
@@ -256,4 +256,10 @@ and string_of_param : 'a param -> string =
     | Param i             -> string_of_ident i
     | DefaultParam (i, e) -> (string_of_ident i) ^ "=" ^ (string_of_expr e)
     | ParamDots           -> "..."
+
+
+let string_of_program : 'a program -> string =
+  fun es ->
+    "[" ^ (String.concat "," (List.map string_of_expr es)) ^ "]"
+
 

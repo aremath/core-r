@@ -65,15 +65,15 @@
 %nonassoc LPAREN LBRACK
 
 %start prog
-%type <unit Rast.expr> prog
+%type <unit Rast.program> prog
 
 %%
 
 prog:
-    END_OF_INPUT           { A.Null }
-  | expr_or_assign NEWLINE { $1 } (* { yyresult = xxvalue($1,3,&@1); goto yyreturn; } *)
-  | expr_or_assign SEMI    { $1 } (* { yyresult = xxvalue($1,4,&@1); goto yyreturn; } *)
-  | error                  { A.Null } (* TODO *)
+    END_OF_INPUT                { [A.Null] }
+  | expr_or_assign NEWLINE prog { $1 :: $3 } (* { yyresult = xxvalue($1,3,&@1); goto yyreturn; } *)
+  | expr_or_assign SEMI prog    { $1 :: $3 } (* { yyresult = xxvalue($1,4,&@1); goto yyreturn; } *)
+  | error                       { [A.Null] } (* TODO *)
   ;
 
 expr_or_assign:
