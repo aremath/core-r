@@ -96,7 +96,7 @@ and 'a param =
 
 and 'a expr =
   (* Constants *)
-    NumConst of numeric
+    NumericConst of numeric
   | StringConst of string
   | BoolConst of bool
   (* Valued constants *)
@@ -189,7 +189,7 @@ let string_of_binop : binop -> string =
 let rec string_of_expr : 'a expr -> string =
   function
     (* Values *)
-    | NumConst i     -> "NumConst " ^ (string_of_numeric i)
+    | NumericConst i -> "NumericConst " ^ (string_of_numeric i)
     | StringConst s  -> "StringConst " ^ s
     | BoolConst l    -> "BoolConst " ^ (string_of_bool l)
     | Null           -> "Null"

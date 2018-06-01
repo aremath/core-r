@@ -2,7 +2,7 @@
   module A = Rast
 %}
 
-%token         END_OF_INPUT (* ERROR *)
+%token         END_OF_INPUT
 %token<string> STRING_CONST SYMBOL
 %token<string> USER_OP
 %token         MOD INT_DIV MATRIX_MULT OUTER_PROD KRON_PROD MATCH
@@ -87,12 +87,12 @@ equal_assign:
 
 expr:
   (* Constants *)
-    INT_CONST     { A.NumConst (A.Int $1) }(* { $$ = $1; setId( $$, @$); } *)
-  | FLOAT_CONST   { A.NumConst (A.Float $1) }
-  | NAN           { A.NumConst (A.Float nan) }
-  | INFINITY      { A.NumConst (A.Float infinity) }
-  | COMPLEX_CONST { A.NumConst (A.Complex (0.0, $1)) }
-  | NA            { A.NumConst (A.Na) }
+    INT_CONST     { A.NumericConst (A.Int $1) }(* { $$ = $1; setId( $$, @$); } *)
+  | FLOAT_CONST   { A.NumericConst (A.Float $1) }
+  | NAN           { A.NumericConst (A.Float nan) }
+  | INFINITY      { A.NumericConst (A.Float infinity) }
+  | COMPLEX_CONST { A.NumericConst (A.Complex (0.0, $1)) }
+  | NA            { A.NumericConst (A.Na) }
   | TRUE          { A.BoolConst true }
   | FALSE         { A.BoolConst false }
   | STRING_CONST  { A.StringConst $1 } (* { $$ = $1; setId( $$, @$); } *)
