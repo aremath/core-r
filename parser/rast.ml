@@ -96,7 +96,7 @@ and 'a param =
 
 and 'a expr =
   (* Constants *)
-    NumericConst of numeric
+  | NumericConst of numeric
   | StringConst of string
   | BoolConst of bool
   (* Valued constants *)
@@ -132,12 +132,12 @@ type 'a program = ('a expr) list
 
 let string_of_ident : 'a ident -> string =
   fun id -> match id.pkg with
-      Some pkg -> pkg ^ "::" ^ id.name
+    | Some pkg -> pkg ^ "::" ^ id.name
     | None -> "" ^ id.name
 
 let string_of_numeric : numeric -> string =
   function
-      Na             -> "NA"
+    | Na             -> "NA"
     | Unconverted s  -> "Unconverted " ^ s
     | Int i          -> "Int " ^ (string_of_int i)
     | Float f        -> "Float " ^ (string_of_float f)
@@ -146,7 +146,7 @@ let string_of_numeric : numeric -> string =
 
 let string_of_unop : unop -> string =
   function
-      UMinus -> "-"
+    | UMinus -> "-"
     | UPlus  -> "+"
     | Not    -> "!"
     | UForm  -> "~"
@@ -155,7 +155,7 @@ let string_of_unop : unop -> string =
 
 let string_of_binop : binop -> string =
   function
-      Plus          -> "+"
+    | Plus          -> "+"
     | Minus         -> "-"
     | Mult          -> "*"
     | Div           -> "/"
