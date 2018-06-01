@@ -105,12 +105,10 @@ let main () =
   let in_filename = match args with
                   | [_; arg] -> arg
                   | _     -> failwith "exactly one filename expected"  in
-  (*
-  dumpTokens in_filename;;
-  *)
   (* Parsing *)
   let absyn = parseFile in_filename  in
-    print_endline (Rast.string_of_program absyn);;
+    print_endline (Rast.string_of_program absyn);
+    dumpTokens in_filename;;
 
 main ()
 

@@ -71,9 +71,10 @@
 
 prog:
     END_OF_INPUT                { [] }
+  | NEWLINE prog                { $2 }
+  | expr_or_assign END_OF_INPUT { [$1] }
   | expr_or_assign NEWLINE prog { $1 :: $3 } (* { yyresult = xxvalue($1,3,&@1); goto yyreturn; } *)
   | expr_or_assign SEMI prog    { $1 :: $3 } (* { yyresult = xxvalue($1,4,&@1); goto yyreturn; } *)
-  | error                       { [A.Null] } (* TODO *)
   ;
 
 expr_or_assign:
