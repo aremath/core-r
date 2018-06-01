@@ -92,7 +92,7 @@ let newline =
   | '\r' '\n'
 
 let comment =
-  '#' _* newline
+  '#' ([^ '\n']*) ('\n' | eof)
 
 let whitespace =
   [' ' '\t']
