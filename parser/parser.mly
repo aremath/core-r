@@ -206,6 +206,7 @@ cond:
 
 exprlist:
                                     { [] } (* { $$ = xxexprlist0(); setId( $$, @$); } *)
+  | exprlist NEWLINE                { $1 }
   | expr_or_assign                  { [$1] } (* { $$ = xxexprlist1($1, &@1); } *)
   | exprlist SEMI expr_or_assign    { $1 @ [$3] } (* { $$ = xxexprlist2($1, $3, &@3); } *)
   | exprlist SEMI                   { $1 } (* { $$ = $1; setId( $$, @$); } *)
