@@ -21,7 +21,8 @@ let parseFile filename =
   let _ = close_in channel  in
   absyn
 
-let main() =
+let main () =
+  print_string "invoked main\n";
   let args = Array.to_list Sys.argv  in
   let in_filename = match args with
                   | [_; arg] -> arg
@@ -29,3 +30,5 @@ let main() =
   (* Parsing *)
   let absyn = parseFile in_filename  in
   print_endline (Absyn.string_of_program absyn)
+
+main()

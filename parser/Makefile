@@ -21,5 +21,5 @@ absyn_generator: r_ast.cmo parser.cmo lexer.cmo
 	ocamlc -o absyn_generator.ml
 
 clean:
-	rm -f *.cmi *.cmo lexer.ml parser.ml parser.mli parser.conflicts parser.automaton
+	rm -f *.cmi *.cmo *.cmx *.o lexer.ml parser.ml parser.mli parser.conflicts parser.automaton
     

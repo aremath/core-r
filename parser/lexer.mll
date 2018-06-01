@@ -174,7 +174,7 @@ rule tokenize = parse
 
   (* Valued tokens *)
   | ident       { SYMBOL (Lexing.lexeme lexbuf) }
-  | user_op     { USEROP (Lexing.lexeme lexbuf) }
+  | user_op     { USER_OP (Lexing.lexeme lexbuf) }
   | string      { STRING_CONST (Lexing.lexeme lexbuf) }
   | hex         { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
   | int         { INT_CONST (int_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
