@@ -1,6 +1,5 @@
 %{
-  open R_ast
-  module A = RAst
+  module A = Rast
 %}
 
 %token         END_OF_INPUT (* ERROR *)
@@ -66,7 +65,7 @@
 %nonassoc LPAREN LBRACK
 
 %start prog
-%type <unit A.expr> prog
+%type <unit Rast.expr> prog
 
 %%
 
@@ -108,8 +107,8 @@ expr:
   | BANG expr %prec UNOT    { A.Uop (A.Not, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
   | TILDE expr              { A.Uop (A.UForm, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
   | QUESTION expr           { A.Uop (A.UHelp, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
-  | expr COLON  expr        { A.Bop (A.Range, $1, $3) }(* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr PLUS  expr         { A.Bop (A.Plus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
+  | expr COLON expr         { A.Bop (A.Range, $1, $3) }(* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
+  | expr PLUS expr          { A.Bop (A.Plus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
   | expr MINUS expr         { A.Bop (A.Minus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
   | expr MULT expr          { A.Bop (A.Mult, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
   | expr DIV expr           { A.Bop (A.Div, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)

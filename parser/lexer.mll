@@ -115,7 +115,7 @@ rule tokenize = parse
   | "+"         { PLUS }
   | "!"         { BANG }
   | "~"         { TILDE }
-  | "?"         { HELP }
+  | "?"         { QUESTION }
   | ":"         { COLON }
   | "*"         { MULT }
   | "/"         { DIV }
@@ -128,8 +128,8 @@ rule tokenize = parse
   | "%in%"      { MATCH }
   | "<"         { LT }
   | ">"         { GT }
-  | "=="        { EQEQ }
-  | "!="        { NEQ }
+  | "=="        { EQ }
+  | "!="        { NE }
   | ">="        { GE }
   | "<="        { LE }
   | "&&"        { AND }
@@ -141,21 +141,20 @@ rule tokenize = parse
   | "$"         { DOLLAR }
 
   (* Additional operators (cf 10.4.2) *)
-  | "::"        { COLON2 }
-  | ":::"       { COLON3 }
-  | "@"         { ATTRIBUTE }
+  | "::"        { NS_GET }
+  | ":::"       { NS_GET_INT }
+  | "@"         { AT }
   | "<<-"       { LSUPER_ASSIGN }
   | "->>"       { RSUPER_ASSIGN }
   | "="         { EQ_ASSIGN }
 
   (* Were not listed but likely relevant *)
   | ";"         { SEMI }
-  | ":="        { COLONEQ }
-  | "..."       { DOT3 }
+  | ":="        { EQ_ASSIGN }
+  | "..."       { SYMBOL (Lexing.lexeme lexbuf) }
 
   (* Keywords *)
   | "function"  { FUNCTION }
-  | "return"    { RETURN }
   | "if"        { IF }
   | "for"       { FOR }
   | "in"        { IN }
@@ -185,10 +184,10 @@ rule tokenize = parse
   | comment     { tokenize lexbuf }
   | whitespace  { tokenize lexbuf }
 
-  | newline     { incr_line_count; NEWLINE }
+  | newline     { incr_line_count lexbuf; NEWLINE }
   | ','         { COMMA }
 
   (* Everybody's favorite thing that's technically not a char some times *)
-  | eof         { EOF }
+  | eof         { END_OF_INPUT }
 
 

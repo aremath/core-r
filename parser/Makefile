@@ -5,19 +5,19 @@ lexer.ml: lexer.mll
 lexer.cmo: lexer.ml parser.cmo
 	ocamlc -c lexer.ml
 
-r_ast.cmo: r_ast.ml
-	ocamlc -c r_ast.ml
+rast.cmo: rast.ml
+	ocamlc -c rast.ml
 
 parser.mli parser.ml: parser.mly
 	menhir --dump --explain parser.mly
 
-parser.cmi: r_ast.cmo parser.mli
+parser.cmi: rast.cmo parser.mli
 	ocamlc -c parser.mli
 
-parser.cmo: r_ast.cmo parser.ml parser.cmi
+parser.cmo: rast.cmo parser.ml parser.cmi
 	ocamlc -c parser.ml
 
-absyn_generator: r_ast.cmo parser.cmo lexer.cmo
+absyn_generator: rast.cmo parser.cmo lexer.cmo
 	ocamlc -o absyn_generator.ml
 
 clean:
