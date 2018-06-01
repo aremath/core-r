@@ -14,11 +14,16 @@ parser.mli parser.ml: parser.mly
 parser.cmi: rast.cmo parser.mli
 	ocamlc -c parser.mli
 
-parser.cmo: rast.cmo parser.ml parser.cmi
+parser.cmo: parser.ml parser.cmi rast.cmo
 	ocamlc -c parser.ml
 
-absyn_generator: rast.cmo parser.cmo lexer.cmo
+agen: parser.cmo lexer.cmo absyn_generator.ml
 	ocamlc -o agen rast.cmo parser.cmo lexer.cmo absyn_generator.ml
+
+% : tests/%.R agen
+	@echo PARSING $<
+	./agen $<
+
 clean:
-	rm -f *.cmi *.cmo *.cmx *.o lexer.ml parser.ml parser.mli parser.conflicts parser.automaton
+	rm -f *.cmi *.cmo *.cmx *.o lexer.ml parser.ml parser.mli parser.conflicts parser.automaton agen
     
