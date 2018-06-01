@@ -108,7 +108,8 @@ let main () =
   (* Parsing *)
   let absyn = parseFile in_filename  in
     print_endline (Rast.string_of_program absyn);
-    dumpTokens in_filename;;
+    dumpTokens in_filename;
+    ;;
 
 main ()
 

@@ -92,7 +92,7 @@ let newline =
   | '\r' '\n'
 
 let comment =
-  '#' ([^ '\n']*) ('\n' | eof)
+  '#' ([^ '\n']*)
 
 let whitespace =
   [' ' '\t']
@@ -156,6 +156,7 @@ rule tokenize = parse
   (* Keywords *)
   | "function"  { FUNCTION }
   | "if"        { IF }
+  | "else"      { ELSE }
   | "for"       { FOR }
   | "in"        { IN }
   | "while"     { WHILE }

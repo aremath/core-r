@@ -35,7 +35,7 @@
 
 /* This is the precedence table, low to high */
 %left     QUESTION
-(* 
+(*
   %left     LOW
   %left     WHILE FOR REPEAT
 *)
@@ -73,22 +73,22 @@ prog:
     END_OF_INPUT                { [] }
   | NEWLINE prog                { $2 }
   | expr_or_assign END_OF_INPUT { [$1] }
-  | expr_or_assign NEWLINE prog { $1 :: $3 } (* { yyresult = xxvalue($1,3,&@1); goto yyreturn; } *)
-  | expr_or_assign SEMI prog    { $1 :: $3 } (* { yyresult = xxvalue($1,4,&@1); goto yyreturn; } *)
+  | expr_or_assign NEWLINE prog { $1 :: $3 }
+  | expr_or_assign SEMI prog    { $1 :: $3 }
   ;
 
 expr_or_assign:
-    expr         { $1 } (* { $$ = $1; } *)
-  | equal_assign { $1 } (* { $$ = $1; } *)
+    expr         { $1 }
+  | equal_assign { $1 }
   ;
 
 equal_assign:
-    expr EQ_ASSIGN expr_or_assign { A.Bop(A.Assign, $1, $3) } (* { $$ = xxbinary($2,$1,$3); } *)
+    expr EQ_ASSIGN expr_or_assign { A.Bop(A.Assign, $1, $3) }
   ;
 
 expr:
   (* Constants *)
-    INT_CONST     { A.NumericConst (A.Int $1) }(* { $$ = $1; setId( $$, @$); } *)
+    INT_CONST     { A.NumericConst (A.Int $1) }
   | FLOAT_CONST   { A.NumericConst (A.Float $1) }
   | NAN           { A.NumericConst (A.Float nan) }
   | INFINITY      { A.NumericConst (A.Float infinity) }
@@ -96,40 +96,40 @@ expr:
   | NA            { A.NumericConst (A.Na) }
   | TRUE          { A.BoolConst true }
   | FALSE         { A.BoolConst false }
-  | STRING_CONST  { A.StringConst $1 } (* { $$ = $1; setId( $$, @$); } *)
-  | NULL          { A.Null } (* { $$ = $1; setId( $$, @$); } *)
+  | STRING_CONST  { A.StringConst $1 }
+  | NULL          { A.Null }
 
   (* Identifier *)
-  | SYMBOL { A.Ident { A.default_ident with name = $1 } } (* { $$ = $1; setId( $$, @$); } *)
+  | SYMBOL { A.Ident { A.default_ident with name = $1 } }
 
   (* Operators *)
-  | MINUS expr %prec UMINUS { A.Uop (A.UMinus, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
-  | PLUS expr %prec UPLUS   { A.Uop (A.UPlus, $2) } (* $$ = xxunary($1,$2); setId( $$, @$); } *)
-  | BANG expr %prec UNOT    { A.Uop (A.Not, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
-  | TILDE expr              { A.Uop (A.UForm, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
-  | QUESTION expr           { A.Uop (A.UHelp, $2) } (* { $$ = xxunary($1,$2); setId( $$, @$); } *)
-  | expr COLON expr         { A.Bop (A.Range, $1, $3) }(* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr PLUS expr          { A.Bop (A.Plus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr MINUS expr         { A.Bop (A.Minus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr MULT expr          { A.Bop (A.Mult, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr DIV expr           { A.Bop (A.Div, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr CARAT expr         { A.Bop (A.Exp, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr USER_OP expr       { A.FuncCall (A.Ident { A.default_ident with name=$2 }, A.ExprArg $1 :: [A.ExprArg $3]) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
+  | MINUS expr %prec UMINUS { A.Uop (A.UMinus, $2) }
+  | PLUS expr %prec UPLUS   { A.Uop (A.UPlus, $2) }
+  | BANG expr %prec UNOT    { A.Uop (A.Not, $2) }
+  | TILDE expr              { A.Uop (A.UForm, $2) }
+  | QUESTION expr           { A.Uop (A.UHelp, $2) }
+  | expr COLON expr         { A.Bop (A.Range, $1, $3) }
+  | expr PLUS expr          { A.Bop (A.Plus, $1, $3) }
+  | expr MINUS expr         { A.Bop (A.Minus, $1, $3) }
+  | expr MULT expr          { A.Bop (A.Mult, $1, $3) }
+  | expr DIV expr           { A.Bop (A.Div, $1, $3) }
+  | expr CARAT expr         { A.Bop (A.Exp, $1, $3) }
+  | expr USER_OP expr       { A.FuncCall (A.Ident { A.default_ident with name=$2 }, A.ExprArg $1 :: [A.ExprArg $3]) }
   (*
     | expr '%' expr           { A.Bop (A.Modulus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } (* TODO *) *)
   *)
-  | expr TILDE expr         { A.Bop (A.Form, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr QUESTION expr      { A.Bop (A.Help, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr LT expr            { A.Bop (A.Lt, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr LE expr            { A.Bop (A.Le, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr EQ expr            { A.Bop (A.Eq, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr NE expr            { A.Bop (A.Neq, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr GE expr            { A.Bop (A.Ge, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr GT expr            { A.Bop (A.Gt, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr AND expr           { A.Bop (A.AndVec, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr OR expr            { A.Bop (A.OrVec, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr AND2 expr          { A.Bop (A.And, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr OR2 expr           { A.Bop (A.Or, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
+  | expr TILDE expr         { A.Bop (A.Form, $1, $3) }
+  | expr QUESTION expr      { A.Bop (A.Help, $1, $3) }
+  | expr LT expr            { A.Bop (A.Lt, $1, $3) }
+  | expr LE expr            { A.Bop (A.Le, $1, $3) }
+  | expr EQ expr            { A.Bop (A.Eq, $1, $3) }
+  | expr NE expr            { A.Bop (A.Neq, $1, $3) }
+  | expr GE expr            { A.Bop (A.Ge, $1, $3) }
+  | expr GT expr            { A.Bop (A.Gt, $1, $3) }
+  | expr AND expr           { A.Bop (A.AndVec, $1, $3) }
+  | expr OR expr            { A.Bop (A.OrVec, $1, $3) }
+  | expr AND2 expr          { A.Bop (A.And, $1, $3) }
+  | expr OR2 expr           { A.Bop (A.Or, $1, $3) }
   | expr MOD expr           { A.Bop (A.Mod, $1, $3) }
   | expr INT_DIV expr       { A.Bop (A.IntDiv, $1, $3) }
   | expr MATRIX_MULT expr   { A.Bop (A.MatrixMult, $1, $3) }
@@ -138,64 +138,61 @@ expr:
   | expr MATCH expr         { A.Bop (A.Match, $1, $3) }
 
   (* Directional assignment *)
-  | expr LASSIGN expr       { A.Bop (A.Assign, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr RASSIGN expr       { A.Bop (A.Assign, $3, $1) } (* { $$ = xxbinary($2,$3,$1);  setId( $$, @$); } *)
-  | expr LSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr RSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $3, $1) } (* { $$ = xxbinary($2,$3,$1);  setId( $$, @$); } *)
+  | expr LASSIGN expr       { A.Bop (A.Assign, $1, $3) }
+  | expr RASSIGN expr       { A.Bop (A.Assign, $3, $1) }
+  | expr LSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $1, $3) }
+  | expr RSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $3, $1) }
 
   (* Grouping *)
-  | LPAREN expr_or_assign RPAREN { $2 } (* { $$ = xxparen($1,$2); setId( $$, @$); } *)
+  | LPAREN expr_or_assign RPAREN { $2 }
 
   (* Functions *)
-  | expr LPAREN sublist RPAREN { A.FuncCall ($1, $3)} (* { $$ = xxfuncall($1,$3);  setId( $$, @$); modif_token( &@1, SYMBOL_FUNCTION_CALL ) ; } *)
-  (* 
-    | FUNCTION LPAREN formlist RPAREN expr_or_assign %prec LOW
-  *)
+  | expr LPAREN sublist RPAREN { A.FuncCall ($1, $3)}
   | FUNCTION LPAREN formlist RPAREN expr_or_assign
-                               { A.FuncDec ($3, $5)} (* { $$ = xxdefun($1,$3,$6,&@$);   setId( $$, @$); } *)
+                               { A.FuncDec ($3, $5)}
 
   (* Control flow *)
-  | NEXT                      { A.Next } (* { $$ = xxnxtbrk($1); setId( $$, @$); } *)
-  | BREAK                     { A.Break } (* { $$ = xxnxtbrk($1); setId( $$, @$); } *)
-  | WHILE cond expr_or_assign { A.While ($2, $3) } (* { $$ = xxwhile($1,$2,$3); setId( $$, @$); } *)
-  | REPEAT expr_or_assign     { A.Repeat $2 } (* { $$ = xxrepeat($1,$2); setId( $$, @$); } *)
-  | IF cond expr_or_assign    { A.If ($2, $3) } (* { $$ = xxif($1,$2,$3); setId( $$, @$); } *)
+  | NEXT                      { A.Next }
+  | BREAK                     { A.Break }
+  | WHILE cond expr_or_assign { A.While ($2, $3) }
+  | REPEAT expr_or_assign     { A.Repeat $2 }
+  | IF cond expr_or_assign    { A.If ($2, $3) }
   | IF cond expr_or_assign ELSE expr_or_assign
-                              { A.IfElse ($2, $3, $5) }(* { $$ = xxifelse($1,$2,$3,$5);   setId( $$, @$); } *)
+                              { A.IfElse ($2, $3, $5) }
   (*
     | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign %prec FOR
   *)
   | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign
-                              { A.For ({A.default_ident with name=$3}, $5, $7) } (* { $$ = xxfor($1,$2,$3); setId( $$, @$); } *)
+                              { A.For ({A.default_ident with name=$3}, $5, $7) }
 
   (* Block *)
-  | LBRACE exprlist RBRACE     { A.Block $2 } (* { $$ = xxexprlist($1,&@1,$2); setId( $$, @$); } *)
+  | LBRACE exprlist RBRACE { A.Block $2 }
 
   (* List access *)
   | expr LBRACK LBRACK sublist RBRACK RBRACK
-                               { A.ListProj ($1, $4) } (* { $$ = xxsubscript($1,$2,$3);   setId( $$, @$); } *)
-  | expr LBRACK sublist RBRACK { A.ListSub ($1, $3) } (* { $$ = xxsubscript($1,$2,$3);   setId( $$, @$); } *)
+                               { A.ListProj ($1, $4) }
+  | expr LBRACK sublist RBRACK { A.ListSub ($1, $3) }
 
   (* Package lookup *)
-  | SYMBOL NS_GET SYMBOL                 { A.Bop (A.GetPackage, (A.Ident {A.default_ident with name=$1}), (A.Ident {A.default_ident with name=$3})) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); modif_token( &@1, SYMBOL_PACKAGE ) ; } *)
-  | SYMBOL NS_GET STRING_CONST           { A.Bop (A.GetPackage, (A.Ident {A.default_ident with name=$1}), (A.StringConst $3)) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); modif_token( &@1, SYMBOL_PACKAGE ) ; } *)
-  | STRING_CONST NS_GET SYMBOL           { A.Bop (A.GetPackage, (A.StringConst $1), (A.Ident {A.default_ident with name=$3})) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
-  | STRING_CONST NS_GET STRING_CONST     { A.Bop (A.GetPackage, (A.StringConst $1), (A.StringConst $3)) }(* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
-  | SYMBOL NS_GET_INT SYMBOL             { A.Bop (A.GetPackageInt, (A.Ident {A.default_ident with name=$1}), (A.Ident {A.default_ident with name=$3})) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); modif_token( &@1, SYMBOL_PACKAGE ) ;} *)
-  | SYMBOL NS_GET_INT STRING_CONST       { A.Bop (A.GetPackageInt, (A.Ident {A.default_ident with name=$1}), (A.StringConst $3)) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); modif_token( &@1, SYMBOL_PACKAGE ) ;} *)
-  | STRING_CONST NS_GET_INT SYMBOL       { A.Bop (A.GetPackageInt, (A.StringConst $1), (A.Ident {A.default_ident with name=$3}))} (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
-  | STRING_CONST NS_GET_INT STRING_CONST { A.Bop (A.GetPackageInt, (A.StringConst $1), (A.StringConst $3)) } (* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
+  | SYMBOL NS_GET SYMBOL                 { A.Bop (A.GetPackage, (A.Ident {A.default_ident with name=$1}), (A.Ident {A.default_ident with name=$3})) }
+  | SYMBOL NS_GET STRING_CONST           { A.Bop (A.GetPackage, (A.Ident {A.default_ident with name=$1}), (A.StringConst $3)) }
+  | STRING_CONST NS_GET SYMBOL           { A.Bop (A.GetPackage, (A.StringConst $1), (A.Ident {A.default_ident with name=$3})) }
+  | STRING_CONST NS_GET STRING_CONST     { A.Bop (A.GetPackage, (A.StringConst $1), (A.StringConst $3)) }
+  | SYMBOL NS_GET_INT SYMBOL             { A.Bop (A.GetPackageInt, (A.Ident {A.default_ident with name=$1}), (A.Ident {A.default_ident with name=$3})) }
+  | SYMBOL NS_GET_INT STRING_CONST       { A.Bop (A.GetPackageInt, (A.Ident {A.default_ident with name=$1}), (A.StringConst $3)) }
+  | STRING_CONST NS_GET_INT SYMBOL       { A.Bop (A.GetPackageInt, (A.StringConst $1), (A.Ident {A.default_ident with name=$3}))}
+  | STRING_CONST NS_GET_INT STRING_CONST { A.Bop (A.GetPackageInt, (A.StringConst $1), (A.StringConst $3)) }
 
   (* Property access *)
-  | expr DOLLAR SYMBOL       { A.ListProj ($1, [A.ExprArg (A.Ident {A.default_ident with name=$3})]) }(* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
-  | expr DOLLAR STRING_CONST { A.ListProj ($1, [A.ExprArg (A.StringConst $3)]) }(* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } *)
-  | expr AT SYMBOL           { A.Bop (A.ObjAttr, $1, (A.Ident {A.default_ident with name=$3})) }(* { $$ = xxbinary($2,$1,$3); setId( $$, @$); modif_token( &@3, SLOT ) ; } *)
-  | expr AT STRING_CONST     { A.Bop (A.ObjAttr, $1, (A.StringConst $3)) }(* { $$ = xxbinary($2,$1,$3); setId( $$, @$); } *)
+  | expr DOLLAR SYMBOL       { A.ListProj ($1, [A.ExprArg (A.Ident {A.default_ident with name=$3})]) }
+  | expr DOLLAR STRING_CONST { A.ListProj ($1, [A.ExprArg (A.StringConst $3)]) }
+  | expr AT SYMBOL           { A.Bop (A.ObjAttr, $1, (A.Ident {A.default_ident with name=$3})) }
+  | expr AT STRING_CONST     { A.Bop (A.ObjAttr, $1, (A.StringConst $3)) }
 
   ;
 
 cond:
-    LPAREN expr RPAREN { $2 } (* { $$ = xxcond($2); } *)
+    LPAREN expr RPAREN { $2 }
   ;
 
 (*
@@ -205,36 +202,35 @@ cond:
 *)
 
 exprlist:
-                                    { [] } (* { $$ = xxexprlist0(); setId( $$, @$); } *)
+                                    { [] }
   | exprlist NEWLINE                { $1 }
-  | expr_or_assign                  { [$1] } (* { $$ = xxexprlist1($1, &@1); } *)
-  | exprlist SEMI expr_or_assign    { $1 @ [$3] } (* { $$ = xxexprlist2($1, $3, &@3); } *)
-  | exprlist SEMI                   { $1 } (* { $$ = $1; setId( $$, @$); } *)
-  | exprlist NEWLINE expr_or_assign { $1 @ [$3] } (* { $$ = xxexprlist2($1, $3, &@3); } *)
-  (* |   exprlist                      { $1 } (* { $$ = $1;} *) *)
+  | expr_or_assign                  { [$1] }
+  | exprlist SEMI expr_or_assign    { $1 @ [$3] }
+  | exprlist SEMI                   { $1 }
+  | exprlist NEWLINE expr_or_assign { $1 @ [$3] }
   ;
 
 sublist :
-                      { [] } (* sub { [$1] } (* { $$ = xxsublist1($1); } *) *)
+                      { [] }
   | sub               { [$1] }
-  | sublist COMMA sub { $1 @ [$3] } (* { $$ = xxsublist2($1,$4); } *)
+  | sublist COMMA sub { $1 @ [$3] }
   ;
 
-sub :                               (* { $$ = xxsub0(); } *)
-    expr                        { A.ExprArg $1 } (* { $$ = xxsub1($1, &@1); } *)
-  | SYMBOL EQ_ASSIGN            { A.IdentAssignEmpty {A.default_ident with name=$1} } (* { $$ = xxsymsub0($1, &@1); modif_token( &@2, EQ_SUB ) ; modif_token( &@1, SYMBOL_SUB ) ; } *)
-  | SYMBOL EQ_ASSIGN expr       { A.IdentAssign ({A.default_ident with name=$1}, $3) } (* { $$ = xxsymsub1($1,$3, &@1); modif_token( &@2, EQ_SUB ) ; modif_token( &@1, SYMBOL_SUB ) ; } *)
-  | STRING_CONST EQ_ASSIGN      { A.StringAssignEmpty $1 } (* { $$ = xxsymsub0($1, &@1);  modif_token( &@2, EQ_SUB ) ; } *)
-  | STRING_CONST EQ_ASSIGN expr { A.StringAssign ($1, $3) } (* { $$ = xxsymsub1($1,$3, &@1);   modif_token( &@2, EQ_SUB ) ; } *)
-  | NULL EQ_ASSIGN              { A.NullAssignEmpty } (* { $$ = xxnullsub0(&@1);     modif_token( &@2, EQ_SUB ) ; } *)
-  | NULL EQ_ASSIGN expr         { A.NullAssign $3 } (* { $$ = xxnullsub1($3, &@1);     modif_token( &@2, EQ_SUB ) ; } *)
+sub :
+    expr                        { A.ExprArg $1 }
+  | SYMBOL EQ_ASSIGN            { A.IdentAssignEmpty {A.default_ident with name=$1} }
+  | SYMBOL EQ_ASSIGN expr       { A.IdentAssign ({A.default_ident with name=$1}, $3) }
+  | STRING_CONST EQ_ASSIGN      { A.StringAssignEmpty $1 }
+  | STRING_CONST EQ_ASSIGN expr { A.StringAssign ($1, $3) }
+  | NULL EQ_ASSIGN              { A.NullAssignEmpty }
+  | NULL EQ_ASSIGN expr         { A.NullAssign $3 }
   ;
 
 formlist:
-                                         { [] } (* { $$ = xxnullformal(); } *)
-  | SYMBOL                               { [A.Param {A.default_ident with name=$1}] } (* { $$ = xxfirstformal0($1); modif_token( &@1, SYMBOL_FORMALS ) ; } *)
-  | SYMBOL EQ_ASSIGN expr                { [A.DefaultParam ({A.default_ident with name=$1}, $3)] }(* { $$ = xxfirstformal1($1,$3); modif_token( &@1, SYMBOL_FORMALS ) ; modif_token( &@2, EQ_FORMALS ) ; } *)
-  | formlist COMMA SYMBOL                { $1 @ [A.Param {A.default_ident with name=$3}] } (* { $$ = xxaddformal0($1,$3, &@3); modif_token( &@3, SYMBOL_FORMALS ) ; } *)
-  | formlist COMMA SYMBOL EQ_ASSIGN expr { $1 @ [A.DefaultParam ({A.default_ident with name=$3}, $5)] } (* { $$ = xxaddformal1($1,$3,$5,&@3); modif_token( &@3, SYMBOL_FORMALS ) ; modif_token( &@4, EQ_FORMALS ) ;} *)
+                                         { [] }
+  | SYMBOL                               { [A.Param {A.default_ident with name=$1}] }
+  | SYMBOL EQ_ASSIGN expr                { [A.DefaultParam ({A.default_ident with name=$1}, $3)] }
+  | formlist COMMA SYMBOL                { $1 @ [A.Param {A.default_ident with name=$3}] }
+  | formlist COMMA SYMBOL EQ_ASSIGN expr { $1 @ [A.DefaultParam ({A.default_ident with name=$3}, $5)] }
   ;
 
