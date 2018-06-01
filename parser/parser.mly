@@ -214,6 +214,7 @@ exprlist:
 
 sublist :
                       { [] } (* sub { [$1] } (* { $$ = xxsublist1($1); } *) *)
+  | sub               { [$1] }
   | sublist COMMA sub { $1 @ [$3] } (* { $$ = xxsublist2($1,$4); } *)
   ;
 
