@@ -70,7 +70,7 @@
 %%
 
 prog:
-    END_OF_INPUT                { [A.Null] }
+    END_OF_INPUT                { [] }
   | expr_or_assign NEWLINE prog { $1 :: $3 } (* { yyresult = xxvalue($1,3,&@1); goto yyreturn; } *)
   | expr_or_assign SEMI prog    { $1 :: $3 } (* { yyresult = xxvalue($1,4,&@1); goto yyreturn; } *)
   | error                       { [A.Null] } (* TODO *)
