@@ -107,8 +107,8 @@ let main () =
                   | _     -> failwith "exactly one filename expected"  in
   (* Parsing *)
   let absyn = parseFile in_filename  in
-    print_endline (Rast.string_of_program absyn);
     dumpTokens in_filename;
+    print_endline (Rast.string_of_program absyn);
     ;;
 
 main ()

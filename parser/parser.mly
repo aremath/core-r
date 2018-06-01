@@ -63,32 +63,46 @@
   %nonassoc LBRACE
 *)
 %nonassoc LPAREN LBRACK
+%left     NEWLINE
 
 %start prog
 %type <unit Rast.program> prog
 
 %%
 
+semis:
+  | SEMI       {}
+  | SEMI semis {}
+
+newlines:
+  | NEWLINE          {}
+  | NEWLINE newlines {}
+
+newlinesok:
+  |          {}
+  | newlines {}
+
 prog:
-    END_OF_INPUT                { [] }
-  | NEWLINE prog                { $2 }
-  | expr_or_assign END_OF_INPUT { [$1] }
-  | expr_or_assign NEWLINE prog { $1 :: $3 }
-  | expr_or_assign SEMI prog    { $1 :: $3 }
+  | END_OF_INPUT                 { [] }
+  | expr_or_assign END_OF_INPUT  { [$1] }
+  | newlines prog                { $2 }
+  | expr_or_assign newlines prog { $1 :: $3 }
+  | expr_or_assign semis prog    { $1 :: $3 }
   ;
 
 expr_or_assign:
-    expr         { $1 }
+  | expr         { $1 }
   | equal_assign { $1 }
   ;
 
 equal_assign:
-    expr EQ_ASSIGN expr_or_assign { A.Bop(A.Assign, $1, $3) }
+  | expr EQ_ASSIGN          expr_or_assign { A.Bop(A.Assign, $1, $3) }
+  | expr EQ_ASSIGN newlines expr_or_assign { A.Bop(A.Assign, $1, $4) }
   ;
 
 expr:
   (* Constants *)
-    INT_CONST     { A.NumericConst (A.Int $1) }
+  | INT_CONST     { A.NumericConst (A.Int $1) }
   | FLOAT_CONST   { A.NumericConst (A.Float $1) }
   | NAN           { A.NumericConst (A.Float nan) }
   | INFINITY      { A.NumericConst (A.Float infinity) }
@@ -137,13 +151,11 @@ expr:
   | expr KRON_PROD expr     { A.Bop (A.KronProd, $1, $3) }
   | expr MATCH expr         { A.Bop (A.Match, $1, $3) }
 
-  (* Directional assignment *)
+  (* Assignment *)
   | expr LASSIGN expr       { A.Bop (A.Assign, $1, $3) }
   | expr RASSIGN expr       { A.Bop (A.Assign, $3, $1) }
   | expr LSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $1, $3) }
   | expr RSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $3, $1) }
-
-  (* Grouping *)
   | LPAREN expr_or_assign RPAREN { $2 }
 
   (* Functions *)
@@ -156,17 +168,15 @@ expr:
   | BREAK                     { A.Break }
   | WHILE cond expr_or_assign { A.While ($2, $3) }
   | REPEAT expr_or_assign     { A.Repeat $2 }
-  | IF cond expr_or_assign    { A.If ($2, $3) }
-  | IF cond expr_or_assign ELSE expr_or_assign
-                              { A.IfElse ($2, $3, $5) }
-  (*
-    | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign %prec FOR
-  *)
+  | IF newlinesok cond newlinesok expr_or_assign
+                              { A.If ($3, $5) }
+  | IF newlinesok cond newlinesok expr_or_assign newlinesok ELSE newlinesok expr_or_assign
+                              { A.IfElse ($3, $5, $9) }
   | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign
                               { A.For ({A.default_ident with name=$3}, $5, $7) }
 
   (* Block *)
-  | LBRACE exprlist RBRACE { A.Block $2 }
+  | LBRACE newlinesok exprlist newlinesok RBRACE { A.Block $3 }
 
   (* List access *)
   | expr LBRACK LBRACK sublist RBRACK RBRACK
@@ -192,22 +202,17 @@ expr:
   ;
 
 cond:
-    LPAREN expr RPAREN { $2 }
+  | LPAREN expr RPAREN { $2 }
   ;
 
-(*
-  ifcond:
-        LPAREN expr RPAREN { $2 } (* { $$ = xxifcond($2); } *)
-    ;
-*)
 
 exprlist:
-                                    { [] }
-  | exprlist NEWLINE                { $1 }
-  | expr_or_assign                  { [$1] }
-  | exprlist SEMI expr_or_assign    { $1 @ [$3] }
-  | exprlist SEMI                   { $1 }
-  | exprlist NEWLINE expr_or_assign { $1 @ [$3] }
+                                     { [] }
+  | expr_or_assign                   { [$1] }
+  | exprlist semis expr_or_assign    { $1 @ [$3] }
+  | exprlist semis                   { $1 }
+  | exprlist newlines expr_or_assign { $1 @ [$3] }
+  | exprlist newlines                { $1 }
   ;
 
 sublist :
