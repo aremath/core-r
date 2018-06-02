@@ -182,7 +182,7 @@ rule tokenize = parse
   | complex     { COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
 
   (* To be skipped, maybe *)
-  | comment     { tokenize lexbuf }
+  | comment     { tokenize lexbuf; NEWLINE }
   | whitespace  { tokenize lexbuf }
 
   | newline     { incr_line_count lexbuf; NEWLINE }

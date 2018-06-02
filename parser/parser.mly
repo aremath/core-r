@@ -164,19 +164,24 @@ expr:
                                { A.FuncDec ($3, $5)}
 
   (* Control flow *)
-  | NEXT                      { A.Next }
-  | BREAK                     { A.Break }
-  | WHILE cond expr_or_assign { A.While ($2, $3) }
+  | next { $1 }
+  | break { $1 }
+  | whileexpr { $1 }
+  | ifexpr { $1 }
+  | ifelseexpr { $1 }
+  | forexpr { $1 }
+  (*
   | REPEAT expr_or_assign     { A.Repeat $2 }
-  | IF newlinesok cond newlinesok expr_or_assign
-                              { A.If ($3, $5) }
-  | IF newlinesok cond newlinesok expr_or_assign newlinesok ELSE newlinesok expr_or_assign
-                              { A.IfElse ($3, $5, $9) }
+  | WHILE cond expr_or_assign { A.While ($2, $3) }
+  | IF cond expr_or_assign    { A.If ($2, $3) }
+  | IF cond expr_or_assign ELSE expr_or_assign
+                              { A.IfElse ($2, $3, $5) }
   | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign
-                              { A.For ({A.default_ident with name=$3}, $5, $7) }
+                              { A.For (({A.default_ident with name=$3}, $5), $7) }
+  *)
 
   (* Block *)
-  | LBRACE newlinesok exprlist newlinesok RBRACE { A.Block $3 }
+  | LBRACE exprlist RBRACE { A.Block $2 }
 
   (* List access *)
   | expr LBRACK LBRACK sublist RBRACK RBRACK
@@ -201,10 +206,87 @@ expr:
 
   ;
 
-cond:
-  | LPAREN expr RPAREN { $2 }
+break:
+  | BREAK { A.Break }
+  | BREAK newlines { A.Break }
   ;
 
+next:
+  | NEXT { A.Next }
+  | NEXT newlines { A.Next }
+  ;
+
+whileexpr:
+  | WHILE cond expr_or_assign { A.While ($2, $3) }
+  | WHILE newlines cond expr_or_assign { A.While ($3, $4) }
+  | WHILE cond newlines expr_or_assign { A.While ($2, $4) }
+  | WHILE newlines cond newlines expr_or_assign { A.While ($3, $5) }
+  ;
+
+ifexpr:
+  | IF cond expr_or_assign { A.If ($2, $3) }
+  | IF newlines cond expr_or_assign { A.If ($3, $4) }
+  | IF cond newlines expr_or_assign { A.If ($2, $4) }
+  | IF newlines cond newlines expr_or_assign { A.If ($3, $5) }
+  ;
+
+ifelseexpr:
+  | IF cond expr_or_assign ELSE expr_or_assign { A.IfElse ($2, $3, $5) }
+  | IF newlines cond expr_or_assign ELSE expr_or_assign { A.IfElse ($3, $4, $6) }
+  | IF cond newlines expr_or_assign ELSE expr_or_assign { A.IfElse ($2, $4, $6) }
+  | IF newlines cond newlines expr_or_assign ELSE expr_or_assign { A.IfElse ($3, $5, $7) }
+
+  | IF cond expr_or_assign newlines ELSE expr_or_assign { A.IfElse ($2, $3, $6) }
+  | IF newlines cond expr_or_assign newlines ELSE expr_or_assign { A.IfElse ($3, $4, $7) }
+  | IF cond newlines expr_or_assign newlines ELSE expr_or_assign { A.IfElse ($2, $4, $7) }
+  | IF newlines cond newlines expr_or_assign newlines ELSE expr_or_assign { A.IfElse ($3, $5, $8) }
+
+  | IF cond expr_or_assign ELSE newlines expr_or_assign { A.IfElse ($2, $3, $6) }
+  | IF newlines cond expr_or_assign ELSE newlines expr_or_assign { A.IfElse ($3, $4, $7) }
+  | IF cond newlines expr_or_assign ELSE newlines expr_or_assign { A.IfElse ($2, $4, $7) }
+  | IF newlines cond newlines expr_or_assign ELSE newlines expr_or_assign { A.IfElse ($3, $5, $8) }
+
+  | IF cond expr_or_assign newlines ELSE newlines expr_or_assign { A.IfElse ($2, $3, $7) }
+  | IF newlines cond expr_or_assign newlines ELSE newlines expr_or_assign { A.IfElse ($3, $4, $8) }
+  | IF cond newlines expr_or_assign newlines ELSE newlines expr_or_assign { A.IfElse ($2, $4, $8) }
+  | IF newlines cond newlines expr_or_assign newlines ELSE newlines expr_or_assign { A.IfElse ($3, $5, $9) }
+  ;
+
+forexpr:
+  | FOR forcond expr_or_assign { A.For ($2, $3) }
+  | FOR newlines forcond expr_or_assign { A.For ($3, $4) }
+  | FOR forcond newlines expr_or_assign { A.For ($2, $4) }
+  | FOR newlines forcond newlines expr_or_assign { A.For ($3, $5) }
+  ;
+
+cond:
+  | LPAREN expr RPAREN { $2 }
+  | LPAREN newlines expr RPAREN { $3 }
+  | LPAREN expr newlines RPAREN { $2 }
+  | LPAREN newlines expr newlines RPAREN { $3 }
+  ;
+
+forcond:
+  | LPAREN SYMBOL IN expr RPAREN { ({A.default_ident with name=$2}, $4) }
+  | LPAREN newlines SYMBOL IN expr RPAREN { ({A.default_ident with name=$3}, $5) }
+  | LPAREN SYMBOL newlines IN expr RPAREN { ({A.default_ident with name=$2}, $5) }
+  | LPAREN newlines SYMBOL newlines IN expr RPAREN { ({A.default_ident with name=$3}, $6) }
+
+  | LPAREN SYMBOL IN newlines expr RPAREN { ({A.default_ident with name=$2}, $5) }
+  | LPAREN newlines SYMBOL IN newlines expr RPAREN { ({A.default_ident with name=$3}, $6) }
+  | LPAREN SYMBOL newlines IN newlines expr RPAREN { ({A.default_ident with name=$2}, $6) }
+  | LPAREN newlines SYMBOL newlines IN newlines expr RPAREN { ({A.default_ident with name=$3}, $7) }
+
+  | LPAREN SYMBOL IN expr newlines RPAREN { ({A.default_ident with name=$2}, $4) }
+  | LPAREN newlines SYMBOL IN expr newlines RPAREN { ({A.default_ident with name=$3}, $5) }
+  | LPAREN SYMBOL newlines IN expr newlines RPAREN { ({A.default_ident with name=$2}, $5) }
+  | LPAREN newlines SYMBOL newlines IN expr newlines RPAREN { ({A.default_ident with name=$3}, $6) }
+
+  | LPAREN SYMBOL IN newlines expr newlines RPAREN { ({A.default_ident with name=$2}, $5) }
+  | LPAREN newlines SYMBOL IN newlines expr newlines RPAREN { ({A.default_ident with name=$3}, $6) }
+  | LPAREN SYMBOL newlines IN newlines expr newlines RPAREN { ({A.default_ident with name=$2}, $6) }
+  | LPAREN newlines SYMBOL newlines IN newlines expr newlines RPAREN { ({A.default_ident with name=$3}, $7) }
+  ;
 
 exprlist:
                                      { [] }

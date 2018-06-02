@@ -120,7 +120,7 @@ and 'a expr =
   (* Control structures *)
   | If of 'a expr * 'a expr (* empty block is like {NA}?*)
   | IfElse of 'a expr * 'a expr * 'a expr
-  | For of 'a ident * 'a expr * 'a expr
+  | For of ('a ident * 'a expr) * 'a expr
   | While of 'a expr * 'a expr
   | Repeat of 'a expr
   | Next
@@ -226,7 +226,7 @@ let rec string_of_expr : 'a expr -> string =
     | IfElse (c, et, ef) ->
         "IfElse(" ^ (string_of_expr c) ^ "," ^
                     (string_of_expr et) ^ "," ^ (string_of_expr ef) ^ ")"
-    | For (i, e2, e3) ->
+    | For ((i, e2), e3) ->
         "For(" ^ (string_of_ident i) ^ "," ^ (string_of_expr e2) ^ "," ^
                  (string_of_expr e3) ^ ")"
     | While (e1, e2) ->
