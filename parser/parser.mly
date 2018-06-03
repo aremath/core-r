@@ -78,10 +78,6 @@ newlines:
   | NEWLINE          {}
   | NEWLINE newlines {}
 
-newlinesok:
-  |          {}
-  | newlines {}
-
 prog:
   | END_OF_INPUT                 { [] }
   | expr_or_assign END_OF_INPUT  { [$1] }
@@ -92,13 +88,32 @@ prog:
 
 expr_or_assign:
   | expr         { $1 }
-  | equal_assign { $1 }
+  | left_assign  { $1 }
+  | right_assign { $1 }
   ;
 
-equal_assign:
-  | expr EQ_ASSIGN          expr_or_assign { A.Bop(A.Assign, $1, $3) }
-  | expr EQ_ASSIGN newlines expr_or_assign { A.Bop(A.Assign, $1, $4) }
+left_assign:
+  | expr lassign expr_or_assign { A.Bop($2, $1, $3) }
+  | expr newlines lassign expr_or_assign { A.Bop($3, RightNewLines $1, $4) }
+  | expr lassign newlines expr_or_assign { A.Bop($2, $1, LeftNewLines $4) }
+  | expr newlines lassign newlines expr_or_assign { A.Bop($3, RightNewLines $1, LeftNewLines $5) }
   ;
+
+lassign:
+  | EQ_ASSIGN { A.Assign }
+  | LASSIGN { A.Assign }
+  | LSUPER_ASSIGN { A.SuperAssign }
+
+right_assign:
+  | expr_or_assign rassign expr { A.Bop($2, $3, $1) }
+  | expr_or_assign newlines rassign expr { A.Bop($3, $4, RightNewLines $1) }
+  | expr_or_assign rassign newlines expr { A.Bop($2, LeftNewLines $4, $1) }
+  | expr_or_assign newlines rassign newlines expr { A.Bop($3, LeftNewLines $5, RightNewLines $1)  }
+  ;
+
+rassign:
+  | RASSIGN { A.Assign }
+  | RSUPER_ASSIGN { A.SuperAssign }
 
 expr:
   (* Constants *)
@@ -117,45 +132,17 @@ expr:
   | SYMBOL { A.Ident { A.default_ident with name = $1 } }
 
   (* Operators *)
+  (*
+  | expr USER_OP expr       { A.FuncCall (A.Ident { A.default_ident with name=$2 }, A.ExprArg $1 :: [A.ExprArg $3]) }
+  *)
+  | binopapp { $1 }
+
   | MINUS expr %prec UMINUS { A.Uop (A.UMinus, $2) }
   | PLUS expr %prec UPLUS   { A.Uop (A.UPlus, $2) }
   | BANG expr %prec UNOT    { A.Uop (A.Not, $2) }
   | TILDE expr              { A.Uop (A.UForm, $2) }
   | QUESTION expr           { A.Uop (A.UHelp, $2) }
-  | expr COLON expr         { A.Bop (A.Range, $1, $3) }
-  | expr PLUS expr          { A.Bop (A.Plus, $1, $3) }
-  | expr MINUS expr         { A.Bop (A.Minus, $1, $3) }
-  | expr MULT expr          { A.Bop (A.Mult, $1, $3) }
-  | expr DIV expr           { A.Bop (A.Div, $1, $3) }
-  | expr CARAT expr         { A.Bop (A.Exp, $1, $3) }
-  | expr USER_OP expr       { A.FuncCall (A.Ident { A.default_ident with name=$2 }, A.ExprArg $1 :: [A.ExprArg $3]) }
-  (*
-    | expr '%' expr           { A.Bop (A.Modulus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } (* TODO *) *)
-  *)
-  | expr TILDE expr         { A.Bop (A.Form, $1, $3) }
-  | expr QUESTION expr      { A.Bop (A.Help, $1, $3) }
-  | expr LT expr            { A.Bop (A.Lt, $1, $3) }
-  | expr LE expr            { A.Bop (A.Le, $1, $3) }
-  | expr EQ expr            { A.Bop (A.Eq, $1, $3) }
-  | expr NE expr            { A.Bop (A.Neq, $1, $3) }
-  | expr GE expr            { A.Bop (A.Ge, $1, $3) }
-  | expr GT expr            { A.Bop (A.Gt, $1, $3) }
-  | expr AND expr           { A.Bop (A.AndVec, $1, $3) }
-  | expr OR expr            { A.Bop (A.OrVec, $1, $3) }
-  | expr AND2 expr          { A.Bop (A.And, $1, $3) }
-  | expr OR2 expr           { A.Bop (A.Or, $1, $3) }
-  | expr MOD expr           { A.Bop (A.Mod, $1, $3) }
-  | expr INT_DIV expr       { A.Bop (A.IntDiv, $1, $3) }
-  | expr MATRIX_MULT expr   { A.Bop (A.MatrixMult, $1, $3) }
-  | expr OUTER_PROD expr    { A.Bop (A.OuterProd, $1, $3) }
-  | expr KRON_PROD expr     { A.Bop (A.KronProd, $1, $3) }
-  | expr MATCH expr         { A.Bop (A.Match, $1, $3) }
 
-  (* Assignment *)
-  | expr LASSIGN expr       { A.Bop (A.Assign, $1, $3) }
-  | expr RASSIGN expr       { A.Bop (A.Assign, $3, $1) }
-  | expr LSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $1, $3) }
-  | expr RSUPER_ASSIGN expr { A.Bop (A.SuperAssign, $3, $1) }
   | LPAREN expr_or_assign RPAREN { $2 }
 
   (* Functions *)
@@ -166,19 +153,11 @@ expr:
   (* Control flow *)
   | next { $1 }
   | break { $1 }
+  | repeatexpr { $1 }
   | whileexpr { $1 }
   | ifexpr { $1 }
   | ifelseexpr { $1 }
   | forexpr { $1 }
-  (*
-  | REPEAT expr_or_assign     { A.Repeat $2 }
-  | WHILE cond expr_or_assign { A.While ($2, $3) }
-  | IF cond expr_or_assign    { A.If ($2, $3) }
-  | IF cond expr_or_assign ELSE expr_or_assign
-                              { A.IfElse ($2, $3, $5) }
-  | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign
-                              { A.For (({A.default_ident with name=$3}, $5), $7) }
-  *)
 
   (* Block *)
   | LBRACE exprlist RBRACE { A.Block $2 }
@@ -203,17 +182,59 @@ expr:
   | expr DOLLAR STRING_CONST { A.ListProj ($1, [A.ExprArg (A.StringConst $3)]) }
   | expr AT SYMBOL           { A.Bop (A.ObjAttr, $1, (A.Ident {A.default_ident with name=$3})) }
   | expr AT STRING_CONST     { A.Bop (A.ObjAttr, $1, (A.StringConst $3)) }
-
   ;
+
+
+binopapp:
+  | expr binop expr { A.Bop ($2, $1, $3) }
+  | expr newlines binop expr { A.Bop ($3, A.RightNewLines $1, $4) }
+  | expr binop newlines expr { A.Bop ($2, $1, A.LeftNewLines $4) }
+  | expr newlines binop newlines expr { A.Bop ($3, A.RightNewLines $1, A.LeftNewLines $5) }
+  ;
+
+binop:
+  | COLON { A.Range }
+  | PLUS { A.Plus }
+  | MINUS { A.Minus }
+  | MULT { A.Mult }
+  | DIV { A.Div }
+  | CARAT { A.Exp }
+  (*
+    | expr '%' expr           { A.Bop (A.Modulus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } (* TODO *) *)
+  *)
+  | TILDE { A.Form }
+  | QUESTION { A.Help }
+  | LT { A.Lt }
+  | LE { A.Le }
+  | EQ { A.Eq }
+  | NE { A.Neq }
+  | GE { A.Ge }
+  | GT { A.Gt }
+  | AND { A.AndVec }
+  | OR { A.OrVec }
+  | AND2 { A.And }
+  | OR2 { A.Or }
+  | MOD { A.Mod }
+  | INT_DIV { A.IntDiv }
+  | MATRIX_MULT { A.MatrixMult }
+  | OUTER_PROD { A.OuterProd }
+  | KRON_PROD { A.KronProd }
+  | MATCH { A.Match }
+  | NS_GET {A.GetPackage }
+  | NS_GET_INT { A.GetPackageInt }
+  | USER_OP { A.Special $1 }
 
 break:
   | BREAK { A.Break }
-  | BREAK newlines { A.Break }
   ;
 
 next:
   | NEXT { A.Next }
-  | NEXT newlines { A.Next }
+  ;
+
+repeatexpr:
+  | REPEAT expr_or_assign { A.Repeat $2 }
+  | REPEAT newlines expr_or_assign { A.Repeat $3 }
   ;
 
 whileexpr:

@@ -1,7 +1,7 @@
 
 let string_of_token : Parser.token -> string =
   function
-    | END_OF_INPUT -> raise (Failure "END_OF_INPUT")
+    | END_OF_INPUT -> "END_OF_INPUT"
     | WHILE -> "WHILE"
     | USER_OP s -> "USER_OP (" ^ s ^ ")"
     | TRUE -> "TRUE"
@@ -69,8 +69,8 @@ let string_of_token : Parser.token -> string =
 
 
 let parseFile filename =
-  let channel = open_in filename  in
-  let lexbuf = Lexing.from_channel channel   in
+  let channel = open_in filename in
+  let lexbuf = Lexing.from_channel channel in
   let absyn =
      try
        Parser.prog Lexer.tokenize lexbuf
@@ -86,30 +86,32 @@ let parseFile filename =
               print_string ".\n\n";
               failwith "Syntax error"
             end  in
-  let _ = close_in channel  in
+  let _ = close_in channel in
   absyn
 
 let dumpTokens : string -> unit =
   fun filename ->
     let channel = open_in filename in
     let lexbuf = Lexing.from_channel channel in
-      while true do
+    let break = ref false in
+      while not !break do
         let tok = Lexer.tokenize lexbuf in
+        let str = string_of_token tok in
           print_endline (string_of_token tok);
-          flush stdout
-      done
+          if (tok = END_OF_INPUT)
+            then break := true;
+          flush stdout;
+      done;;
     
 
 let main () =
-  let args = Array.to_list Sys.argv  in
+  let args = Array.to_list Sys.argv in
   let in_filename = match args with
                   | [_; arg] -> arg
-                  | _     -> failwith "exactly one filename expected"  in
-  (* Parsing *)
-  let absyn = parseFile in_filename  in
-    dumpTokens in_filename;
-    print_endline (Rast.string_of_program absyn);
-    ;;
+                  | _     -> failwith "exactly one filename expected" in
+  let _ = dumpTokens in_filename in
+  let absyn = parseFile in_filename in
+    print_endline (Rast.string_of_program absyn);;
 
 main ()
 

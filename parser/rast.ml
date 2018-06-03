@@ -36,7 +36,7 @@ type unop =
 
 type binop =
   (* Numerical *)
-    Plus
+  | Plus
   | Minus
   | Mult
   | Div
@@ -72,6 +72,8 @@ type binop =
   | GetPackageInt
   (* Help?? *)
   | Help
+  (* Special *)
+  | Special of string
 
 
 type 'a arg =
