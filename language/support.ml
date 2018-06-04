@@ -3,6 +3,7 @@ module R = Syntax
 
 (* Type aliases *)
 type tag = unit
+type source = R.source
 type memref = R.memref
 type numeric = R.numeric
 type ident = tag R.ident

@@ -6,7 +6,7 @@ type source =
 
 type 'a ident = 
   { pkg : string option
-  ; name : string option
+  ; name : string
   ; src : source option
   ; tag : 'a option }
 
@@ -50,7 +50,7 @@ and 'a expr =
   | ObjAttrAssign of 'a expr * 'a expr * 'a expr
   | If of 'a expr * 'a expr * 'a expr
   | While of 'a expr * 'a expr
-  | For of 'a expr * 'a expr
+  | For of 'a ident * 'a expr * 'a expr
   | Break
   | Next
   | Error

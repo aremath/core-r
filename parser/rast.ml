@@ -135,8 +135,8 @@ type 'a program = ('a expr) list
 
 let string_of_ident : 'a ident -> string =
   fun id -> match id.pkg with
-    | Some pkg -> pkg ^ "::" ^ id.name
     | None -> "" ^ id.name
+    | Some pkg -> pkg ^ "::" ^ id.name
 
 let string_of_numeric : numeric -> string =
   function
