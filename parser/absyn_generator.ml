@@ -38,9 +38,9 @@ let main () =
                   | [_; arg] -> arg
                   | _     -> failwith "exactly one filename expected"  in
   (* Parsing *)
-  (* let absyn = parseFile in_filename  in *)
-    dumpTokens in_filename;
-    (* print_endline (Rast.string_of_program absyn); *)
+  (* let _ = dumpTokens in_filename in *)
+  let absyn = parseFile in_filename in
+    print_endline (Rast.string_of_program absyn);
     ;;
 
 main ()

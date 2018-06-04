@@ -122,7 +122,7 @@
             | NS_GET_INT        -> false (* not sure why *)
             | NS_GET            -> false (* ^ *)
             | NEXT              -> false (* nothing expected after next *)
-            | NEWLINE           -> false (* TODO *)
+            | NEWLINE           -> true
             | NE                -> true
             | NAN               -> false (* a value *)
             | NA                -> false (* a value *)
@@ -186,7 +186,7 @@
             | NS_GET_INT        -> []
             | NS_GET            -> []
             | NEXT              -> []
-            | NEWLINE           -> []
+            | NEWLINE           -> [NEWLINE]
             | NAN               -> []
             | NA                -> []
             | LPAREN            -> [LPAREN] (* expect expr *)
@@ -229,6 +229,7 @@
                                     | LBRACE    -> true
                                     | _         -> false)
             | RASSIGN           -> true
+            | NEWLINE           -> true
             | QUESTION          -> true
             | PLUS              -> true
             | OUTER_PROD        -> true
