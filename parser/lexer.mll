@@ -27,6 +27,76 @@
             then String.sub str 0 (len - 1)
             else str
 
+    let string_of_token : Parser.token -> string =
+      function
+        | END_OF_INPUT -> raise (Failure "END_OF_INPUT")
+        | WHILE -> "WHILE"
+        | USER_OP s -> "USER_OP (" ^ s ^ ")"
+        | TRUE -> "TRUE"
+        | TILDE -> "TILDE"
+        | SYMBOL s -> "SYMBOL (" ^ s ^ ")"
+        | STRING_CONST s -> "STRING_CONST (" ^ s ^ ")"
+        | SEMI -> "SEMI"
+        | RSUPER_ASSIGN -> "RSUPER_ASSIGN"
+        | RPAREN -> "RPAREN"
+        | REPEAT -> "REPEAT"
+        | RBRACK -> "RBRACK"
+        | RBRAX  -> "RBRAX"
+        | RBRACE -> "RBRACE"
+        | RASSIGN -> "RASSIGN"
+        | QUESTION -> "QUESTION"
+        | PLUS -> "PLUS"
+        | OUTER_PROD -> "OUTER_PROD"
+        | OR2 -> "OR2"
+        | OR -> "OR"
+        | NULL -> "NULL"
+        | NS_GET_INT -> "NS_GET_INT"
+        | NS_GET -> "NS_GET"
+        | NEXT -> "NEXT"
+        | NEWLINE -> "NEWLINE"
+        | NE -> "NE"
+        | NAN -> "NAN"
+        | NA -> "NA"
+        | MULT -> "MULT"
+        | MOD -> "MOD"
+        | MINUS -> "MINUS"
+        | MATRIX_MULT -> "MATRIX_MULT"
+        | MATCH -> "MATCH"
+        | LT -> "LT"
+        | LSUPER_ASSIGN -> "LSUPER_ASSIGN"
+        | LPAREN -> "LPAREN"
+        | LE -> "LE"
+        | LBRACK -> "LBRACK"
+        | LBRAX  -> "LBRAX"
+        | LBRACE -> "LBRACE"
+        | LASSIGN -> "LASSIGN"
+        | KRON_PROD -> "KRON_PROD"
+        | INT_DIV -> "INT_DIV"
+        | INT_CONST i -> "INT_CONST (" ^ (string_of_int i) ^ ")"
+        | INFINITY -> "INFINITY"
+        | IN -> "IN"
+        | IF -> "IF"
+        | GT -> "GT"
+        | GE -> "GE"
+        | FUNCTION -> "FUNCTION"
+        | FOR -> "FOR"
+        | FLOAT_CONST f -> "FLOAT_CONST (" ^ (string_of_float f) ^ ")"
+        | FALSE -> "FALSE"
+        | EQ_ASSIGN -> "EQ_ASSIGN"
+        | EQ -> "EQ"
+        | ELSE -> "ELSE"
+        | DOLLAR -> "DOLLAR"
+        | DIV -> "DIV"
+        | COMPLEX_CONST f -> "COMPLEX_CONST (" ^ (string_of_float f) ^ ")"
+        | COMMA -> "COMMA"
+        | COLON -> "COLON"
+        | CARAT -> "CARAT"
+        | BREAK -> "BREAK"
+        | BANG -> "BANG"
+        | AT -> "AT"
+        | AND2 -> "AND2"
+        | AND -> "AND"
+
     let nl_ignore : Parser.token -> bool =
         function
             | WHILE             -> true
@@ -100,7 +170,7 @@
     (* What tokens affect the context - many tokens do not affect the context and are
     pushed zero times. Binops affect the context once. Something like an if (where both the
     condition and the expression can be placed with newlines) will be pushed twice *)
-    to_push: Parser.token -> Parser.token list =
+    let to_push: Parser.token -> Parser.token list =
         function
             | WHILE             -> [WHILE; WHILE] (* expect (cond) expr *)
             | TRUE              -> [TRUE]
@@ -137,27 +207,27 @@
             | x                 -> [x] (* Binops *)
 
     (* which tokens match which other tokens *)
-    token_match: Parser.token -> Parser.token -> true = 
+    let token_match: Parser.token -> Parser.token -> bool = 
         fun t1 t2 ->
+        begin
             match t1 with
-            begin
             | WHILE             -> true (* things that expect expr, which can begin with any token *)
             | USER_OP _         -> true
             | TILDE             -> true
             | RSUPER_ASSIGN     -> true
-            | RPAREN            -> match t2 with
+            | RPAREN            -> (match t2 with
                                     | LPAREN    -> true
-                                    | _         -> false
+                                    | _         -> false)
             | REPEAT            -> true
-            | RBRACK            -> match t2 with
+            | RBRACK            -> (match t2 with
                                     | LBRACK    -> true
-                                    | _         -> false
-            | RBRAX             -> match t2 with
+                                    | _         -> false)
+            | RBRAX             -> (match t2 with
                                     | LBRAX     -> true
-                                    | _         -> false
-            | RBRACE            -> match t2 with
+                                    | _         -> false)
+            | RBRACE            -> (match t2 with
                                     | LBRACE    -> true
-                                    | _         -> false
+                                    | _         -> false)
             | RASSIGN           -> true
             | QUESTION          -> true
             | PLUS              -> true
@@ -172,19 +242,19 @@
             | MATCH             -> true
             | LT                -> true
             | LSUPER_ASSIGN     -> true
-            | LPAREN            -> match t2 with
+            | LPAREN            -> (match t2 with
                                     | RPAREN    -> true
-                                    | _         -> false
+                                    | _         -> false)
             | LE                -> true
-            | LBRACK            -> match t2 with
+            | LBRACK            -> (match t2 with
                                     | RBRACK    -> true
-                                    | _         -> false
-            | LBRAX             -> match t2 with
+                                    | _         -> false)
+            | LBRAX             -> (match t2 with
                                     | RBRAX     -> true
-                                    | _         -> false
-            | LBRACE            -> match t2 with
+                                    | _         -> false)
+            | LBRACE            -> (match t2 with
                                     | RBRACE    -> true
-                                    | _         -> false
+                                    | _         -> false)
             | LASSIGN           -> true
             | KRON_PROD         -> true
             | INT_DIV           -> true
@@ -205,25 +275,29 @@
             | AND2              -> true
             | AND               -> true
             | _                 -> false
-            end
+        end
+
+let get_top : Parser.token list ref -> Parser.token =
+    fun context_ref ->
+        match !context_ref with
+        | hd::tl -> hd
+        | []     -> LBRACE (* TODO *)
 
 (* The general algorithm for this is when we see a token, if it affects the context,
 put it on the stack, then use its behavior until a match is found, at which point it is
 removed from the stack, and we go back to the newline behavior of the character under it.
 Tokens that do not have a match do not go onto the context stack.*)
-    step token : Parser.token -> Parser.token list ref -> bool ref -> () =
+    let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
-            let top = match !context_ref with
-            | hd::tl        -> hd
-            | []            -> LBRACE (* TODO *)
-            in
+            let top = get_top context_ref in
             (* if the top token of the context matches the current token, pop the top*)
-            let _ = if token_match top tok then
-                (!context_ref := List.tl !context_ref);
+            let _ = if (token_match top tok) then
+                context_ref := (List.tl !context_ref)
                 else () in
             (* push tok onto the stack *)
             let x = to_push tok in
-            (!context_ref := x :: !context_ref);
+            context_ref := x @ !context_ref
+
 }
 
 let hex_digit =
@@ -297,99 +371,107 @@ let whitespace =
 
 
 (* Parsing *)
-rule tokenize = parse
+rule tokenize context = parse
   (* Delimiters *)
-  | "("         { LPAREN }
-  | ")"         { RPAREN }
+  | "("         { step LPAREN context; LPAREN }
+  | ")"         { step RPAREN context; RPAREN }
 
-  | "["         { LBRACK }
-  | "]"         { RBRACK }
+  | "["         { step LBRACK context; LBRACK }
+  | "]"         { step RBRACK context; RBRACK }
 
-  | "[["        { LBRAX }
-  | "]]"        { RBRAX }
+  | "[["        { step LBRAX context; LBRAX }
+  | "]]"        { step RBRAX context; RBRAX }
 
-  | "{"         { LBRACE }
-  | "}"         { RBRACE }
+  | "{"         { step LBRACE context; LBRACE }
+  | "}"         { step RBRACE context; RBRACE }
 
   (* Operators (cf 3.1.4) *)
-  | "-"         { MINUS }
-  | "+"         { PLUS }
-  | "!"         { BANG }
-  | "~"         { TILDE }
-  | "?"         { QUESTION }
-  | ":"         { COLON }
-  | "*"         { MULT }
-  | "/"         { DIV }
-  | "^"         { CARAT }
-  | "%%"        { MOD }
-  | "%/%"       { INT_DIV }
-  | "%*%"       { MATRIX_MULT }
-  | "%o%"       { OUTER_PROD }
-  | "%x%"       { KRON_PROD }
-  | "%in%"      { MATCH }
-  | "<"         { LT }
-  | ">"         { GT }
-  | "=="        { EQ }
-  | "!="        { NE }
-  | ">="        { GE }
-  | "<="        { LE }
-  | "&&"        { AND }
-  | "&"         { AND2 }
-  | "||"        { OR }
-  | "|"         { OR2 }
-  | "<-"        { LASSIGN }
-  | "->"        { RASSIGN }
-  | "$"         { DOLLAR }
+  | "-"         { step MINUS context; MINUS }
+  | "+"         { step PLUS context; PLUS }
+  | "!"         { step BANG context; BANG }
+  | "~"         { step TILDE context; TILDE }
+  | "?"         { step QUESTION context; QUESTION }
+  | ":"         { step COLON context; COLON }
+  | "*"         { step MULT context; MULT }
+  | "/"         { step DIV context; DIV }
+  | "^"         { step CARAT context; CARAT }
+  | "%%"        { step MOD context; MOD }
+  | "%/%"       { step INT_DIV context; INT_DIV }
+  | "%*%"       { step MATRIX_MULT context; MATRIX_MULT }
+  | "%o%"       { step OUTER_PROD context; OUTER_PROD }
+  | "%x%"       { step KRON_PROD context; KRON_PROD }
+  | "%in%"      { step MATCH context; MATCH }
+  | "<"         { step LT context; LT }
+  | ">"         { step GT context; GT }
+  | "=="        { step EQ context; EQ }
+  | "!="        { step NE context; NE }
+  | ">="        { step GE context; GE }
+  | "<="        { step LE context; LE }
+  | "&&"        { step AND context; AND }
+  | "&"         { step AND2 context; AND2 }
+  | "||"        { step OR context; OR }
+  | "|"         { step OR2 context; OR2 }
+  | "<-"        { step LASSIGN context; LASSIGN }
+  | "->"        { step RASSIGN context; RASSIGN }
+  | "$"         { step DOLLAR context; DOLLAR }
 
   (* Additional operators (cf 10.4.2) *)
-  | "::"        { NS_GET }
-  | ":::"       { NS_GET_INT }
-  | "@"         { AT }
-  | "<<-"       { LSUPER_ASSIGN }
-  | "->>"       { RSUPER_ASSIGN }
-  | "="         { EQ_ASSIGN }
+  | "::"        { step NS_GET context; NS_GET }
+  | ":::"       { step NS_GET_INT context; NS_GET_INT }
+  | "@"         { step AT context; AT }
+  | "<<-"       { step LSUPER_ASSIGN context; LSUPER_ASSIGN }
+  | "->>"       { step RSUPER_ASSIGN context; RSUPER_ASSIGN }
+  | "="         { step EQ_ASSIGN context; EQ_ASSIGN }
 
   (* Were not listed but likely relevant *)
-  | ";"         { SEMI }
-  | ":="        { EQ_ASSIGN }
-  | "..."       { SYMBOL (Lexing.lexeme lexbuf) }
+  | ";"         { step SEMI context; SEMI }
+  | ":="        { step EQ_ASSIGN context; EQ_ASSIGN }
+  | "..."       { step (SYMBOL "") context; SYMBOL (Lexing.lexeme lexbuf) }
 
   (* Keywords *)
-  | "function"  { FUNCTION }
-  | "if"        { IF }
-  | "else"      { ELSE }
-  | "for"       { FOR }
-  | "in"        { IN }
-  | "while"     { WHILE }
-  | "repeat"    { REPEAT }
-  | "next"      { NEXT }
-  | "break"     { BREAK }
+  | "function"  { step FUNCTION context; FUNCTION }
+  | "if"        { step IF context; IF }
+  | "else"      { step ELSE context; ELSE }
+  | "for"       { step FOR context; FOR }
+  | "in"        { step IN context; IN }
+  | "while"     { step WHILE context; WHILE }
+  | "repeat"    { step REPEAT context; REPEAT }
+  | "next"      { step NEXT context; NEXT }
+  | "break"     { step BREAK context; BREAK }
 
   (* Native values *)
-  | "NULL"      { NULL }
-  | "NA"        { NA }
-  | "Inf"       { INFINITY }
-  | "NaN"       { NAN }
-  | "TRUE"      { TRUE }
-  | "FALSE"     { FALSE }
+  | "NULL"      { step NULL context; NULL }
+  | "NA"        { step NA context; NA }
+  | "Inf"       { step INFINITY context; INFINITY }
+  | "NaN"       { step NAN context; NAN }
+  | "TRUE"      { step TRUE context; TRUE }
+  | "FALSE"     { step FALSE context; FALSE }
 
   (* Valued tokens *)
-  | ident       { SYMBOL (Lexing.lexeme lexbuf) }
-  | user_op     { USER_OP (Lexing.lexeme lexbuf) }
-  | string      { STRING_CONST (Lexing.lexeme lexbuf) }
-  | hex         { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
-  | int         { INT_CONST (int_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
-  | float       { FLOAT_CONST (float_of_string (Lexing.lexeme lexbuf)) }
-  | complex     { COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
+  | ident       { step (SYMBOL "") context;
+                    SYMBOL (Lexing.lexeme lexbuf) }
+  | user_op     { step (USER_OP "") context;
+                    USER_OP (Lexing.lexeme lexbuf) }
+  | string      { step (STRING_CONST "") context;
+                    STRING_CONST (Lexing.lexeme lexbuf) }
+  | hex         { step (INT_CONST 0) context;
+                    INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
+  | int         { step (INT_CONST 0) context;
+                    INT_CONST (int_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
+  | float       { step (FLOAT_CONST 0.) context;
+                    FLOAT_CONST (float_of_string (Lexing.lexeme lexbuf)) }
+  | complex     { step (COMPLEX_CONST 0.) context;
+                    COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
 
   (* To be skipped, maybe *)
-  | comment     { tokenize lexbuf; NEWLINE }
-  | whitespace  { tokenize lexbuf }
+  | comment     { tokenize context lexbuf }
+  | whitespace  { tokenize context lexbuf }
 
-  | newline     { incr_line_count lexbuf; NEWLINE }
-  | ','         { COMMA }
+  | newline     { incr_line_count lexbuf; if nl_ignore (get_top context) then 
+                                            tokenize context lexbuf else NEWLINE }
+  | ','         { step COMMA context; COMMA }
 
   (* Everybody's favorite thing that's technically not a char some times *)
-  | eof         { END_OF_INPUT }
+  | eof         { step END_OF_INPUT context; END_OF_INPUT }
 
 
