@@ -94,4 +94,5 @@ and string_of_expr : expr -> string =
     | Next -> "Next"
     | Error -> "Error"
 
+    | Tick (b, e) -> "Tick (" ^ string_of_expr e ^ ")"
 

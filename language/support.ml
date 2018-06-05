@@ -2,14 +2,15 @@
 module R = Syntax
 
 (* Type aliases *)
-type tag = unit
+type itag = unit
+type ttag = unit
 type source = R.source
 type memref = R.memref
 type numeric = R.numeric
-type ident = tag R.ident
-type param = tag R.param
-type arg = tag R.arg
-type expr = tag R.expr
+type ident = itag R.ident
+type param = (itag, ttag) R.param
+type arg = (itag, ttag) R.arg
+type expr = (itag, ttag) R.expr
 
 (* Memory reference Map *)
 module MemRef = struct
