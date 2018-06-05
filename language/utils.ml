@@ -7,14 +7,15 @@ let string_of_list : ('a -> string) -> 'a list -> string =
   fun f xs ->
     "[" ^ String.concat "," (List.map f xs) ^ "]"
 
-
+(*
 let rec string_of_source : source -> string =
   fun src ->
     "source {file:" ^ src.file ^ ";" ^
             "line:" ^ string_of_int src.line ^ ";" ^
             "col:" ^ string_of_int src.col ^ "}"
+*)
 
-and string_of_ident : ident -> string =
+let rec string_of_ident : ident -> string =
   fun id -> match id.pkg with
     | None -> "ident {pkg:_;name:" ^ id.name ^ "}"
     | Some p -> "ident {pkg:" ^ p ^ ";name:" ^ id.name ^ "}"

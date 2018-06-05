@@ -4,7 +4,6 @@ module R = Syntax
 (* Type aliases *)
 type itag = unit
 type ttag = unit
-type source = R.source
 type memref = R.memref
 type numeric = R.numeric
 type ident = itag R.ident

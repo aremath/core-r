@@ -1,13 +1,7 @@
 
-type source =
-  { file : string
-  ; line : int
-  ; col : int }
-
 type 'a ident = 
   { pkg : string option
   ; name : string
-  ; src : source option
   ; tag : 'a option }
 
 type 'b tick =
