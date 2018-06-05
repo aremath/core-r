@@ -11,7 +11,7 @@ type 'a ident =
   ; tag : 'a option }
 
 type 'b tick =
-  { info : unit }
+  { info : 'b }
 
 type numeric =
     Int of int
