@@ -1,6 +1,6 @@
 
 module R = Syntax
-module A = Annotation
+module A = Annotations
 
 (* Type aliases *)
 type itag = A.itag
