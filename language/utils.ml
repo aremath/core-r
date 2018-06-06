@@ -17,7 +17,7 @@ let rec string_of_source : source -> string =
 
 let rec string_of_ident : ident -> string =
   fun id -> match id.pkg with
-    | None -> "ident {pkg:_;name:" ^ id.name ^ "}"
+    | None -> "ident {pkg:" ^ "_" ^ ";name:" ^ id.name ^ "}"
     | Some p -> "ident {pkg:" ^ p ^ ";name:" ^ id.name ^ "}"
 
 and string_of_memref : memref -> string =
@@ -51,6 +51,10 @@ and string_of_arg : arg -> string =
     | Arg e -> "Arg (" ^ string_of_expr e ^ ")"
     | Named (i, e) -> "Named (" ^ string_of_ident i ^ "," ^
                                   string_of_expr e ^ ")"
+
+and string_of_tick : tick -> string =
+  fun tick ->
+    "tick {info:" ^ "_" ^ "}"
 
 and string_of_expr : expr -> string =
   fun expr -> match expr with
@@ -95,5 +99,6 @@ and string_of_expr : expr -> string =
     | Next -> "Next"
     | Error -> "Error"
 
-    | Tick (b, e) -> "Tick (" ^ string_of_expr e ^ ")"
+    | Tick (t, e) -> "Tick (" ^ string_of_tick t ^
+                                string_of_expr e ^ ")"
 

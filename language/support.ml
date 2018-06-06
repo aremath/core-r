@@ -1,9 +1,11 @@
 
 module R = Syntax
+module A = Annotation
 
 (* Type aliases *)
-type itag = unit
-type ttag = unit
+type itag = A.itag
+type ttag = A.ttag
+type tick = A.ttag R.tick
 type memref = R.memref
 type numeric = R.numeric
 type ident = itag R.ident
