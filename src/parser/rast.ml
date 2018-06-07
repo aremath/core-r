@@ -39,7 +39,7 @@ type binop =
   | Minus
   | Mult
   | Div
-  | Exp
+  | Pow
   | Mod
   | IntDiv
   | MatrixMult
@@ -160,7 +160,7 @@ let string_of_binop : binop -> string =
     | Minus         -> "-"
     | Mult          -> "*"
     | Div           -> "/"
-    | Exp           -> "^"
+    | Pow           -> "^"
     | Mod           -> "%%"
     | IntDiv        -> "%/%"
     | MatrixMult    -> "%*%"

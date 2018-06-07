@@ -2,7 +2,6 @@
 open Syntax
 open Support
 
-
 let string_of_list : ('a -> string) -> 'a list -> string =
   fun f xs ->
     "[" ^ String.concat "," (List.map f xs) ^ "]"

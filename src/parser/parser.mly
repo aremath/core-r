@@ -115,7 +115,7 @@ expr:
   | expr MINUS expr         { A.Bop (A.Minus, $1, $3) }
   | expr MULT expr          { A.Bop (A.Mult, $1, $3) }
   | expr DIV expr           { A.Bop (A.Div, $1, $3) }
-  | expr CARAT expr         { A.Bop (A.Exp, $1, $3) }
+  | expr CARAT expr         { A.Bop (A.Pow, $1, $3) }
   | expr USER_OP expr       { A.FuncCall (A.Ident { A.default_ident with name=$2 }, A.ExprArg $1 :: [A.ExprArg $3]) }
   (*
     | expr '%' expr           { A.Bop (A.Modulus, $1, $3) } (* { $$ = xxbinary($2,$1,$3);  setId( $$, @$); } (* TODO *) *)
