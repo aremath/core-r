@@ -29,7 +29,6 @@ and string_of_numeric : numeric -> string =
     | Na -> "Na"
     | Int i -> "Int (" ^ string_of_int i ^ ")"
     | Float f -> "Float (" ^ string_of_float f ^ ")"
-    | Raw s -> "Raw (" ^ s ^ ")"
     | Complex (r, i) -> "Complex (" ^ string_of_float r ^ "," ^
                                       string_of_float i ^ ")"
     

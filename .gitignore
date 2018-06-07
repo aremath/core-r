@@ -11,6 +11,11 @@ nnot
 *.cmxs
 *.cmxa
 
+# library files
+*.mllib
+*.mldylib
+META
+
 # ocamlbuild working directory
 _build/
 

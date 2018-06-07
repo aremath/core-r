@@ -11,7 +11,6 @@ type numeric =
     Int of int
   | Float of float
   | Complex of float * float
-  | Raw of string
   | Na
 
 type const =

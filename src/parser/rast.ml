@@ -19,8 +19,7 @@ let default_ident =
 
 
 type numeric =
-    Unconverted of string
-  | Int of int
+    Int of int
   | Float of float
   | Complex of float * float
   | Na
@@ -141,7 +140,6 @@ let string_of_ident : 'a ident -> string =
 let string_of_numeric : numeric -> string =
   function
     | Na             -> "NA"
-    | Unconverted s  -> "Unconverted " ^ s
     | Int i          -> "Int " ^ (string_of_int i)
     | Float f        -> "Float " ^ (string_of_float f)
     | Complex (r, i) -> "Complex (" ^ (string_of_float r) ^ ", " ^
