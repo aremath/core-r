@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 53754fb71d580de165f4e1437af85eb5)
-# Ignore VCS directories, you can use the same kind of rule outside 
-# OASIS_START/STOP if you want to exclude directories that contains 
+# DO NOT EDIT (digest: 3331df4eadca2945ad0a0c8707365ce7)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
+true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -17,16 +18,16 @@
 "src/language/language.cmxs": use_language
 # Library interpreter
 "src/interpreter/interpreter.cmxs": use_interpreter
-<src/interpreter/*.ml{,i}>: use_language
+<src/interpreter/*.ml{,i,y}>: use_language
 # Executable main
 "src/main.byte": use_interpreter
 "src/main.byte": use_language
-<src/*.ml{,i}>: use_interpreter
-<src/*.ml{,i}>: use_language
+<src/*.ml{,i,y}>: use_interpreter
+<src/*.ml{,i,y}>: use_language
 # Library parser
 "src/parser/parser.cmxs": use_parser
 # Executable absyn_generator
 "src/parser/absyn_generator.byte": use_parser
-<src/parser/*.ml{,i}>: use_parser
+<src/parser/*.ml{,i,y}>: use_parser
 # OASIS_STOP
 true: use_menhir

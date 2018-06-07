@@ -28,23 +28,72 @@ type numbinop =
   | NumOrVec
   | NumOr
 
+type castedtype =
+    IntTy
+  | FloatTy
+  | ComplexTy
+  | NaTy
 
-exception Numeric_Cast_Exception of string;;
+type castedpair =
+    IntPair of int * int
+  | FloatPair of float * float
+  | ComplexPair of (float * float) * (float * float)
+  | NaPair
 
-let cast_numeric_pair : numeric -> numeric -> numeric * numeric =
-  fun n1 n2 -> match (n1, n2) with
-    | (Na, _) -> (n1, n2)
-    | (_, Na) -> (n1, n2)
+let cast_numeric_pair : numeric * numeric -> castedpair =
+  fun (n1, n2) -> match (n1, n2) with
+    | (Na, _) -> NaPair
+    | (_, Na) -> NaPair
 
-    | (Int _, Int _) -> (n1, n2)
-    | (Int i, Float _) -> (Float (float i), n2)
-    | (Int i, Complex _) -> (Complex (float i, 0.0), n2)
+    | (Int i1, Int i2) -> IntPair (i1, i2)
+    | (Int i, Float f) -> FloatPair (float i, f)
+    | (Int i, Complex (c2r, c2i)) -> ComplexPair ((float i, 0.0), (c2r, c2i))
 
-    | (Float _, Int i) -> (n1, Float (float i))
-    | (Float _, Float _) -> (n1, n2)
-    | (Float f, Complex _) -> (Complex (f, 0.0), n2)
+    | (Float f, Int i) -> FloatPair (f, float i)
+    | (Float f1, Float f2) -> FloatPair (f1, f2)
+    | (Float f, Complex (c2r, c2i)) -> ComplexPair ((f, 0.0), (c2r, c2i))
 
-    | (Complex _, Int i) -> (n1, Complex (float i, 0.0))
-    | (Complex _, Float f) -> (n1, Complex (f, 0.0))
-    | (Complex _, Complex _) -> (n1, n2)
+    | (Complex (c1r, c1i), Int i) -> ComplexPair ((c1r, c1i), (float i, 0.0))
+    | (Complex (c1r, c1i), Float f) -> ComplexPair ((c1r, c1i), (f, 0.0))
+    | (Complex (c1r, c1i), Complex (c2r, c2i)) ->
+        ComplexPair ((c1r, c1i), (c2r, c2i))
+    
+exception Numeric_Binop_Exception of numeric * numeric * string
+
+let do_numeric_binop : numbinop -> numeric -> numeric -> numeric =
+  fun op n1 n2 -> match (op, cast_numeric_pair (n1, n2)) with
+    | (NumPlus, IntPair (i1, i2)) -> Int (i1 + i2)
+    | (NumPlus, FloatPair (f1, f2)) -> Float (f1 +. f2)
+    | (NumPlus, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
+        Complex (c1r +. c2r, c1i +. c2i)
+
+    | (NumMinus, IntPair (i1, i2)) -> Int (i1 - i2)
+    | (NumMinus, FloatPair (f1, f2)) -> Float (f1 -. f2)
+    | (NumMinus, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
+        Complex (c1r -. c2r, c1i -. c2i)
+
+    | (NumMult, IntPair (i1, i2)) -> Int (i1 * i2)
+    | (NumMult, FloatPair (f1, f2)) -> Float (f1 *. f2)
+    | (NumMult, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
+        Complex (c1r *. c2r, c1i *. c2i)
+
+    | (NumDiv, IntPair (i1, i2)) ->
+        if i2 != 0 then
+          Int (i1 / i2)
+        else
+          raise (Numeric_Binop_Exception (n1, n2, "divide by zero"))
+    | (NumDiv, FloatPair (f1, f2)) ->
+        if f2 != 0.0 then
+          Float (f1 /. f2)
+        else
+          raise (Numeric_Binop_Exception (n1, n2, "divide by zero"))
+    | (NumDiv, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
+        if c2r != 0.0 || c2i != 0.0 then
+          Complex (((c1r *. c2r) +. (c1i *. c2i)) /.
+                      ((c2r *. c2r) +. (c2i *. c2i)),
+                   ((c1i *. c2r) -. (c1r *. c2i)) /.
+                      ((c2r *. c2r) +. (c2i *. c2i)))
+        else
+          raise (Numeric_Binop_Exception (n1, n2, "divide by zero"))
+
 
