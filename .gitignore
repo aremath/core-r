@@ -23,6 +23,7 @@ setup.data
 setup.log
 META
 configure
+Makefile
 
 # ocamlbuild working directory
 _build
