@@ -1,5 +1,6 @@
 %{
   module A = Rast
+  open A
 %}
 
 %token         END_OF_INPUT
