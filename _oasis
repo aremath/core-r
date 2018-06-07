@@ -4,18 +4,14 @@ Synopsis: A library for analyzing the R programming language.
 Authors: Ross Mawhorter and Anton Xue
 License: LGPL with OCaml linking exception
 Description : R programming language analysis framework.
-OASISFormat : 0.4
+OASISFormat : 0.3
 BuildTools: ocamlbuild
 Plugins: META (0.4), DevFiles (0.4)
 
-
-
-
-Executable "parseR"
+Executable "main"
   Path: src
   MainIs: main.ml
   BuildDepends: language, interpreter
-
 
 Library "interpreter"
   Path: src/interpreter
@@ -26,4 +22,12 @@ Library "language"
   Path: src/language
   Modules: Syntax, Support, Annotations, Langutils
 
+Library "parser"
+  Path: src/parser
+  Modules: Parser
+
+Executable "absyn_generator"
+  Path: src/parser
+  MainIs: absyn_generator.ml
+  BuildDepends: parser
 
