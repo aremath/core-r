@@ -1,0 +1,29 @@
+Name: Core-R
+Version: 0.1
+Synopsis: A library for analyzing the R programming language.
+Authors: Ross Mawhorter and Anton Xue
+License: LGPL with OCaml linking exception
+Description : R programming language analysis framework.
+OASISFormat : 0.4
+BuildTools: ocamlbuild
+Plugins: META (0.4), DevFiles (0.4)
+
+
+
+
+Executable "parseR"
+  Path: src
+  MainIs: main.ml
+  BuildDepends: language, interpreter
+
+
+Library "interpreter"
+  Path: src/interpreter
+  Modules: Constants, Rules
+  BuildDepends: language
+
+Library "language"
+  Path: src/language
+  Modules: Syntax, Support, Annotations, Langutils
+
+
