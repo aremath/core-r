@@ -6,6 +6,7 @@
 *)
 
 open Syntax
+module C = Complex
 
 type numbinop =
     NumPlus
@@ -37,7 +38,7 @@ type castedtype =
 type castedpair =
     IntPair of int * int
   | FloatPair of float * float
-  | ComplexPair of (float * float) * (float * float)
+  | ComplexPair of C.t * C.t
   | NaPair
 
 let cast_numeric_pair : numeric * numeric -> castedpair =
@@ -47,16 +48,15 @@ let cast_numeric_pair : numeric * numeric -> castedpair =
 
     | (Int i1, Int i2) -> IntPair (i1, i2)
     | (Int i, Float f) -> FloatPair (float i, f)
-    | (Int i, Complex (c2r, c2i)) -> ComplexPair ((float i, 0.0), (c2r, c2i))
+    | (Int i, Complex c) -> ComplexPair ({C.re=(float i); C.im=0.0}, c)
 
     | (Float f, Int i) -> FloatPair (f, float i)
     | (Float f1, Float f2) -> FloatPair (f1, f2)
-    | (Float f, Complex (c2r, c2i)) -> ComplexPair ((f, 0.0), (c2r, c2i))
+    | (Float f, Complex c) -> ComplexPair ({C.re=f; C.im=0.0} , c)
 
-    | (Complex (c1r, c1i), Int i) -> ComplexPair ((c1r, c1i), (float i, 0.0))
-    | (Complex (c1r, c1i), Float f) -> ComplexPair ((c1r, c1i), (f, 0.0))
-    | (Complex (c1r, c1i), Complex (c2r, c2i)) ->
-        ComplexPair ((c1r, c1i), (c2r, c2i))
+    | (Complex c, Int i) -> ComplexPair (c, {C.re=float i; C.im=0.0})
+    | (Complex c, Float f) -> ComplexPair (c, {C.re=f; C.im=0.0})
+    | (Complex c1, Complex c2) -> ComplexPair (c1, c2)
     
 exception Numeric_Binop_Exception of numeric * numeric * string
 
@@ -64,19 +64,18 @@ let do_numeric_binop : numbinop -> numeric -> numeric -> numeric =
   fun op n1 n2 -> match (op, cast_numeric_pair (n1, n2)) with
     | (NumPlus, IntPair (i1, i2)) -> Int (i1 + i2)
     | (NumPlus, FloatPair (f1, f2)) -> Float (f1 +. f2)
-    | (NumPlus, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
-        Complex (c1r +. c2r, c1i +. c2i)
+    | (NumPlus, ComplexPair (c1, c2)) -> Complex (C.add c1 c2)
 
     | (NumMinus, IntPair (i1, i2)) -> Int (i1 - i2)
     | (NumMinus, FloatPair (f1, f2)) -> Float (f1 -. f2)
-    | (NumMinus, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
-        Complex (c1r -. c2r, c1i -. c2i)
+    | (NumMinus, ComplexPair (c1, c2)) -> Complex (C.sub c1 c2)
 
     | (NumMult, IntPair (i1, i2)) -> Int (i1 * i2)
     | (NumMult, FloatPair (f1, f2)) -> Float (f1 *. f2)
-    | (NumMult, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
-        Complex (c1r *. c2r, c1i *. c2i)
+    | (NumMult, ComplexPair (c1, c2)) -> Complex (C.mul c1 c2)
 
+
+(*
     | (NumDiv, IntPair (i1, i2)) ->
         if i2 != 0 then
           Int (i1 / i2)
@@ -96,4 +95,11 @@ let do_numeric_binop : numbinop -> numeric -> numeric -> numeric =
         else
           raise (Numeric_Binop_Exception (n1, n2, "divide by zero"))
 
+    (*
+    | (NumMinus, IntPair (i1, i2)) -> Float (float i1 ** float i2)
+    | (NumMinus, FloatPair (f1, f2)) -> Float (f1 ** f2)
+    | (NumMinus, ComplexPair ((c1r, c1i), (c2r, c2i))) ->
+*)
+
+*)
 

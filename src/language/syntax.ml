@@ -10,7 +10,7 @@ type 'b tick =
 type numeric =
     Int of int
   | Float of float
-  | Complex of float * float
+  | Complex of Complex.t
   | Na
 
 type const =

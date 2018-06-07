@@ -29,8 +29,8 @@ and string_of_numeric : numeric -> string =
     | Na -> "Na"
     | Int i -> "Int (" ^ string_of_int i ^ ")"
     | Float f -> "Float (" ^ string_of_float f ^ ")"
-    | Complex (r, i) -> "Complex (" ^ string_of_float r ^ "," ^
-                                      string_of_float i ^ ")"
+    | Complex c -> "Complex (" ^ string_of_float (c.Complex.re) ^ "," ^
+                                 string_of_float (c.Complex.im) ^ ")"
     
 and string_of_const : const -> string =
   fun const -> match const with
