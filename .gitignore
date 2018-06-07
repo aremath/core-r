@@ -1,4 +1,7 @@
+# miscellaneous
 *swp
+
+# executables
 a.out
 
 nnot
@@ -11,16 +14,22 @@ nnot
 *.cmxs
 *.cmxa
 
+# oasis relevant files
+*.mllib
+*.mldylib
+myocamlbuild.ml
+setup.ml
+setup.data
+setup.log
+META
+configure
+
 # ocamlbuild working directory
-_build/
+_build
 
 # ocamlbuild targets
 *.byte
 *.native
-
-# oasis generated files
-setup.data
-setup.log
 
 # Merlin configuring file for Vim and Emacs
 .merlin
