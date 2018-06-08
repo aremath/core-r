@@ -53,7 +53,7 @@ let rule_ForceP : state -> state option =
     | Some (MemRef mem, env, _) -> (match heap_find_opt mem state.heap with
       | Some (PromiseObj (p_expr, p_env)) ->
           Some {state with
-            stack = stack_push {expr=p_expr; env=p_env} state.stack}
+            stack = stack_push {expr = p_expr; env = p_env} state.stack}
       | _ -> None)
     | _ -> None
 
@@ -62,17 +62,15 @@ let rule_ForceP : state -> state option =
 let rule_Num : state -> state option =
   fun st -> match stack_pop_v st.stack with
     | Some (Const (Num n), _, _) ->
-        (let (mem', state') = fresh_memref st in
-         let obj = DataObj (NumArray [n], []) in
-          Some {state' with heap = heap_add mem' obj state'.heap})
+        (let obj = DataObj (NumArray [n], []) in
+          Some {st with heap = heap_alloc obj st.heap})
     | _ -> None
 
 let rule_Str : state -> state option =
   fun st -> match stack_pop_v st.stack with
     | Some (Const (Str s), _, _) ->
-        (let (mem', state') = fresh_memref st in
-         let obj = DataObj (StrArray [s], []) in
-          Some {state' with heap = heap_add mem' obj state'.heap})
+        (let obj = DataObj (StrArray [s], []) in
+          Some {st with heap = heap_alloc obj st.heap})
     | _ -> None
 
 
