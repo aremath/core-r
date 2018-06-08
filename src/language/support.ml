@@ -74,6 +74,13 @@ type state =
   ; ident_count : int }
 
 (* Utility functions *)
+let mk_memref : int -> memref =
+  fun addr ->
+    {R.addr = addr}
+
+let mk_slot : expr -> env -> slot =
+  fun expr env ->
+    {expr = expr; env = env}
 
 (* Fresh identifier *)
 let fresh_ident : state -> ident * state =
@@ -81,7 +88,6 @@ let fresh_ident : state -> ident * state =
     let count' = st.ident_count + 1 in
       ( {R.pkg = None; R.name = "fs$" ^ string_of_int count'; R.tag = None}
       , {st with ident_count = count'})
-
 
 (* Environment operations *)
 let env_pop : env -> (memref * env) option =
@@ -120,10 +126,17 @@ let heap_insert : memref -> heapobj -> heap -> heap =
   fun mem obj heap ->
     {heap with hmap = MemRef_Map.add mem obj heap.hmap}
 
-let heap_alloc : heapobj -> heap -> heap =
+let heap_alloc : heapobj -> heap -> memref * heap =
   fun obj heap ->
-    {hmap = MemRef_Map.add (heap.next_mem) obj heap.hmap;
-     next_mem = {R.addr = heap.next_mem.R.addr + 1}}
+    let alloc_mem = heap.next_mem in
+      (alloc_mem,
+       {hmap = MemRef_Map.add alloc_mem obj heap.hmap;
+        next_mem = mk_memref (alloc_mem.R.addr + 1)})
+
+let heap_alloc_const : R.const -> heap -> (memref * heap) =
+  fun const heap -> match const with
+    | R.Num n -> heap_alloc (DataObj (NumArray [n], [])) heap
+    | R.Str s -> heap_alloc (DataObj (StrArray [s], [])) heap
 
 (*
 let heap_copy : memref -> state -> (memref * state) option =

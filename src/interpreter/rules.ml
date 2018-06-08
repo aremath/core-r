@@ -59,18 +59,18 @@ let rule_ForceP : state -> state option =
 
 
 (* Single arrow expression manipulations *)
-let rule_Num : state -> state option =
+let rule_Const : state -> state option =
   fun st -> match stack_pop_v st.stack with
-    | Some (Const (Num n), _, _) ->
-        (let obj = DataObj (NumArray [n], []) in
-          Some {st with heap = heap_alloc obj st.heap})
+    | Some ((Const c), env, stack') ->
+        (let (mem, heap') = heap_alloc_const c st.heap in
+         let slot = mk_slot (MemRef mem) env in
+           Some {st with heap = heap';
+                         stack = stack_push slot stack'})
     | _ -> None
 
-let rule_Str : state -> state option =
-  fun st -> match stack_pop_v st.stack with
-    | Some (Const (Str s), _, _) ->
-        (let obj = DataObj (StrArray [s], []) in
-          Some {st with heap = heap_alloc obj st.heap})
+let rule_Fun : state -> state option =
+  fun st -> match stack_pop_v with 
+    | _ -> None
     | _ -> None
 
 
