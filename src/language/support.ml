@@ -52,8 +52,7 @@ type slot =
   { expr : expr
   ; env : env }
 
-type stack =
-  slot list
+type stack = slot list
 
 (* Frame *)
 type frame = memref Ident_Map.t
@@ -66,7 +65,27 @@ type heapobj =
 
 type heap = heapobj MemRef_Map.t
 
+(* Execution state *)
+type state =
+  { stack : stack
+  ; heap : heap
+  ; ident_count : int
+  ; memref_count : int}
+
+
 (* Utility functions *)
+
+(* Fresh identifier *)
+let fresh_ident : state -> ident * state =
+  fun state ->
+    let count' = state.ident_count + 1 in
+      ( {R.pkg=None; R.name="fs$" ^ string_of_int count'; R.tag=None}
+      , {state with ident_count=count'})
+
+let fresh_memref : state -> memref * state =
+  fun state ->
+    let count' = state.memref_count + 1 in
+      ({R.addr=count'}, {state with memref_count=count'})
 
 (* Environment operations *)
 let env_top : env -> memref option =
@@ -77,22 +96,22 @@ let env_top : env -> memref option =
 let env_pop : env -> env option =
   fun env -> match env with
     | [] -> None
-    | (_ :: tl) -> Some tl
+    | (_ :: env') -> Some env'
 
 let env_push : memref -> env -> env =
   fun mem env ->
     mem :: env
 
 (* Stack operations *)
-let stack_top : stack -> slot option =
+let stack_pop : stack -> (slot * stack) option =
   fun stack -> match stack with
     | [] -> None
-    | (hd :: _ ) -> Some hd
+    | (slot :: env') -> Some (slot, env')
 
-let stack_pop : stack -> stack option =
-  fun stack -> match stack with
-    | [] -> None
-    | (_ :: tl) -> Some tl
+let stack_pop_v : stack -> (expr * env * stack) option =
+  fun stack -> match stack_pop stack with
+    | None -> None
+    | Some (slot, stack') -> Some (slot.expr, slot.env, stack')
 
 let stack_push : slot -> stack -> stack =
   fun slot stack ->
