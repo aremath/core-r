@@ -94,9 +94,6 @@ and 'a param =
 
 
 and 'a expr =
-  (* New lines *)
-  | LeftNewLines of 'a expr
-  | RightNewLines of 'a expr
   (* Constants *)
   | NumericConst of numeric
   | StringConst of string
@@ -189,9 +186,6 @@ let string_of_binop : binop -> string =
 
 let rec string_of_expr : 'a expr -> string =
   function
-    (* New lines *)
-    | LeftNewLines e -> "LN(" ^ (string_of_expr e) ^ ")"
-    | RightNewLines e -> "RN(" ^ (string_of_expr e) ^ ")"
     (* Values *)
     | NumericConst i -> "NumericConst " ^ (string_of_numeric i)
     | StringConst s  -> "StringConst " ^ s

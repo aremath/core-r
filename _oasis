@@ -11,7 +11,7 @@ Plugins: META (0.4), DevFiles (0.4)
 Executable "main"
   Path: src
   MainIs: main.ml
-  BuildDepends: language, interpreter
+  BuildDepends: language, interpreter, absyn_to_language
 
 Library "interpreter"
   Path: src/interpreter
@@ -24,10 +24,15 @@ Library "language"
 
 Library "parser"
   Path: src/parser
-  Modules: Parser
+  Modules: Parser, Rast
 
 Executable "absyn_generator"
   Path: src/parser
   MainIs: absyn_generator.ml
   BuildDepends: parser
+
+Library "absyn_to_language"
+  Path: src/preprocess
+  Modules: Rast_to_language
+  BuildDepends: parser, language
 

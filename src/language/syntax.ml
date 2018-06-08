@@ -34,7 +34,7 @@ and ('a, 'b) expr =
     Ident of 'a ident
   | MemRef of memref
   | Const of const
-  | ArraySub of ('a, 'b) expr * ('a, 'b) expr
+  | ArraySub of ('a, 'b) expr * (('a, 'b) arg) list
   | ObjAttr of ('a, 'b) expr * ('a, 'b) expr
   | Seq of ('a, 'b) expr * ('a, 'b) expr
   | LambdaAbs of (('a, 'b) param) list * ('a, 'b) expr
