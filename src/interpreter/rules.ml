@@ -49,11 +49,11 @@ let rule_Exp : state -> state option =
 
 (* Promise Evaluation *)
 let rule_ForceP : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state -> match stack_pop_e state.stack with
     | Some (MemRef mem, env, _) -> (match heap_find_opt mem state.heap with
       | Some (PromiseObj (p_expr, p_env)) ->
           Some {state with
-            stack = stack_push {expr = p_expr; env = p_env} state.stack}
+            stack = stack_push (ExprSlot (p_expr, p_env)) state.stack}
       | _ -> None)
     | _ -> None
 
@@ -61,13 +61,13 @@ let rule_ForceP : state -> state option =
 (* Single arrow expression manipulations *)
 let rule_Const : state -> state option =
   (* pop the stack frame *)
-  fun st -> match stack_pop_v st.stack with
+  fun st -> match stack_pop_e st.stack with
     (* if it's a constant *)
     | Some ((Const c), env, stack') ->
         (* allocate space for it on the heap *)
         (let (mem, heap') = heap_alloc_const c st.heap in
         (* create a new slot on the stack with the pointer to where it now lives on the heap *)
-         let slot = mk_slot (MemRef mem) env in
+         let slot = ExprSlot ((MemRef mem), env) in
            (* push that slot onto the stack *)
            Some {st with heap = heap';
                          stack = stack_push slot stack'})
@@ -75,7 +75,7 @@ let rule_Const : state -> state option =
 
 (* Function Definition *)
 let rule_Fun : state -> state option =
-  fun st -> match stack_pop_v st.stack with 
+  fun st -> match stack_pop_e st.stack with 
     | Some ((LambdaAbs (ps, expr)), env, stack') ->
         (let (mem, heap') = heap_alloc
             (DataObj (FuncVal (ps, expr, env), [])) st.heap in
