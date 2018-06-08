@@ -84,15 +84,10 @@ let fresh_ident : state -> ident * state =
 
 
 (* Environment operations *)
-let env_top : env -> memref option =
+let env_pop : env -> (memref * env) option =
   fun env -> match env with
     | [] -> None
-    | (hd :: _) -> Some hd
-
-let env_pop : env -> env option =
-  fun env -> match env with
-    | [] -> None
-    | (_ :: env') -> Some env'
+    | (mem :: env') -> Some (mem, env')
 
 let env_push : memref -> env -> env =
   fun mem env ->
