@@ -55,7 +55,8 @@ type slot =
 type stack = slot list
 
 (* Frame *)
-type frame = memref Ident_Map.t
+type frame =
+  { fmap: memref Ident_Map.t }
 
 (* Heap *)
 type heapobj =
@@ -89,15 +90,13 @@ let fresh_ident : state -> ident * state =
       ( {R.pkg = None; R.name = "fs$" ^ string_of_int count'; R.tag = None}
       , {st with ident_count = count'})
 
-(* Environment operations *)
-let env_pop : env -> (memref * env) option =
-  fun env -> match env with
-    | [] -> None
-    | (mem :: env') -> Some (mem, env')
-
-let env_push : memref -> env -> env =
-  fun mem env ->
-    mem :: env
+(* Frame lookup *)
+let frame_find_opt : ident -> frame -> memref option =
+  fun ident frm ->
+    try
+      Some (Ident_Map.find ident frm.fmap)
+    with
+      Not_found -> None
 
 (* Stack operations *)
 let stack_pop : stack -> (slot * stack) option =
@@ -147,4 +146,25 @@ let heap_copy : memref -> state -> (memref * state) option =
           Some (mem', {state' with heap = heap_add mem' v state'.heap})
 
 *)
+
+
+(* Environment operations *)
+let env_pop : env -> (memref * env) option =
+  fun env -> match env with
+    | [] -> None
+    | (mem :: env') -> Some (mem, env')
+
+let env_push : memref -> env -> env =
+  fun mem env ->
+    mem :: env
+
+let rec env_find_opt : ident -> env -> heap -> memref option =
+  fun ident env heap -> match env_pop env with
+    | None -> None
+    | Some (mem, env') -> match heap_find_opt mem heap with
+      | Some (FrameObj f) -> (match frame_find_opt ident f with
+        | None -> env_find_opt ident env' heap
+        | Some m -> Some m)
+      | _ -> None
+
 
