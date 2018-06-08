@@ -49,8 +49,8 @@ type attribute = unit
 
 (* Stack *)
 type slot =
-  { expr : expr
-  ; env : env }
+    ExprSlot of expr * env
+  | UpdateSlot of memref
 
 type stack = slot list
 
@@ -79,10 +79,6 @@ let mk_memref : int -> memref =
   fun addr ->
     {R.addr = addr}
 
-let mk_slot : expr -> env -> slot =
-  fun expr env ->
-    {expr = expr; env = env}
-
 (* Fresh identifier *)
 let fresh_ident : state -> ident * state =
   fun st ->
@@ -104,10 +100,10 @@ let stack_pop : stack -> (slot * stack) option =
     | [] -> None
     | (slot :: env') -> Some (slot, env')
 
-let stack_pop_v : stack -> (expr * env * stack) option =
+let stack_pop_e : stack -> (expr * env * stack) option =
   fun stack -> match stack_pop stack with
-    | None -> None
-    | Some (slot, stack') -> Some (slot.expr, slot.env, stack')
+    | Some (ExprSlot (expr, env), stack') -> Some (expr, env, stack')
+    | _ -> None
 
 let stack_push : slot -> stack -> stack =
   fun slot stack ->
