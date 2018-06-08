@@ -79,27 +79,40 @@ let rule_Fun : state -> state option =
     | Some ((LambdaAbs (ps, expr)), env, stack') ->
         (let (mem, heap') = heap_alloc
             (DataObj (FuncVal (ps, expr, env), [])) st.heap in
-            let slot = mk_slot (MemRef mem) env in
+            let slot = ExprSlot ((MemRef mem), env) in
                 Some {st with heap = heap';
                               stack = stack_push slot stack'}
         )
     | _ -> None
 
 (* Symbol. Actual search code in language/support.ml *)
-let rule_Find : state -> state option
-  fun st -> match stack_pop_v st.stack with
+let rule_Find : state -> state option =
+  fun st -> match stack_pop_e st.stack with
   | Some ((Ident i), env, stack') ->
     (* search for the symbol in the current environment *)
-    let mem = env_find_opt i env st.heap in
-    (* push its address to the stack *)
-    let slot = mk_slot (MemRef mem) env in
-        Some {st with stack = stack_push slot stack'}
+    begin match env_find_opt i env st.heap with
+        | Some mem -> (* push its address to the stack *)
+            let slot = ExprSlot ((MemRef mem), env) in
+                Some {st with stack = stack_push slot stack'}
+        | _ -> None
+    end
   |_ -> None
 
-(* Promise Evaluation *)
-let rule_GetP : state -> state option
-  fun st -> match stack_pop_v st.stack with
+(* Promise Indirection: a shortcut when a promise pointer points to a pointer *)
+let rule_GetP : state -> state option = 
+  fun st -> match stack_pop_e st.stack with
   | Some ((MemRef mem), env, stack') ->
-    
-
+    begin match heap_find_opt mem st.heap with
+      | Some (PromiseObj ((MemRef mem2), env2)) ->
+            let slot = ExprSlot ((MemRef mem2), env2) in (* TODO: verify *)
+                Some {st with stack = stack_push slot stack'}
+      |_ -> None
+    end
   |_ -> None
+
+(*
+(* Assignment *)
+let rule_Ass : state -> state option =
+    fun st -> match stack_pop_e st.stack with
+
+*)
