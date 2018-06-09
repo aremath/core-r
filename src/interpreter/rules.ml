@@ -49,7 +49,7 @@ let rule_Exp : state -> state option =
 
 (* Promise Evaluation *)
 let rule_ForceP : state -> state option =
-  fun state -> match stack_pop_e state.stack with
+  fun state -> match stack_pop_expr state.stack with
     | Some (MemRef mem, env, _) -> (match heap_find_opt mem state.heap with
       | Some (PromiseObj (p_expr, p_env)) ->
           Some {state with
@@ -59,53 +59,53 @@ let rule_ForceP : state -> state option =
 
 
 (* Single arrow expression manipulations *)
-let rule_Const : state -> state option =
+let rule_Constate : state -> state option =
   (* pop the stack frame *)
-  fun st -> match stack_pop_e st.stack with
+  fun state -> match stack_pop_expr state.stack with
     (* if it's a constant *)
-    | Some ((Const c), env, stack') ->
+    | Some ((Const c), env, stack2) ->
         (* allocate space for it on the heap *)
-        (let (mem, heap') = heap_alloc_const c st.heap in
+        (let (mem, heap') = heap_alloc_const c state.heap in
         (* create a new slot on the stack with the pointer to where it now lives on the heap *)
          let slot = ExprSlot ((MemRef mem), env) in
            (* push that slot onto the stack *)
-           Some {st with heap = heap';
-                         stack = stack_push slot stack'})
+           Some {state with heap = heap';
+                         stack = stack_push slot stack2})
     | _ -> None
 
 (* Function Definition *)
 let rule_Fun : state -> state option =
-  fun st -> match stack_pop_e st.stack with 
-    | Some ((LambdaAbs (ps, expr)), env, stack') ->
+  fun state -> match stack_pop_expr state.stack with 
+    | Some ((LambdaAbs (ps, expr)), env, stack2) ->
         (let (mem, heap') = heap_alloc
-            (DataObj (FuncVal (ps, expr, env), [])) st.heap in
+            (DataObj (FuncVal (ps, expr, env), [])) state.heap in
             let slot = ExprSlot ((MemRef mem), env) in
-                Some {st with heap = heap';
-                              stack = stack_push slot stack'}
+                Some {state with heap = heap';
+                              stack = stack_push slot stack2}
         )
     | _ -> None
 
 (* Symbol. Actual search code in language/support.ml *)
 let rule_Find : state -> state option =
-  fun st -> match stack_pop_e st.stack with
-  | Some ((Ident i), env, stack') ->
+  fun state -> match stack_pop_expr state.stack with
+  | Some ((Ident i), env, stack2) ->
     (* search for the symbol in the current environment *)
-    begin match env_find_opt i env st.heap with
+    begin match env_find_opt i env state.heap with
         | Some mem -> (* push its address to the stack *)
             let slot = ExprSlot ((MemRef mem), env) in
-                Some {st with stack = stack_push slot stack'}
+                Some {state with stack = stack_push slot stack2}
         | _ -> None
     end
   |_ -> None
 
 (* Promise Indirection: a shortcut when a promise pointer points to a pointer *)
 let rule_GetP : state -> state option = 
-  fun st -> match stack_pop_e st.stack with
-  | Some ((MemRef mem), env, stack') ->
-    begin match heap_find_opt mem st.heap with
+  fun state -> match stack_pop_expr state.stack with
+  | Some ((MemRef mem), env, stack2) ->
+    begin match heap_find_opt mem state.heap with
       | Some (PromiseObj ((MemRef mem2), env2)) ->
             let slot = ExprSlot ((MemRef mem2), env2) in (* TODO: verify *)
-                Some {st with stack = stack_push slot stack'}
+                Some {state with stack = stack_push slot stack2}
       |_ -> None
     end
   |_ -> None
@@ -113,6 +113,6 @@ let rule_GetP : state -> state option =
 (*
 (* Assignment *)
 let rule_Ass : state -> state option =
-    fun st -> match stack_pop_e st.stack with
+    fun state -> match stack_pop_expr state.stack with
 
 *)

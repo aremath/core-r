@@ -36,7 +36,7 @@ end
 module Ident_Map = Map.Make (Ident)
 
 (* Environment *)
-type env = memref list
+type env = { elist : memref list }
 
 (* Values *)
 type value =
@@ -52,7 +52,7 @@ type slot =
     ExprSlot of expr * env
   | UpdateSlot of memref
 
-type stack = slot list
+type stack = { slist : slot list }
 
 (* Frame *)
 type frame =
@@ -75,39 +75,55 @@ type state =
   ; ident_count : int }
 
 (* Utility functions *)
-let mk_memref : int -> memref =
+
+(* Memory references *)
+let mem_of_int : int -> memref =
   fun addr ->
     {R.addr = addr}
 
+let incr_mem : memref -> memref =
+  fun mem ->
+    {mem with R.addr = mem.R.addr + 1}
+
+
 (* Fresh identifier *)
 let fresh_ident : state -> ident * state =
-  fun st ->
-    let count' = st.ident_count + 1 in
-      ( {R.pkg = None; R.name = "fs$" ^ string_of_int count'; R.tag = None}
-      , {st with ident_count = count'})
+  fun state ->
+    let count2 = state.ident_count + 1 in
+      ( { R.pkg = None
+        ; R.name = "fs$" ^ string_of_int count2
+        ; R.ident_tag = None }
+      , {state with ident_count = count2})
+
 
 (* Frame lookup *)
 let frame_find_opt : ident -> frame -> memref option =
-  fun ident frm ->
+  fun id frame ->
     try
-      Some (Ident_Map.find ident frm.fmap)
+      Some (Ident_Map.find id frame.fmap)
     with
       Not_found -> None
 
+let frame_add : ident -> memref -> frame -> frame =
+  fun id mem frame ->
+    {frame with fmap = Ident_Map.add id mem frame.fmap}
+
+
 (* Stack operations *)
 let stack_pop : stack -> (slot * stack) option =
-  fun stack -> match stack with
+  fun stack -> match stack.slist with
     | [] -> None
-    | (slot :: env') -> Some (slot, env')
+    | (slot :: tail) -> Some (slot, {stack with slist = tail})
 
-let stack_pop_e : stack -> (expr * env * stack) option =
+let stack_pop_expr : stack -> (expr * env * stack) option =
   fun stack -> match stack_pop stack with
-    | Some (ExprSlot (expr, env), stack') -> Some (expr, env, stack')
+    | Some (ExprSlot (expr, env), stack2) -> Some (expr, env, stack2)
     | _ -> None
 
 let stack_push : slot -> stack -> stack =
   fun slot stack ->
-    slot :: stack
+    {stack with slist = slot :: stack.slist}
+
 
 (* Heap operations *)
 let heap_find_opt : memref -> heap -> heapobj option =
@@ -123,44 +139,34 @@ let heap_insert : memref -> heapobj -> heap -> heap =
 
 let heap_alloc : heapobj -> heap -> memref * heap =
   fun obj heap ->
-    let alloc_mem = heap.next_mem in
-      (alloc_mem,
-       {hmap = MemRef_Map.add alloc_mem obj heap.hmap;
-        next_mem = mk_memref (alloc_mem.R.addr + 1)})
+    let used_mem = heap.next_mem in
+      ( used_mem
+      , {heap with hmap = MemRef_Map.add used_mem obj heap.hmap;
+                   next_mem = incr_mem used_mem})
 
 let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap -> match const with
     | R.Num n -> heap_alloc (DataObj (NumArray [n], [])) heap
     | R.Str s -> heap_alloc (DataObj (StrArray [s], [])) heap
 
-(*
-let heap_copy : memref -> state -> (memref * state) option =
-  fun mem st -> match heap_find_opt mem st.heap with
-    | None -> None
-    | Some v ->
-        let (mem', state') = fresh_memref st in
-          Some (mem', {state' with heap = heap_add mem' v state'.heap})
-
-*)
-
 
 (* Environment operations *)
 let env_pop : env -> (memref * env) option =
-  fun env -> match env with
+  fun env -> match env.elist with
     | [] -> None
-    | (mem :: env') -> Some (mem, env')
+    | (mem :: tail) -> Some (mem, {env with elist = tail})
 
 let env_push : memref -> env -> env =
   fun mem env ->
-    mem :: env
+    {env with elist = mem :: env.elist}
 
 let rec env_find_opt : ident -> env -> heap -> memref option =
-  fun ident env heap -> match env_pop env with
+  fun id env heap -> match env_pop env with
     | None -> None
-    | Some (mem, env') -> match heap_find_opt mem heap with
-      | Some (FrameObj f) -> (match frame_find_opt ident f with
-        | None -> env_find_opt ident env' heap
-        | Some m -> Some m)
+    | Some (mem, env2) -> match heap_find_opt mem heap with
+      | Some (FrameObj frame) -> (match frame_find_opt id frame with
+        | None -> env_find_opt id env2 heap
+        | Some mem2 -> Some mem2)
       | _ -> None
 
 

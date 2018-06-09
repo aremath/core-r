@@ -2,10 +2,10 @@
 type 'a ident = 
   { pkg : string option
   ; name : string
-  ; tag : 'a option }
+  ; ident_tag : 'a option }
 
 type 'b tick =
-  { info : 'b }
+  { tick_tag : 'b }
 
 type numeric =
     Int of int

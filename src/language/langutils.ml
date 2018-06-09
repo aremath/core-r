@@ -59,8 +59,9 @@ and string_of_expr : expr -> string =
     | Ident i -> "Ident (" ^ string_of_ident i ^ ")"
     | MemRef m -> "MemRef (" ^ string_of_memref m ^ ")"
     | Const c -> "Const (" ^ string_of_const c ^ ")"
-    | ArraySub (e1, e2s) -> "ArraySub (" ^ string_of_expr e1 ^ "," ^
-                                          string_of_list (string_of_arg) e2s ^ ")"
+    | ArraySub (e1, e2s) -> "ArraySub (" ^
+                              string_of_expr e1 ^ "," ^
+                              string_of_list (string_of_arg) e2s ^ ")"
     | ObjAttr (e1, e2) -> "ObjAttr (" ^ string_of_expr e1 ^ "," ^
                                         string_of_expr e2 ^ ")"
     | Seq (e1, e2) -> "Seq (" ^ string_of_expr e1 ^ "," ^
