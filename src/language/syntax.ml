@@ -1,11 +1,10 @@
 
 type 'a ident = 
-  { pkg : string option
-  ; name : string
-  ; ident_tag : 'a option }
+  { pkg : string option;
+    name : string;
+    ident_tag : 'a option }
 
-type 'b tick =
-  { tick_tag : 'b }
+type 'b tick = { tick_tag : 'b }
 
 type numeric =
     Int of int
@@ -17,8 +16,7 @@ type const =
     Num of numeric
   | Str of string
 
-type memref =
-  { addr : int }
+type memref = { addr : int }
 
 type ('a, 'b) param =
     Param of 'a ident

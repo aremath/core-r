@@ -59,7 +59,7 @@ let rule_ForceP : state -> state option =
 
 
 (* Single arrow expression manipulations *)
-let rule_Constate : state -> state option =
+let rule_Const : state -> state option =
   (* pop the stack frame *)
   fun state -> match stack_pop_expr state.stack with
     (* if it's a constant *)

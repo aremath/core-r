@@ -55,8 +55,7 @@ type slot =
 type stack = { slist : slot list }
 
 (* Frame *)
-type frame =
-  { fmap: memref Ident_Map.t }
+type frame = { fmap: memref Ident_Map.t }
 
 (* Heap *)
 type heapobj =
@@ -65,35 +64,35 @@ type heapobj =
   | DataObj of value * attribute list
 
 type heap =
-  { hmap : heapobj MemRef_Map.t
-  ; next_mem : memref }
+  { hmap : heapobj MemRef_Map.t;
+    next_mem : memref }
 
 (* Execution state *)
 type state =
-  { stack : stack
-  ; heap : heap
-  ; ident_count : int }
+  { stack : stack;
+    heap : heap;
+    ident_count : int }
 
 (* Utility functions *)
 
 (* Memory references *)
 let mem_of_int : int -> memref =
   fun addr ->
-    {R.addr = addr}
+    { R.addr = addr }
 
 let incr_mem : memref -> memref =
   fun mem ->
-    {mem with R.addr = mem.R.addr + 1}
+    { mem with R.addr = mem.R.addr + 1 }
 
 
 (* Fresh identifier *)
 let fresh_ident : state -> ident * state =
   fun state ->
     let count2 = state.ident_count + 1 in
-      ( { R.pkg = None
-        ; R.name = "fs$" ^ string_of_int count2
-        ; R.ident_tag = None }
-      , {state with ident_count = count2})
+      ({ R.pkg = None;
+         R.name = "fs$" ^ string_of_int count2;
+         R.ident_tag = None },
+       { state with ident_count = count2 })
 
 
 (* Frame lookup *)
@@ -106,14 +105,14 @@ let frame_find_opt : ident -> frame -> memref option =
 
 let frame_add : ident -> memref -> frame -> frame =
   fun id mem frame ->
-    {frame with fmap = Ident_Map.add id mem frame.fmap}
+    { frame with fmap = Ident_Map.add id mem frame.fmap }
 
 
 (* Stack operations *)
 let stack_pop : stack -> (slot * stack) option =
   fun stack -> match stack.slist with
     | [] -> None
-    | (slot :: tail) -> Some (slot, {stack with slist = tail})
+    | (slot :: tail) -> Some (slot, { stack with slist = tail })
 
 let stack_pop_expr : stack -> (expr * env * stack) option =
   fun stack -> match stack_pop stack with
@@ -122,7 +121,7 @@ let stack_pop_expr : stack -> (expr * env * stack) option =
 
 let stack_push : slot -> stack -> stack =
   fun slot stack ->
-    {stack with slist = slot :: stack.slist}
+    { stack with slist = slot :: stack.slist }
 
 
 (* Heap operations *)
@@ -135,14 +134,14 @@ let heap_find_opt : memref -> heap -> heapobj option =
 
 let heap_insert : memref -> heapobj -> heap -> heap =
   fun mem obj heap ->
-    {heap with hmap = MemRef_Map.add mem obj heap.hmap}
+    { heap with hmap = MemRef_Map.add mem obj heap.hmap }
 
 let heap_alloc : heapobj -> heap -> memref * heap =
   fun obj heap ->
     let used_mem = heap.next_mem in
-      ( used_mem
-      , {heap with hmap = MemRef_Map.add used_mem obj heap.hmap;
-                   next_mem = incr_mem used_mem})
+      (used_mem,
+       { heap with hmap = MemRef_Map.add used_mem obj heap.hmap;
+                   next_mem = incr_mem used_mem })
 
 let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap -> match const with
@@ -154,11 +153,11 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
 let env_pop : env -> (memref * env) option =
   fun env -> match env.elist with
     | [] -> None
-    | (mem :: tail) -> Some (mem, {env with elist = tail})
+    | (mem :: tail) -> Some (mem, { env with elist = tail })
 
 let env_push : memref -> env -> env =
   fun mem env ->
-    {env with elist = mem :: env.elist}
+    { env with elist = mem :: env.elist }
 
 let rec env_find_opt : ident -> env -> heap -> memref option =
   fun id env heap -> match env_pop env with
