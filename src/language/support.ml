@@ -73,6 +73,7 @@ type state =
     heap : heap;
     ident_count : int }
 
+
 (* Utility functions *)
 
 (* Memory references *)
@@ -89,8 +90,9 @@ let incr_mem : memref -> memref =
 let fresh_ident : state -> ident * state =
   fun state ->
     let count2 = state.ident_count + 1 in
+    let name2 = "fs$" ^ string_of_int count2 in
       ({ R.pkg = None;
-         R.name = "fs$" ^ string_of_int count2;
+         R.name = name2;
          R.ident_tag = None },
        { state with ident_count = count2 })
 
