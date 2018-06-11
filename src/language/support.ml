@@ -56,7 +56,12 @@ type slot =
   | ForSlot of unit
   | IfSlot of expr * expr
   | RepeatSlot
-  | ArraySubSlot of memref option * (arg list) * (arg list)
+  | ArraySubSlot of memref option *
+                    memref list * 
+                    (ident * memref) list *
+                    ident option *
+                    arg list *
+                    env
 
 type stack = { stack_list : slot list }
 
@@ -81,6 +86,15 @@ type state =
 
 
 (* Utility functions *)
+
+(* Syntax tree utilities *)
+
+let id_expr_of_arg : arg -> (ident option * expr) option =
+  fun arg -> match arg with
+    | VarArg -> None
+    | Arg expr -> Some (None, expr)
+    | Named (id, expr) -> Some (Some id, expr)
+
 
 (* Memory references *)
 
@@ -133,6 +147,12 @@ let stack_pop : stack -> (slot * stack) option =
   fun stack -> match stack.stack_list with
     | [] -> None
     | (slot :: tail) -> Some (slot, { stack with stack_list = tail })
+
+let stack_pop_2 : stack -> (slot * slot * stack) option =
+  fun stack -> match stack.stack_list with
+    | (slot1 :: slot2 :: tail) ->
+        Some (slot1, slot2, { stack with stack_list = tail })
+    | _ -> None
 
 let stack_pop_expr : stack -> (expr * env * stack) option =
   fun stack -> match stack_pop stack with

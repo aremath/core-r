@@ -132,25 +132,65 @@ let rule_AssStr : state -> state option =
 (* Super assignment *)
 let rule_DAss : state -> state option =
   fun state -> match stack_pop_expr state.stack with
-    | Some (SuperAssign _, _ , _) -> None
+    | Some (SuperAssign _, _, _) -> None
     | _ -> None
 
 (* Array access *)
 let rule_Get1 : state -> state option =
   fun state -> match stack_pop_expr state.stack with
-    | Some (ArraySub (array_expr, arg_exprs), env, _) ->
-        let slot = ArraySubSlot (None, [], arg_exprs) in
-          Some { state with stack = stack_push slot state.stack }
+    | Some (ArraySub (array_expr, args), env, _) ->
+        let top_slot = ExprSlot (array_expr, env) in
+        let bot_slot = ArraySubSlot (None, [], [], None, args, env) in
+          Some { state with stack = stack_push top_slot
+                                    (stack_push bot_slot state.stack) }
     | _ -> None
-
 
 let rule_Get2 : state -> state option =
-  fun state -> match stack_pop_expr state.stack with
-    | Some (MemRef mem, env, stack2) -> (match stack_pop stack2 with
-      | Some (ArraySubSlot (None, [], a_args), stack3) ->
-          let slot = ArraySubSlot (Some mem, [], a_args) in
-            Some { state with stack = stack_push slot stack3 }
-      | _ -> None)
+  fun state -> match stack_pop state.stack with
+    | Some (ArraySubSlot (Some arr, oks, n_oks, None, top :: todos, env),
+            stack2) -> (match id_expr_of_arg top with
+      | None -> None
+      | Some (o_id, expr) ->
+          let top_slot = ExprSlot (expr, env) in
+          let bot_slot =
+              ArraySubSlot (Some arr, oks, n_oks, o_id, todos, env) in
+            Some { state with stack = stack_push top_slot
+                                      (stack_push bot_slot stack2) })
     | _ -> None
 
+let rule_Get3 : state -> state option =
+  fun state -> match stack_pop_2 state.stack with
+    | Some (ExprSlot (MemRef mem, env),
+            ArraySubSlot (None, [], [], None, todos, _),
+            stack2) ->
+        let slot = ArraySubSlot (Some mem, [], [], None, todos, env) in
+          Some { state with stack = stack_push slot stack2 }
+    | _ -> None
+
+let rule_Get4 : state -> state option =
+  fun state -> match stack_pop_2 state.stack with
+    | Some (ExprSlot (MemRef mem, env),
+            ArraySubSlot (Some arr, oks, n_oks, None, todos, _),
+            stack2) ->
+        let oks2 = mem :: oks in
+        let slot = ArraySubSlot (Some arr, oks2, n_oks, None, todos, env) in
+          Some { state with stack = stack_push slot stack2 }
+    | _ -> None
+
+let rule_Get5 : state -> state option =
+  fun state -> match stack_pop_2 state.stack with
+    | Some (ExprSlot (MemRef mem, env),
+            ArraySubSlot (Some arr, oks, n_oks, Some id, todos, _),
+            stack2) ->
+        let n_oks2 = (id, mem) :: n_oks in
+        let slot =  ArraySubSlot (Some arr, oks, n_oks2, None, todos, env) in
+          Some { state with stack = stack_push slot stack2 }
+    | _ -> None
+
+let rule_Get6 : state -> state option =
+  fun state -> match stack_pop state.stack with
+    | Some (ArraySubSlot (Some arr, oks, n_oks, None, [], env),
+            stack2) ->
+        None (* MORE DETAIL GOES HERE ABOUT ARRAY ACCESSING AND STUFF *)
+    | _ -> None
 
