@@ -49,25 +49,31 @@ type attribute = unit
 
 (* Stack *)
 type slot =
-    ExprSlot of expr * env
-  | SeqSlot of expr list * env
-  | ArgsSlot of arg list * env
+    ReturnSlot of memref
+  | EvalSlot of expr
+  | SeqSlot of expr list
+  | ArgsSlot of arg list
   | UpdateSlot of memref
   | WhileSlot of expr
   | ForSlot of unit
   | IfSlot of expr * expr
   | RepeatSlot
   | ArraySubSlot of memref option *  memref list * (ident * memref) list *
-                    ident option * arg list * env
+                    ident option * arg list
+
+type frame =
+  { frame_env : env;
+    frame_slots : slot list }
 
 type stack = { stack_list : slot list }
 
+
 (* Frame *)
-type frame = { frame_map: memref Ident_Map.t }
+type mapping = { mapping_map: memref Ident_Map.t }
 
 (* Heap *)
 type heapobj =
-    FrameObj of frame
+    FrameObj of mapping
   | PromiseObj of expr * env
   | DataObj of value * attribute list
 
@@ -120,19 +126,19 @@ let fresh_id : state -> ident * state =
 
 (* Frame lookup *)
 
-let frame_empty : frame =
-  { frame_map = Ident_Map.empty }
+let mapping_empty : mapping =
+  { mapping_map = Ident_Map.empty }
 
-let frame_find : ident -> frame -> memref option =
-  fun id frame ->
+let mapping_find : ident -> mapping -> memref option =
+  fun id mapping ->
     try
-      Some (Ident_Map.find id frame.frame_map)
+      Some (Ident_Map.find id mapping.mapping_map)
     with
       Not_found -> None
 
-let frame_add : ident -> memref -> frame -> frame =
-  fun id mem frame ->
-    { frame with frame_map = Ident_Map.add id mem frame.frame_map }
+let mapping_add : ident -> memref -> mapping -> mapping =
+  fun id mem mapping ->
+    { mapping with mapping_map = Ident_Map.add id mem mapping.mapping_map }
 
 
 (* Stack operations *)
@@ -153,7 +159,7 @@ let stack_pop_2 : stack -> (slot * slot * stack) option =
 
 let stack_pop_expr : stack -> (expr * env * stack) option =
   fun stack -> match stack_pop stack with
-    | Some (ExprSlot (expr, env), stack2) -> Some (expr, env, stack2)
+    | Some (EvalSlot (expr, env), stack2) -> Some (expr, env, stack2)
     | _ -> None
 
 let stack_push : slot -> stack -> stack =
@@ -211,35 +217,35 @@ let env_push : memref -> env -> env =
   fun f_mem env ->
     { env with env_list = f_mem :: env.env_list }
 
-(* Pop the top-level frame and its memory reference on the heap *)
-let env_pop_frame : env -> heap -> (memref * frame * env) option =
+(* Pop the top-level mapping and its memory reference on the heap *)
+let env_pop_mapping : env -> heap -> (memref * mapping * env) option =
   fun env heap -> match env_pop env with
     | None -> None
     | Some (f_mem, env2) -> match heap_find f_mem heap with
-      | Some (FrameObj frame) -> Some (f_mem, frame, env2)
+      | Some (FrameObj mapping) -> Some (f_mem, mapping, env2)
       | _ -> None
   
-(* Add a mapping to the frame at the top level.
-   Do not push new frames if the memory reference is wrong. *)
+(* Add a mapping to the mapping at the top level.
+   Do not push new mappings if the memory reference is wrong. *)
 let env_add_map : ident -> memref -> env -> heap -> (env * heap) option =
-  fun id mem env heap -> match env_pop_frame env heap with
+  fun id mem env heap -> match env_pop_mapping env heap with
     | None -> None
-    | Some (f_mem, frame, _) ->
-        let f_obj = FrameObj (frame_add id mem frame) in
+    | Some (f_mem, mapping, _) ->
+        let f_obj = FrameObj (mapping_add id mem mapping) in
         let heap2 = heap_add f_mem f_obj heap in
           Some (env, heap2)
 
 let rec env_find : ident -> env -> heap -> memref option =
-  fun id env heap -> match env_pop_frame env heap with
+  fun id env heap -> match env_pop_mapping env heap with
     | None -> None
-    | Some (f_mem, frame, env2) -> match frame_find id frame with
+    | Some (f_mem, mapping, env2) -> match mapping_find id mapping with
       | None -> env_find id env2 heap
       | Some mem -> Some mem
   
 let rec env_find_deep : ident -> env -> heap -> memref option =
-  fun id env heap -> match env_pop_frame env heap with
+  fun id env heap -> match env_pop_mapping env heap with
     | None -> None
-    | Some (f_mem, frame, env2) -> match frame_find id frame with
+    | Some (f_mem, mapping, env2) -> match mapping_find id mapping with
       | None -> env_find_deep id env2 heap
       | Some mem -> match heap_find_deep mem heap with
         | None -> None

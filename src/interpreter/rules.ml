@@ -42,6 +42,7 @@ type rule =
   | RuleSetB
 
 
+(*
 (* Double arrow reduction relations (cf Fig 3) *)
 
 let rule_Exp : state -> state option =
@@ -54,8 +55,8 @@ let rule_ForceP : state -> state option =
   fun state -> match stack_pop_expr state.stack with
     | Some (MemRef mem, env, stack2) -> (match heap_find mem state.heap with
       | Some (PromiseObj (p_expr, p_env)) ->
-          let top_slot = UpdateSlot mem in
-          let bot_slot = ExprSlot (p_expr, p_env) in
+          let top_slot = EvalSlot (p_expr, p_env) in
+          let bot_slot = UpdateSlot mem in
             Some { state with stack = stack_push top_slot
                                       (stack_push bot_slot stack2) }
       | _ -> None)
@@ -64,10 +65,21 @@ let rule_ForceP : state -> state option =
 let rule_ForceF : state -> state option =
   fun state -> match stack_pop_expr state.stack with
     | Some (LambdaApp (f_expr, args), env, stack2) ->
-        let top_slot = ExprSlot (f_expr, env) in
+        let top_slot = EvalSlot (f_expr, env) in
         let bot_slot = ArgsSlot (args, env) in
           Some { state with stack = stack_push top_slot
                                     (stack_push bot_slot stack2) }
+    | _ -> None
+
+(* Technically this rule doesn't even ... matter???
+   Because we ``return'' everything through a pointer anyways *)
+let rule_GetF : state -> state option =
+  fun state ->
+    None
+
+let rule_InvF : state -> state option =
+  fun state -> match stack_pop_2 state.stack with
+    | Some _ -> None
     | _ -> None
 
 
@@ -81,7 +93,7 @@ let rule_Const : state -> state option =
         (let (mem, heap2) = heap_alloc_const c state.heap in
         (* create a new slot on the stack with the pointer to where it now
            lives on the heap *)
-         let slot = ExprSlot (MemRef mem, env) in
+         let slot = ReturnSlot (mem, env) in
            (* push that slot onto the stack *)
            Some { state with heap = heap2;
                              stack = stack_push slot stack2 })
@@ -93,7 +105,7 @@ let rule_Fun : state -> state option =
     | Some ((LambdaAbs (params, expr)), env, stack2) ->
         (let obj = DataObj (FuncVal (params, expr, env), []) in
          let (mem, heap2) = heap_alloc obj state.heap in
-         let slot = ExprSlot (MemRef mem, env) in
+         let slot = ReturnSlot (mem, env) in
            Some { state with heap = heap2;
                              stack = stack_push slot stack2 })
     | _ -> None
@@ -104,7 +116,7 @@ let rule_Find : state -> state option =
     | Some (Ident id, env, stack2) -> (match env_find id env state.heap with
       (* search for the symbol in the current environment *)
       | Some mem -> (* push its address to the stack *)
-          let slot = ExprSlot (MemRef mem, env) in
+          let slot = EvalSlot (MemRef mem, env) in
             Some { state with stack = stack_push slot stack2 }
       | _ -> None)
     |_ -> None
@@ -114,7 +126,7 @@ let rule_GetP : state -> state option =
   fun state -> match stack_pop_expr state.stack with
     | Some (MemRef mem, env, stack2) -> (match heap_find mem state.heap with
         | Some (PromiseObj (MemRef p_mem, p_env)) ->
-            let slot = ExprSlot (MemRef p_mem, p_env) in (* TODO: verify *)
+            let slot = EvalSlot (MemRef p_mem, p_env) in (* TODO: verify *)
               Some { state with stack = stack_push slot stack2 }
         | _ -> None)
     | _ -> None
@@ -128,7 +140,7 @@ let rule_AssId : state -> state option =
            match env_add_map id mem env heap2 with
              | None -> None
              | Some (env2, heap3) ->
-                 let slot = ExprSlot (MemRef mem, env2) in
+                 let slot = EvalSlot (MemRef mem, env2) in
                    Some { state with stack = stack_push slot stack2;
                                      heap = heap3 })
     | _ -> None
@@ -136,7 +148,7 @@ let rule_AssId : state -> state option =
 let rule_AssStr : state -> state option =
   fun state -> match stack_pop_expr state.stack with
     | Some (Assign (Const (Str str), expr), env, stack2) ->
-        let slot = ExprSlot (Ident { default_id with name = str }, env) in
+        let slot = EvalSlot (Ident { default_id with name = str }, env) in
           Some { state with stack = stack_push slot stack2 }
     | _ -> None
 
@@ -151,7 +163,7 @@ let rule_DAss : state -> state option =
 let rule_Get1 : state -> state option =
   fun state -> match stack_pop_expr state.stack with
     | Some (ArraySub (array_expr, args), env, _) ->
-        let top_slot = ExprSlot (array_expr, env) in
+        let top_slot = EvalSlot (array_expr, env) in
         let bot_slot = ArraySubSlot (None, [], [], None, args, env) in
           Some { state with stack = stack_push top_slot
                                     (stack_push bot_slot state.stack) }
@@ -163,7 +175,7 @@ let rule_Get2 : state -> state option =
             stack2) -> (match id_expr_of_arg top with
       | None -> None
       | Some (o_id, expr) ->
-          let top_slot = ExprSlot (expr, env) in
+          let top_slot = EvalSlot (expr, env) in
           let bot_slot =
               ArraySubSlot (Some arr, oks, n_oks, o_id, todos, env) in
             Some { state with stack = stack_push top_slot
@@ -172,7 +184,7 @@ let rule_Get2 : state -> state option =
 
 let rule_Get3 : state -> state option =
   fun state -> match stack_pop_2 state.stack with
-    | Some (ExprSlot (MemRef mem, env),
+    | Some (ReturnSlot (mem, env),
             ArraySubSlot (None, [], [], None, todos, _),
             stack2) ->
         let slot = ArraySubSlot (Some mem, [], [], None, todos, env) in
@@ -181,7 +193,7 @@ let rule_Get3 : state -> state option =
 
 let rule_Get4 : state -> state option =
   fun state -> match stack_pop_2 state.stack with
-    | Some (ExprSlot (MemRef mem, env),
+    | Some (ReturnSlot (mem, env),
             ArraySubSlot (Some arr, oks, n_oks, None, todos, _),
             stack2) ->
         let oks2 = mem :: oks in
@@ -191,7 +203,7 @@ let rule_Get4 : state -> state option =
 
 let rule_Get5 : state -> state option =
   fun state -> match stack_pop_2 state.stack with
-    | Some (ExprSlot (MemRef mem, env),
+    | Some (ReturnSlot (mem, env),
             ArraySubSlot (Some arr, oks, n_oks, Some id, todos, _),
             stack2) ->
         let n_oks2 = (id, mem) :: n_oks in
@@ -207,4 +219,5 @@ let rule_Get6 : state -> state option =
     | _ -> None
 
 
+*)
 
