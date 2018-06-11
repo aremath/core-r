@@ -14,7 +14,7 @@ type etag = unit
 type stag = unit
 
 type source =
-  { file : string
-  ; line : int
-  ; col : int }
+  { file : string;
+    line : int;
+    col : int }
 

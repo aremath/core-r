@@ -51,6 +51,11 @@ type attribute = unit
 type slot =
     ExprSlot of expr * env
   | UpdateSlot of memref
+  | WhileSlot of expr
+  | ForSlot of unit
+  | IfSlot of expr * expr
+  | RepeatSlot
+  | ArraySubSlot of memref option * (arg list) * (arg list)
 
 type stack = { stack_list : slot list }
 

@@ -128,3 +128,29 @@ let rule_AssStr : state -> state option =
           Some { state with stack = stack_push slot stack2 }
     | _ -> None
 
+
+(* Super assignment *)
+let rule_DAss : state -> state option =
+  fun state -> match stack_pop_expr state.stack with
+    | Some (SuperAssign _, _ , _) -> None
+    | _ -> None
+
+(* Array access *)
+let rule_Get1 : state -> state option =
+  fun state -> match stack_pop_expr state.stack with
+    | Some (ArraySub (array_expr, arg_exprs), env, _) ->
+        let slot = ArraySubSlot (None, [], arg_exprs) in
+          Some { state with stack = stack_push slot state.stack }
+    | _ -> None
+
+
+let rule_Get2 : state -> state option =
+  fun state -> match stack_pop_expr state.stack with
+    | Some (MemRef mem, env, stack2) -> (match stack_pop stack2 with
+      | Some (ArraySubSlot (None, [], a_args), stack3) ->
+          let slot = ArraySubSlot (Some mem, [], a_args) in
+            Some { state with stack = stack_push slot stack3 }
+      | _ -> None)
+    | _ -> None
+
+
