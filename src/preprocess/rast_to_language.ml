@@ -3,13 +3,13 @@ module L = Syntax
 open Complex
 
 let uop_to_ident: R.unop -> 'a L.ident =
-    fun u -> {L.pkg = None; L.name = (R.string_of_unop u); L.tag = None}
+    fun u -> {L.pkg = None; L.name = (R.string_of_unop u); L.ident_tag = None}
 
 let bop_to_ident: R.binop -> 'a L.ident =
-    fun b -> {L.pkg = None; L.name = (R.string_of_binop b); L.tag = None}
+    fun b -> {L.pkg = None; L.name = (R.string_of_binop b); L.ident_tag = None}
 
 let convert_ident: 'a R.ident -> 'a L.ident =
-    fun i -> {L.pkg = i.R.pkg; L.name = i.R.name; L.tag = i.R.tag}
+    fun i -> {L.pkg = i.R.pkg; L.name = i.R.name; L.ident_tag = i.R.tag}
 
 let convert_numeric: R.numeric -> L.numeric =
     function
