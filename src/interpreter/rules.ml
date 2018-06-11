@@ -42,24 +42,36 @@ type rule =
   | RuleSetB
 
 
+(* Double arrow reduction relations (cf Fig 3) *)
+
 let rule_Exp : state -> state option =
   fun state -> match stack_pop state.stack with
     | None -> None
     | _ -> None
 
 (* Promise Evaluation *)
-(* LIkely wrong!!!*)
 let rule_ForceP : state -> state option =
   fun state -> match stack_pop_expr state.stack with
-    | Some (MemRef mem, env, _) -> (match heap_find mem state.heap with
+    | Some (MemRef mem, env, stack2) -> (match heap_find mem state.heap with
       | Some (PromiseObj (p_expr, p_env)) ->
-          let slot = ExprSlot (p_expr, p_env) in
-            Some { state with stack = stack_push slot state.stack }
+          let top_slot = UpdateSlot mem in
+          let bot_slot = ExprSlot (p_expr, p_env) in
+            Some { state with stack = stack_push top_slot
+                                      (stack_push bot_slot stack2) }
       | _ -> None)
     | _ -> None
 
+let rule_ForceF : state -> state option =
+  fun state -> match stack_pop_expr state.stack with
+    | Some (LambdaApp (f_expr, args), env, stack2) ->
+        let top_slot = ExprSlot (f_expr, env) in
+        let bot_slot = ArgsSlot (args, env) in
+          Some { state with stack = stack_push top_slot
+                                    (stack_push bot_slot stack2) }
+    | _ -> None
 
-(* Single arrow expression manipulations *)
+
+(* Single arrow expression manipulations (cf Fig 5) *)
 let rule_Const : state -> state option =
   (* pop the stack frame *)
   fun state -> match stack_pop_expr state.stack with
@@ -193,4 +205,6 @@ let rule_Get6 : state -> state option =
             stack2) ->
         None (* MORE DETAIL GOES HERE ABOUT ARRAY ACCESSING AND STUFF *)
     | _ -> None
+
+
 
