@@ -41,7 +41,8 @@ type env = { env_list : memref list }
 (* Values *)
 type value =
     NumArray of numeric list
-  | StrArray of string list
+  | StrArray of string option list
+  | BoolArray of int option list
   | RefArray of memref list
   | FuncVal of param list * expr * env
 
@@ -171,6 +172,7 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap -> match const with
     | R.Num n -> heap_alloc (DataObj (NumArray [n], [])) heap
     | R.Str s -> heap_alloc (DataObj (StrArray [s], [])) heap
+    | R.Bool b -> heap_alloc (DataObj (BoolArray [b], [])) heap
 
 
 (* Environment operations *)

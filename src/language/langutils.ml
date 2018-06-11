@@ -25,16 +25,21 @@ and string_of_memref : memref -> string =
 
 and string_of_numeric : numeric -> string =
   fun num -> match num with
-    | Na -> "Na"
-    | Int i -> "Int (" ^ string_of_int i ^ ")"
-    | Float f -> "Float (" ^ string_of_float f ^ ")"
-    | Complex c -> "Complex (" ^ string_of_float (c.Complex.re) ^ "," ^
+    | Int (Some i)      -> "Int (" ^ string_of_int i ^ ")"
+    | Int None          -> "Int (Na)"
+    | Float (Some f)    -> "Float (" ^ string_of_float f ^ ")"
+    | Float None        -> "Float (Na)"
+    | Complex (Some c)  -> "Complex (" ^ string_of_float (c.Complex.re) ^ "," ^
                                  string_of_float (c.Complex.im) ^ ")"
+    | Complex None      -> "Complex (Na)"
     
 and string_of_const : const -> string =
   fun const -> match const with
-    | Num n -> "Num (" ^ string_of_numeric n ^ ")"
-    | Str s -> "Str (" ^ s ^ ")"
+    | Num n         -> "Num (" ^ string_of_numeric n ^ ")"
+    | Str (Some s)  -> "Str (" ^ s ^ ")"
+    | Str None      -> "Str (Na)"
+    | Bool (Some b) -> "Bool (" ^ string_of_int b ^ ")"
+    | Bool None     -> "Bool (Na)"
 
 and string_of_param : param -> string =
   fun param -> match param with

@@ -123,7 +123,7 @@ let rule_AssId : state -> state option =
 
 let rule_AssStr : state -> state option =
   fun state -> match stack_pop_expr state.stack with
-    | Some (Assign (Const (Str str), expr), env, stack2) ->
+    | Some (Assign (Const (Str (Some str)), expr), env, stack2) ->
         let slot = ExprSlot (Ident { default_id with name = str }, env) in
           Some { state with stack = stack_push slot stack2 }
     | _ -> None
