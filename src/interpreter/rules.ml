@@ -145,28 +145,35 @@ let rule_GetP : state -> state option =
           | _ -> None)
     | _ -> None
 
-(*
 (* Assignment *)
 let rule_AssId : state -> state option =
-  fun state -> match stack_pop_expr state.stack with
-    | Some (Assign (Ident id, expr), env, stack2) ->
-        (let obj = PromiseObj (expr, env) in
-         let (mem, heap2) = heap_alloc obj state.heap in
-           match env_add_map id mem env heap2 with
-             | None -> None
-             | Some (env2, heap3) ->
-                 let slot = EvalSlot (MemRef mem, env2) in
-                   Some { state with stack = stack_push slot stack2;
-                                     heap = heap3 })
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (Assign (Ident id, expr)), c_frame2, c_stack2) ->
+        let obj = PromiseObj (expr, c_frame2.frame_env) in
+        let (mem, heap2) = heap_alloc obj state.state_heap in
+        let c_slot1 = EvalSlot (MemRef mem) in
+        let c_slot2 = UpdateSlot mem in
+        let c_frame_env2 = env_add id mem c_frame2.frame_env in
+        let c_frame3 = frame_push c_slot1 (frame_push c_slot2 c_frame2) in
+        let c_frame4 = { c_frame3 with frame_env = c_frame_env2 } in
+          Some { state with
+                   state_heap = heap2;
+                   state_stack = stack_push c_frame4 c_stack2 }
     | _ -> None
 
 let rule_AssStr : state -> state option =
-  fun state -> match stack_pop_expr state.stack with
-    | Some (Assign (Const (Str (Some str)), expr), env, stack2) ->
-        let slot = ExprSlot (Ident { default_id with name = str }, env) in
-          Some { state with stack = stack_push slot stack2 }
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (Assign (Const (Str (Some str)), expr)),
+            c_frame2, c_stack2) ->
+        let c_slot = EvalSlot (Assign (Ident { id_default with name = str },
+                                       expr)) in
+        let c_frame3 = frame_push c_slot c_frame2 in
+          Some { state with
+                   state_stack = stack_push c_frame3 c_stack2 }
     | _ -> None
 
+
+(*
 
 (* Super assignment *)
 let rule_DAss : state -> state option =
