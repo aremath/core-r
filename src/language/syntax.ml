@@ -2,9 +2,13 @@
 type 'a ident = 
   { pkg : string option;
     name : string;
-    ident_tag : 'a option }
+    tag : 'a option }
 
-type 'b tick = { tick_tag : 'b }
+type memref =
+  { addr : int }
+
+type 'b tick =
+  { annot : 'b }
 
 type numeric =
     Int of int option
@@ -15,8 +19,6 @@ type const =
     Num of numeric
   | Str of string option
   | Bool of int option (* bools are stored as 0,1 *)
-
-type memref = { addr : int }
 
 type ('a, 'b) param =
     Param of 'a ident
