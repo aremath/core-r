@@ -7,14 +7,14 @@ type 'a ident =
 type 'b tick = { tick_tag : 'b }
 
 type numeric =
-    Int of int
-  | Float of float
-  | Complex of Complex.t
-  | Na
+    Int of int option
+  | Float of float option
+  | Complex of Complex.t option
 
 type const =
     Num of numeric
-  | Str of string
+  | Str of string option
+  | Bool of int option (* bools are stored as 0,1 *)
 
 type memref = { addr : int }
 

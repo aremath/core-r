@@ -13,27 +13,27 @@ let convert_ident: 'a R.ident -> 'a L.ident =
 
 let convert_numeric: R.numeric -> L.numeric =
     function
-    | R.Int n   -> L.Int n
-    | R.Float f -> L.Float f
-    | R.Complex (f1, f2) -> L.Complex {re = f1; im = f2}
-    | R.Na      -> L.Na
+    | R.Int n   -> L.Int (Some n)
+    | R.Float f -> L.Float (Some f)
+    | R.Complex (f1, f2) -> L.Complex (Some {re = f1; im = f2})
+    | R.Na      -> L.Int (None) (* TODO *)
 
 let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     function
     | R.NumericConst n      -> L.Const (L.Num (convert_numeric n))
-    | R.StringConst s       -> L.Const (L.Str s)
-    | R.BoolConst b         -> let b_num = if b then 1 else 0 in
-                                L.Const (L.Num (L.Int b_num))
-    | R.Null                -> L.Const (L.Num (L.Int 0)) (* TODO *)
+    | R.StringConst s       -> L.Const (L.Str (Some s))
+    | R.BoolConst b         -> let b_num = if b then Some 1 else Some 0 in
+                                L.Const (L.Bool b_num)
+    | R.Null                -> L.Const (L.Num (L.Int (Some 0))) (* TODO *)
     | R.Ident i             -> L.Ident (convert_ident i)
     | R.Uop (u, e)          -> let u_ident = uop_to_ident u in
                                 let c_expr  = convert_expr e in
                                 begin match u with
                                 | R.UMinus -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg (L.Const (L.Num (L.Int 0)));
+                                    [L.Arg (L.Const (L.Num (L.Int (Some 0))));
                                     L.Arg c_expr])
                                 | R.UPlus -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg (L.Const (L.Num (L.Int 0)));
+                                    [L.Arg (L.Const (L.Num (L.Int (Some 0))));
                                     L.Arg c_expr])
                                 | R.Not -> L.LambdaApp (L.Ident u_ident,
                                     [L.Arg c_expr])

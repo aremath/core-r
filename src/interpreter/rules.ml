@@ -42,33 +42,41 @@ type rule =
   | RuleSetB
 
 
-(*
 (* Double arrow reduction relations (cf Fig 3) *)
 
+(*
 let rule_Exp : state -> state option =
   fun state -> match stack_pop state.stack with
     | None -> None
     | _ -> None
+*)
 
 (* Promise Evaluation *)
 let rule_ForceP : state -> state option =
-  fun state -> match stack_pop_expr state.stack with
-    | Some (MemRef mem, env, stack2) -> (match heap_find mem state.heap with
-      | Some (PromiseObj (p_expr, p_env)) ->
-          let top_slot = EvalSlot (p_expr, p_env) in
-          let bot_slot = UpdateSlot mem in
-            Some { state with stack = stack_push top_slot
-                                      (stack_push bot_slot stack2) }
-      | _ -> None)
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (MemRef mem), c_frame2, c_stack2) ->
+        (match heap_find mem state.state_heap with
+          | Some (PromiseObj (p_expr, p_env)) ->
+            let p_slot = EvalSlot p_expr in
+            let p_frame = { frame_empty with frame_env = p_env;
+                                             slot_list = [p_slot] } in
+            let c_slot = UpdateSlot mem in
+            let c_frame3 = frame_push c_slot c_frame2 in
+              Some { state with
+                       state_stack = stack_push p_frame
+                                     (stack_push c_frame3 c_stack2) }
+          | _ -> None)
     | _ -> None
 
+(* Force function *)
 let rule_ForceF : state -> state option =
-  fun state -> match stack_pop_expr state.stack with
-    | Some (LambdaApp (f_expr, args), env, stack2) ->
-        let top_slot = EvalSlot (f_expr, env) in
-        let bot_slot = ArgsSlot (args, env) in
-          Some { state with stack = stack_push top_slot
-                                    (stack_push bot_slot stack2) }
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (LambdaApp (f_expr, args)), c_frame2, c_stack2) ->
+        let f_slot = EvalSlot f_expr in
+        let c_slot = ArgsSlot args in
+        let c_frame3 = frame_push f_slot (frame_push c_slot c_frame2) in
+          Some { state with
+                   state_stack = stack_push c_frame3 c_stack2 }
     | _ -> None
 
 (* Technically this rule doesn't even ... matter???
@@ -78,59 +86,66 @@ let rule_GetF : state -> state option =
     None
 
 let rule_InvF : state -> state option =
-  fun state -> match stack_pop_2 state.stack with
+  fun state -> match stack_pop_slot state.state_stack with
     | Some _ -> None
     | _ -> None
 
 
 (* Single arrow expression manipulations (cf Fig 5) *)
-let rule_Const : state -> state option =
-  (* pop the stack frame *)
-  fun state -> match stack_pop_expr state.stack with
-    (* if it's a constant *)
-    | Some ((Const c), env, stack2) ->
-        (* allocate space for it on the heap *)
-        (let (mem, heap2) = heap_alloc_const c state.heap in
-        (* create a new slot on the stack with the pointer to where it now
-           lives on the heap *)
-         let slot = ReturnSlot (mem, env) in
-           (* push that slot onto the stack *)
-           Some { state with heap = heap2;
-                             stack = stack_push slot stack2 })
+
+let rule_const : state -> state option =
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (Const const), c_frame2, c_stack2) ->
+      let (mem, heap2) = heap_alloc_const const state.state_heap in
+      let c_slot = ReturnSlot mem in
+      let c_frame3 = frame_push c_slot c_frame2 in
+        Some { state with
+                 state_heap = heap2;
+                 state_stack = stack_push c_frame3 c_stack2 }
     | _ -> None
+
 
 (* Function Definition *)
 let rule_Fun : state -> state option =
-  fun state -> match stack_pop_expr state.stack with 
-    | Some ((LambdaAbs (params, expr)), env, stack2) ->
-        (let obj = DataObj (FuncVal (params, expr, env), []) in
-         let (mem, heap2) = heap_alloc obj state.heap in
-         let slot = ReturnSlot (mem, env) in
-           Some { state with heap = heap2;
-                             stack = stack_push slot stack2 })
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (LambdaAbs (params, expr)), c_frame2, c_stack2) ->
+        let obj = DataObj (FuncVal (params, expr, c_frame2.frame_env), []) in
+        let (mem, heap2) = heap_alloc obj state.state_heap in
+        let c_slot = ReturnSlot mem in
+        let c_frame3 = frame_push c_slot c_frame2 in
+          Some { state with
+                   state_heap = heap2;
+                   state_stack = stack_push c_frame3 c_stack2 }
     | _ -> None
 
 (* Symbol. Actual search code in language/support.ml *)
 let rule_Find : state -> state option =
-  fun state -> match stack_pop_expr state.stack with
-    | Some (Ident id, env, stack2) -> (match env_find id env state.heap with
-      (* search for the symbol in the current environment *)
-      | Some mem -> (* push its address to the stack *)
-          let slot = EvalSlot (MemRef mem, env) in
-            Some { state with stack = stack_push slot stack2 }
-      | _ -> None)
-    |_ -> None
-
-(* Promise Indirection: a shortcut when a promise pointer points to a pointer *)
-let rule_GetP : state -> state option = 
-  fun state -> match stack_pop_expr state.stack with
-    | Some (MemRef mem, env, stack2) -> (match heap_find mem state.heap with
-        | Some (PromiseObj (MemRef p_mem, p_env)) ->
-            let slot = EvalSlot (MemRef p_mem, p_env) in (* TODO: verify *)
-              Some { state with stack = stack_push slot stack2 }
-        | _ -> None)
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (Ident id), c_frame2, c_stack2) ->
+        (match env_find id c_frame2.frame_env with
+          | None -> None
+          | Some mem ->
+              let c_slot = EvalSlot (MemRef mem) in
+              let c_frame3 = frame_push c_slot c_frame2 in
+                Some { state with
+                         state_stack = stack_push c_frame3 c_stack2 })
     | _ -> None
 
+
+(* Promise Indirection: a shortcut when a promise pointer points to a pointer *)
+let rule_GetP : state -> state option =
+  fun state -> match stack_pop_slot state.state_stack with
+    | Some (EvalSlot (MemRef mem), c_frame2, c_stack2) ->
+        (match heap_find mem state.state_heap with
+          | Some (PromiseObj (MemRef p_mem, _)) ->
+              let c_slot = EvalSlot (MemRef p_mem) in
+              let c_frame3 = frame_push c_slot c_frame2 in
+                Some { state with
+                         state_stack = stack_push c_frame3 c_stack2 }
+          | _ -> None)
+    | _ -> None
+
+(*
 (* Assignment *)
 let rule_AssId : state -> state option =
   fun state -> match stack_pop_expr state.stack with
@@ -147,8 +162,8 @@ let rule_AssId : state -> state option =
 
 let rule_AssStr : state -> state option =
   fun state -> match stack_pop_expr state.stack with
-    | Some (Assign (Const (Str str), expr), env, stack2) ->
-        let slot = EvalSlot (Ident { default_id with name = str }, env) in
+    | Some (Assign (Const (Str (Some str)), expr), env, stack2) ->
+        let slot = ExprSlot (Ident { default_id with name = str }, env) in
           Some { state with stack = stack_push slot stack2 }
     | _ -> None
 
