@@ -2,14 +2,26 @@ module R = Rast
 module L = Syntax
 open Complex
 
+let ident_count = ref 32
+
+let fresh_rident _: 'a R.ident =
+    let next = !ident_count in
+    let _ = incr ident_count in
+    {R.pkg = None; R.name = "t$syn_" ^ string_of_int next; R.tag = None; R.src=None}
+
+let fresh_lident _: 'a L.ident =
+    let next = !ident_count in
+    let _ = incr ident_count in
+    {L.pkg = None; L.name = "t$syn_" ^ string_of_int next; L.tag = None}
+
 let uop_to_ident: R.unop -> 'a L.ident =
-    fun u -> {L.pkg = None; L.name = (R.string_of_unop u); L.ident_tag = None}
+    fun u -> {L.pkg = None; L.name = (R.string_of_unop u); L.tag = None}
 
 let bop_to_ident: R.binop -> 'a L.ident =
-    fun b -> {L.pkg = None; L.name = (R.string_of_binop b); L.ident_tag = None}
+    fun b -> {L.pkg = None; L.name = (R.string_of_binop b); L.tag = None}
 
 let convert_ident: 'a R.ident -> 'a L.ident =
-    fun i -> {L.pkg = i.R.pkg; L.name = i.R.name; L.ident_tag = i.R.tag}
+    fun i -> {L.pkg = i.R.pkg; L.name = i.R.name; L.tag = i.R.tag}
 
 let convert_numeric: R.numeric -> L.numeric =
     function
@@ -42,6 +54,17 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 | R.UHelp -> L.LambdaApp (L.Ident u_ident,
                                     [L.Arg c_expr])
                             end
+    (* The length<- operator. length(x) requires implicit access to x's virtual method table *)
+    (* TODO: this is WRONG. x has no 'virtual method table' at all!
+    | R.Bop (R.Assign,
+        R.FuncCall (R.Ident {R.name="length";_}, args),e)
+                            -> let c_args = List.map convert_arg args in
+                            let c_i = L.Ident {L.pkg=None; L.name="length<-"; L.tag=None} in
+                            let t = fresh_rident () in
+                            let first = convert_expr (R.Bop (R.Assign, (R.Ident t), e)) in
+                            let lt = convert_expr (R.Ident t) in
+                            let second = L.LambdaApp(L.ObjAttr(lt, c_i), [lt] @ c_args) in
+                            L.Seq (first, second) (*TODO: will this mess up canonicalization somehow? *) *)
     | R.Bop (op, e1, e2)    -> let b_ident = bop_to_ident op in
                                 let c_e1 = convert_expr e1 in
                                 let c_e2 = convert_expr e2 in
@@ -63,7 +86,20 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     | R.ListSub (e, args)   -> L.ArraySub (convert_expr e, List.map convert_arg args)
     | R.If (e1, e2)         -> L.If (convert_expr e1, convert_expr e2, convert_expr R.Null) (* TODO ^ *)
     | R.IfElse (e1, e2, e3) -> L.If (convert_expr e1, convert_expr e2, convert_expr e3)
-    | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2)
+    (* | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2) *)
+    (* TODO: check this *)
+    | R.For ((i, e1), e2)   -> let tmp = fresh_rident () in
+        let init = R.Bop (R.Assign, R.Ident tmp, R.NumericConst (R.Int 0)) in
+        let cond = R.Bop (R.Lt, R.Ident i, e1) in
+        let access = R.Bop (R.Assign, R.Ident i,
+            R.ListProj(e1, [R.ExprArg (R.Ident tmp)])) in
+        let incr = R.Bop (R.Assign, R.Ident tmp, R.Bop (R.Plus, R.Ident tmp, R.NumericConst (R.Int 1))) in
+        let block = begin match e2 with
+        | R.Block es        -> R.Block ([access; incr] @ es)
+        | e                 -> R.Block [access; incr; e]
+        end in
+        let loop = R.While (cond, block) in
+        L.Seq (convert_expr init, convert_expr loop)
     | R.While (e1, e2)      -> L.While (convert_expr e1, convert_expr e2)
     | R.Repeat e            -> failwith "Repeat not a part of Core R!"
     | R.Next                -> L.Next
