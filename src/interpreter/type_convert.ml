@@ -81,11 +81,72 @@ let complex_to_int: S.expr -> S.expr =
 let string_to_int: S.expr -> S.expr =
     function
     | S.Const (S.String None)   -> S.Const (S.Num (S.Int None))
-    | S.Const (S.String s)      -> S.Const (S.Num (S.Int (Some (int_of_string x))))
+    | S.Const (S.String s)      -> S.Const (S.Num (S.Int (Some (int_of_string s))))
     | _ -> failwith "String expected"
 
-let bool_to_real: S.expr -> S.expr =
+let bool_to_float: S.expr -> S.expr =
     function
     | S.Const (S.Bool None)     -> S.Const (S.Num (S.Float None))
     | S.Const (S.Bool (Some b)) -> S.Const (S.Num (S.Float (Some (float_of_int b))))
     | _ -> failwith "Bool expected"
+
+let int_to_float: S.expr -> S.expr =
+    function
+    | S.Const (S.Num (S.Int None))      -> S.Const (S.Num (S.Float None))
+    | S.Const (S.Num (S.Int (Some x)))  -> S.Const (S.Num (S.Float (float_of_int x)))
+    | _ -> failwith "Int expected"
+
+let complex_to_float_help: Complex.complex option -> float option = function
+    | Some x -> begin match x.im with
+        | 0.0 -> let _ = Printf.printf("Implicit conversion of complex") in Some(x.re)
+                end
+    | None  -> None
+
+let complex_to_float: S.expr -> S.expr =
+    function
+    | S.Const (S.Num (S.Complex x)) -> S.Const (S.Num (S.Float (complex_to_float_help x)))
+    | _ -> failwith "Complex expected"
+
+let string_to_float: S.expr -> S.expr =
+    function
+    | S.Const (S.String None)       -> S.Const (S.Num (S.Float None))
+    | S.Const (S.String (Some s))   -> S.Const (S.Num (S.Float (Some (float_of_string s))))
+    | _ -> failwith "String expected"
+
+let bool_to_complex: S.expr -> S.expr =
+    function
+    | S.Const (S.Bool None)     -> S.Const (S.Num (S.Complex None))
+    | S.Const (S.Bool (Some b)) -> S.Const (S.Num (S.Complex (Some ({re=(float_of_int b), im=0}))))
+    | _ -> failwith "Bool expected"
+
+(* TODO: what if x is NaN? *)
+let float_to_complex: S.expr -> S.expr =
+    function
+    | S.Const (S.Num (S.Float None))        -> S.Const (S.Num (S.Complex None)) (* TODO: R has a complex number made from two NA_REALs *)
+    | S.Const (S.Num (S.Float (Some x)))    -> S.Const (S.Num (S.Complex (Some {re=x, im=0})))
+    | _ -> failwith "Float expected"
+
+(* TODO: see /src/coerce.c for R's implementation *)
+let string_to_complex: S.expr -> S.expr =
+    function
+    | _ -> failwith "String to Complex unimplemented!"
+
+let bool_to_string: S.expr -> S.expr =
+    function
+    | S.Const (S.Bool None)     -> S.Const (S.String None)
+    | S.Const (S.Bool (Some x)) -> S.Const (S.String (if x = 1 then "True" else "False"))
+    | _ -> failwith "Bool expected"
+
+let int_to_string: S.expr -> S.expr =
+    function
+    | S.Const (S.Num (S.Int None))      -> S.Const (S.String None)
+    | S.Const (S.Num (S.Int (Some x)))  -> S.Const (S.String (Some (string_of_int x)))
+    | _ -> failwith "Int expected"
+
+(* TODO: this formatting is probably subtly wrong *)
+let complex_to_string: S.expr -> S.expr =
+    function
+    | S.Const (S.Num (S.Complex None))      -> S.Const (S.String None)
+    | S.Const (S.Num (S.Complex (Some x)))  -> let s = Printf.sprintf "%f + %fi" x.re x.im in
+        S.Const (S.String (Some s))
+    | _ -> failwith "Complex expected"
