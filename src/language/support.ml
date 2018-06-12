@@ -228,6 +228,21 @@ let env_add : ident -> memref -> env -> env =
   fun id mem env ->
     { env with mem_map = Ident_Map.add id mem env.mem_map }
 
+let env_mem_add : ident -> memref -> memref -> heap -> heap option =
+  fun id mem env_mem heap -> match heap_find env_mem heap with
+    | Some (EnvObj env) ->
+        let env_obj2 = EnvObj (env_add id mem env) in
+          Some (heap_add env_mem env_obj2 heap)
+    | _ -> None
+
+let rec env_mem_add_list :
+  (ident * memref) list -> memref -> heap -> heap option =
+  fun pairs env_mem heap -> match pairs with
+    | [] -> Some heap
+    | ((id, mem) :: tail) -> match env_mem_add id mem env_mem heap with
+      | None -> None
+      | Some heap2 -> env_mem_add_list tail env_mem heap2
+
 let env_nest : memref -> env =
   fun mem ->
     { env_empty with parent_mem = Some mem }

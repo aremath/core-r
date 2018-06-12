@@ -52,165 +52,182 @@ let rule_Exp : state -> state option =
 *)
 
 (* Promise Evaluation *)
-(*
 let rule_ForceP : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (MemRef mem), c_frame2, c_stack2) ->
-        (match heap_find mem state.heap with
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (MemRef p_mem), c_env_mem, c_stack2) ->
+        (match heap_find p_mem state.heap with
           | Some (PromiseObj (p_expr, p_env_mem)) ->
-              let p_slot = EvalSlot p_expr in
-              let p_frame = { frame_empty with frame_env_mem = p_env_mem;
-                                               slot_list = [p_slot] } in
-              let c_slot = UpdateSlot mem in
-              let c_frame3 = frame_push c_slot c_frame2 in
+              let p_frame = { frame_default with
+                                env_mem = p_env_mem;
+                                slot = EvalSlot p_expr } in
+              let c_frame = { frame_default with
+                                slot = UpdateSlot p_mem } in
                 Some { state with
                          stack = stack_push p_frame
-                                       (stack_push c_frame3 c_stack2) }
+                                 (stack_push c_frame c_stack2) }
           | _ -> None)
     | _ -> None
-*)
+
 
 (* Force function *)
-(*
 let rule_ForceF : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (LambdaApp (f_expr, args)), c_frame2, c_stack2) ->
-        let f_slot = EvalSlot f_expr in
-        let c_slot = ArgsSlot args in
-        let c_frame3 = frame_push f_slot (frame_push c_slot c_frame2) in
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (LambdaApp (fn, args)), c_env_mem, c_stack2) ->
+        let f_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = EvalSlot fn } in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ArgsSlot args } in
           Some { state with
-                   stack = stack_push c_frame3 c_stack2 }
+                   stack = stack_push f_frame
+                           (stack_push c_frame c_stack2) }
     | _ -> None
-*)
+
 
 (* Technically this rule doesn't even ... matter???
    Because we ``return'' everything through a pointer anyways *)
-(*
 let rule_GetF : state -> state option =
   fun state ->
     None
 
+
 let rule_InvF : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
+  fun state -> match stack_pop_v state.stack with
     | Some _ -> None
     | _ -> None
 
-*)
 
 (* Single arrow expression manipulations (cf Fig 5) *)
 
-(*
-let rule_const : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (Const const), c_frame2, c_stack2) ->
-      let (mem, heap2) = heap_alloc_const const state.heap in
-      let c_slot = ReturnSlot mem in
-      let c_frame3 = frame_push c_slot c_frame2 in
-        Some { state with
-                 heap = heap2;
-                 stack = stack_push c_frame3 c_stack2 }
-    | _ -> None
-*)
-
-
-(* Function Definition *)
-(*
-let rule_Fun : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (LambdaAbs (params, expr)), c_frame2, c_stack2) ->
-        let obj = DataObj (FuncVal (params, expr, c_frame2.frame_env_mem),
-                           []) in
-        let (mem, heap2) = heap_alloc obj state.heap in
-        let c_slot = ReturnSlot mem in
-        let c_frame3 = frame_push c_slot c_frame2 in
+let rule_Const : state -> state option =
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (Const const), _, c_stack2) ->
+        let (const_mem, heap2) = heap_alloc_const const state.heap in
+        let c_frame = { frame_default with
+                          slot = ReturnSlot const_mem } in
           Some { state with
                    heap = heap2;
-                   stack = stack_push c_frame3 c_stack2 }
+                   stack = stack_push c_frame c_stack2 }
     | _ -> None
-*)
+
+(* Function Definition *)
+let rule_Fun : state -> state option =
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
+        let data = DataObj (FuncVal (params, expr, c_env_mem), []) in
+        let (f_mem, heap2) = heap_alloc data state.heap in
+        let c_frame = { frame_default with
+                          slot = ReturnSlot f_mem } in
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame c_stack2 }
+    | _ -> None
+
 
 (* Symbol. Actual search code in language/support.ml *)
-(*
 let rule_Find : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (Ident id), c_frame2, c_stack2) ->
-        (match env_mem_find id c_frame2.frame_env_mem state.heap with
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (Ident id), c_env_mem, c_stack2) ->
+        (match env_mem_find id c_env_mem state.heap with
           | None -> None
           | Some mem ->
-              let c_slot = EvalSlot (MemRef mem) in
-              let c_frame3 = frame_push c_slot c_frame2 in
+              let c_frame = { frame_default with
+                                slot = EvalSlot (MemRef mem) } in
                 Some { state with
-                         stack = stack_push c_frame3 c_stack2 })
+                         stack = stack_push c_frame c_stack2 })
     | _ -> None
-*)
 
 
 (* Promise Indirection: shortcut when a promise pointer points to a pointer *)
-(*
 let rule_GetP : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (MemRef mem), c_frame2, c_stack2) ->
-        (match heap_find mem state.heap with
-          | Some (PromiseObj (MemRef p_mem, _)) ->
-              let c_slot = EvalSlot (MemRef p_mem) in
-              let c_frame3 = frame_push c_slot c_frame2 in
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (MemRef p_mem), c_frame2, c_stack2) ->
+        (match heap_find p_mem state.heap with
+          | Some (PromiseObj (MemRef p_mem2, _)) ->
+              let c_frame = { frame_default with
+                                slot = EvalSlot (MemRef p_mem2) } in
                 Some { state with
-                         stack = stack_push c_frame3 c_stack2 }
+                         stack = stack_push c_frame c_stack2 }
           | _ -> None)
     | _ -> None
-*)
+
 
 (* Assignment *)
-
-(*
 let rule_AssId : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (Assign (Ident id, expr)), c_frame2, c_stack2) ->
-        let obj = PromiseObj (expr, c_frame2.frame_env_mem) in
-        let (mem, heap2) = heap_alloc obj state.heap in
-        let c_slot1 = EvalSlot (MemRef mem) in
-        let c_slot2 = UpdateSlot mem in
-        let c_frame_env2 = env_add id mem c_frame2.frame_env in
-        let c_frame3 = frame_push c_slot1 (frame_push c_slot2 c_frame2) in
-        let c_frame4 = { c_frame3 with frame_env = c_frame_env2 } in
-          Some { state with
-                   heap = heap2;
-                   stack = stack_push c_frame4 c_stack2 }
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (Assign (Ident id, expr)), c_env_mem, c_stack2) ->
+        let prom = PromiseObj (expr, c_env_mem) in
+        let (p_mem, heap2) = heap_alloc prom state.heap in
+          (match env_mem_add id p_mem c_env_mem heap2 with
+            | None -> None
+            | Some heap3 ->
+                let p_frame = { frame_default with
+                                  slot = EvalSlot (MemRef p_mem) } in
+                let c_frame = { frame_default with
+                                  slot = UpdateSlot p_mem } in
+                  Some { state with
+                           heap = heap3;
+                           stack = stack_push p_frame
+                                   (stack_push c_frame c_stack2) })
     | _ -> None
-
-let rule_AssStr : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (Assign (Const (Str (Some str)), expr)),
-            c_frame2, c_stack2) ->
-        let c_slot = EvalSlot (Assign (Ident { id_default with name = str },
-                                       expr)) in
-        let c_frame3 = frame_push c_slot c_frame2 in
-          Some { state with
-                   stack = stack_push c_frame3 c_stack2 }
-    | _ -> None
-
 
 
 (* Super assignment *)
 let rule_DAss : state -> state option =
-  fun state -> match stack_pop_slot state.stack with
-    | Some (EvalSlot (Assign (Ident id, expr)), c_frame2, c_stack2) ->
-        (match stack_pop c_stack2 with
-          | Some (d_frame, d_stack2) ->
-              let obj = PromiseObj (expr, c_frame2.frame_env) in
-              let (mem, heap2) = heap_alloc obj state.heap in
-              let c_slot1 = EvalSlot (Memref mem) in
-              let c_slot2 = UpdateSlot mem in
-              let c_frame3 =
-                  frame_push c_slot1 (frame_push c_slot2 c_frame2) in
-              let d_frame_env2 = env_add id mem d_frame2.frame_env in
-              let d_frame2 = { dframe with frame_env = d_frame_env2 } in
-                Some { state with
-                        stack = stack_push c_frame3
-                                      (stack_push d_frame2 d_stack2) }
-          | _ -> None)
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (Assign (Ident id, expr)), c_env_mem, c_stack2) ->
+        let prom = PromiseObj (expr, c_env_mem) in
+        let (p_mem, heap2) = heap_alloc prom state.heap in
+          (match heap_find c_env_mem state.heap with
+            | Some (EnvObj env) ->
+                let parent_mem = (match env.parent_mem with
+                                    | None -> c_env_mem
+                                    | Some parent_mem -> parent_mem) in
+                  (match env_mem_add id p_mem parent_mem heap2 with
+                    | None -> None
+                    | Some heap3 ->
+                        let p_frame = { frame_default with
+                                          slot = EvalSlot (MemRef p_mem) } in
+                        let c_frame = { frame_default with
+                                          slot = UpdateSlot p_mem } in
+                          Some { state with
+                                   heap = heap3;
+                                   stack = stack_push p_frame
+                                           (stack_push c_frame c_stack2) })
+            | _ -> None)
     | _ -> None
-*)
+
+
+let rule_AssStr : state -> state option =
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (Assign (Const (Str (Some str)), expr)),
+            c_env_mem, c_stack2) ->
+        let c_slot =
+            EvalSlot (Assign (Ident { id_default with name = str }, expr)) in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = c_slot } in
+          Some { state with
+                   stack = stack_push c_frame c_stack2 }
+    | _ -> None
+
+let rule_DAssStr : state -> state option =
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (SuperAssign (Const (Str (Some str)), expr)),
+            c_env_mem, c_stack2) ->
+        let c_slot =
+            EvalSlot (SuperAssign (Ident { id_default with
+                                             name = str }, expr)) in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = c_slot } in
+          Some { state with
+                   stack = stack_push c_frame c_stack2 }
+    | _ -> None
+
+
+
 
 
 (*
