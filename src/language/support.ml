@@ -130,6 +130,15 @@ let id_fresh : state -> ident * state =
     let name2 = "fs$" ^ string_of_int count2 in
       (id_of_string name2, { state with fresh_count = count2 })
 
+let rec id_list_fresh : int -> state -> (ident list) * state =
+  fun n state ->
+    if n < 1 then
+      ([], state)
+    else
+      let (id2, state2) = id_fresh state in
+      let (tail, state3) = id_list_fresh (n - 1) state2 in
+        (id2 :: tail, state3)
+
 
 (* Frame operations *)
 let frame_default : frame =
@@ -231,8 +240,8 @@ let env_add : ident -> memref -> env -> env =
 let env_mem_add : ident -> memref -> memref -> heap -> heap option =
   fun id mem env_mem heap -> match heap_find env_mem heap with
     | Some (EnvObj env) ->
-        let env_obj2 = EnvObj (env_add id mem env) in
-          Some (heap_add env_mem env_obj2 heap)
+        let env2 = env_add id mem env in
+          Some (heap_add env_mem (EnvObj env2) heap)
     | _ -> None
 
 let rec env_mem_add_list :

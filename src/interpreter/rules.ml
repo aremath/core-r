@@ -93,8 +93,12 @@ let rule_GetF : state -> state option =
 
 
 let rule_InvF : state -> state option =
-  fun state -> match stack_pop_v state.stack with
-    | Some _ -> None
+  fun state -> match stack_pop_v_2 state.stack with
+    | Some (ReturnSlot f_mem, _,
+            ArgsSlot args, c_env_mem,
+            c_stack2) -> (match heap_find f_mem state.heap with
+      | Some (DataObj (FuncVal (f_params, f_body, f_env_mem), _)) -> None
+      | _ -> None)
     | _ -> None
 
 
