@@ -54,17 +54,35 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 | R.UHelp -> L.LambdaApp (L.Ident u_ident,
                                     [L.Arg c_expr])
                             end
-    (* The length<- operator. length(x) requires implicit access to x's virtual method table *)
-    (* TODO: this is WRONG. x has no 'virtual method table' at all!
+    (* Assignment special cases *)
+    (* length<- *)
     | R.Bop (R.Assign,
         R.FuncCall (R.Ident {R.name="length";_}, args),e)
-                            -> let c_args = List.map convert_arg args in
-                            let c_i = L.Ident {L.pkg=None; L.name="length<-"; L.tag=None} in
-                            let t = fresh_rident () in
-                            let first = convert_expr (R.Bop (R.Assign, (R.Ident t), e)) in
-                            let lt = convert_expr (R.Ident t) in
-                            let second = L.LambdaApp(L.ObjAttr(lt, c_i), [lt] @ c_args) in
-                            L.Seq (first, second) (*TODO: will this mess up canonicalization somehow? *) *)
+                            -> assign_special_body "length" args e None
+    (* [<- *)
+    | R.Bop (R.Assign,
+        R.ListSub (e_vec, args), e_val)
+                            -> assign_special_body "[" args e_vec (Some e_val)
+    (* [[<- and $<- *) (* TODO: does $ really work the same way? *)
+    | R.Bop (R.Assign,
+        R.ListProj (e_vec, args), e_val)
+                            -> assign_special_body "[[" args e_vec (Some e_val)
+    (* dimnames<- *)
+    | R.Bop (R.Assign,
+        R.FuncCall (R.Ident {R.name="dimnames";_}, args), e)
+                            -> assign_special_body "dimnames" args e None
+    (* dim<- *)
+    | R.Bop (R.Assign,
+        R.FuncCall (R.Ident {R.name="dims";_}, args), e)
+                            -> assign_special_body "dims" args e None
+    (* names<- *)
+    | R.Bop (R.Assign,
+        R.FuncCall (R.Ident {R.name="names";_}, args), e)
+                            -> assign_special_body "names" args e None
+    (* levels<- *)
+    | R.Bop (R.Assign,
+        R.FuncCall (R.Ident {R.name="levels";_}, args), e)
+                            -> assign_special_body "levels" args e None
     | R.Bop (op, e1, e2)    -> let b_ident = bop_to_ident op in
                                 let c_e1 = convert_expr e1 in
                                 let c_e2 = convert_expr e2 in
@@ -122,3 +140,14 @@ and convert_param: 'a R.param -> ('a, 'b) L.param =
     | R.Param i             -> L.Param (convert_ident i)
     | R.DefaultParam (i, e) -> L.Default (convert_ident i, convert_expr e)
     | R.ParamDots           -> L.VarParam
+
+and assign_special_body: string -> 'a R.arg list -> 'a R.expr -> 'a R.expr option -> ('a, 'b) L.expr =
+    fun s args e1 oe2 ->
+    let c_args = List.map convert_arg args in
+    let c_i = L.Ident {L.pkg=None; L.name=s^"<-"; L.tag=None} in
+    let c_e1 = convert_arg (R.ExprArg e1) in
+    let c_args2 = match oe2 with
+        | Some e2   -> let c_e2 = convert_arg (R.ExprArg e2) in
+                        [c_e1] @ c_args @ [c_e2]
+        | None      -> [c_e1] @ c_args in
+    L.LambdaApp(c_i, c_args2)
