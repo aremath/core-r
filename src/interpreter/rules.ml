@@ -41,6 +41,86 @@ type rule =
   | RuleSetA
   | RuleSetB
 
+let id_variadic : ident =
+  id_of_string "..."
+
+let pair_first : 'a * 'b -> 'a =
+  fun (a, b) -> a
+
+type ('a , 'b) either =
+    OptA of 'a
+  | OptB of 'b
+
+let rec split_eithers : (('a , 'b) either) list -> ('a list) * ('b list) =
+  fun eithers -> match eithers with
+    | [] -> ([], [])
+    | (OptA a :: tail) -> 
+        let (oas, obs) = split_eithers tail in
+          (a :: oas, obs)
+    | (OptB b :: tail) ->
+        let (oas, obs) = split_eithers tail in
+          (oas, b :: obs)
+
+let rec pull_args :
+  arg list -> env -> heap -> ((expr, (ident * expr)) either) list =
+  fun args env heap -> match args with
+    | [] -> []
+    | (Arg expr :: tail) -> OptA expr :: pull_args tail env heap
+    | (Named (id, expr) :: tail) -> OptB (id, expr) :: pull_args tail env heap
+    | (VarArg :: tail) -> match env_find id_variadic env heap with
+      | None -> []
+      | Some mem -> match heap_find mem heap with
+        | Some (DataObj (RefArray v_mems, _)) ->
+            let mem_args = List.map (fun m -> OptA (MemRef m)) v_mems in
+              mem_args @ pull_args tail env heap
+        | _ -> [] (* WRONG STUFF HERE *)
+
+let rec ids_contains_id : ident list -> ident -> bool =
+  fun ids id -> match ids with
+    | [] -> false
+    | (hd :: tail) -> hd.name = id.name || ids_contains_id tail id
+
+let rec remove_used_params : param list -> ident list -> param list =
+  fun params args -> match params with
+    | [] -> []
+    | (Param id :: tail) ->
+        if ids_contains_id args id
+          then remove_used_params tail args
+          else Param id :: remove_used_params tail args
+    | (Default (id, expr) :: tail) ->
+        if ids_contains_id args id
+          then remove_used_params tail args
+          else Default (id, expr) :: remove_used_params tail args
+    | (VarParam :: tail) -> VarParam :: remove_used_params tail args
+
+let rec get_default_params : param list -> (ident * expr) list =
+  fun params -> match params with
+    | [] -> []
+    | (Param _ :: tail) -> get_default_params tail
+    | (VarParam :: tail) -> get_default_params tail
+    | (Default (id, expr) :: tail) -> (id, expr) :: get_default_params tail
+
+let rec match_expr_args :
+  param list -> expr list -> (ident * expr) list * (expr list) =
+  fun params args -> match (params, args) with
+    | ([], _) -> ([], []) (* OH NO?? *)
+    | (_, []) -> (get_default_params params, [])
+    | (VarParam :: tail, _) -> (get_default_params tail, args)
+    | (Param id :: p_tail, arg :: a_tail) ->
+        let (pairs, vars) = match_expr_args p_tail a_tail in
+          ((id, arg) :: pairs, vars)
+    | (Default (id, _) :: p_tail, arg :: a_tail) ->
+        let (pairs, vars) = match_expr_args p_tail a_tail in
+          ((id, arg) :: pairs, vars)
+
+(* Oh god I really hope this function works, I've spent too much time here *)
+let match_lambda_app :
+  param list -> arg list -> env -> heap -> (ident * expr) list * expr list =
+  fun params args env heap ->
+    let (expr_args, nameds) = split_eithers (pull_args args env heap) in
+    let un_params = remove_used_params params (List.map pair_first nameds) in
+    let (positionals, variadics) = match_expr_args un_params expr_args in
+      (nameds @ positionals, variadics)
 
 (* Double arrow reduction relations (cf Fig 3) *)
 
