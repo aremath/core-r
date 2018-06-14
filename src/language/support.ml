@@ -3,15 +3,15 @@ module R = Syntax
 module A = Annotations
 
 (* Type aliases *)
-type itag = A.itag
-type ttag = A.ttag
-type tick = A.ttag R.tick
+type tag = A.tag
+type annot = A.annot
+type tick = A.annot R.tick
 type memref = R.memref
 type numeric = R.numeric
-type ident = itag R.ident
-type param = (itag, ttag) R.param
-type arg = (itag, ttag) R.arg
-type expr = (itag, ttag) R.expr
+type ident = tag R.ident
+type param = (tag, annot) R.param
+type arg = (tag, annot) R.arg
+type expr = (tag, annot) R.expr
 
 (* Memory reference Map *)
 module MemRef = struct
@@ -38,7 +38,7 @@ module Ident_Map = Map.Make (Ident)
 (* Environment *)
 type env =
   { mem_map : memref Ident_Map.t;
-    parent_mem: memref option }
+    pred_mem : memref option }
 
 (* Values *)
 type value =
@@ -127,17 +127,17 @@ let id_of_string : string -> ident =
 let id_fresh : state -> ident * state =
   fun state ->
     let count2 = state.fresh_count + 1 in
-    let name2 = "fs$" ^ string_of_int count2 in
-      (id_of_string name2, { state with fresh_count = count2 })
+    let name = "fs$" ^ string_of_int count2 in
+      (id_of_string name, { state with fresh_count = count2 })
 
-let rec id_list_fresh : int -> state -> (ident list) * state =
+let rec id_fresh_list : int -> state -> (ident list) * state =
   fun n state ->
     if n < 1 then
       ([], state)
     else
-      let (id2, state2) = id_fresh state in
-      let (tail, state3) = id_list_fresh (n - 1) state2 in
-        (id2 :: tail, state3)
+      let (id, state2) = id_fresh state in
+      let (ids_tl, state3) = id_fresh_list (n - 1) state2 in
+        (id :: ids_tl, state3)
 
 
 (* Frame operations *)
@@ -153,7 +153,8 @@ let stack_empty : stack =
 let stack_pop : stack -> (frame * stack) option =
   fun stack -> match stack.frame_list with
     | [] -> None
-    | (frame :: tail) -> Some (frame, { stack with frame_list = tail })
+    | (frame :: frames_tl) ->
+        Some (frame, { stack with frame_list = frames_tl })
 
 let stack_pop_v : stack -> (slot * memref * stack) option =
   fun stack -> match stack_pop stack with
@@ -188,18 +189,26 @@ let rec heap_find_deep : memref -> heap -> (memref * heapobj) option =
   fun mem heap -> match heap_find mem heap with
     | None -> None
     | Some (PromiseObj (R.MemRef mem2, _)) -> heap_find_deep mem2 heap
-    | Some obj -> Some (mem, obj)
+    | Some hobj -> Some (mem, hobj)
 
 let heap_add : memref -> heapobj -> heap -> heap =
-  fun mem obj heap ->
-    { heap with hobj_map = MemRef_Map.add mem obj heap.hobj_map }
+  fun mem hobj heap ->
+    { heap with hobj_map = MemRef_Map.add mem hobj heap.hobj_map }
 
 let heap_alloc : heapobj -> heap -> memref * heap =
-  fun obj heap ->
+  fun hobj heap ->
     let used_mem = heap.next_mem in
       (used_mem,
-       { heap with hobj_map = MemRef_Map.add used_mem obj heap.hobj_map;
+       { heap with hobj_map = MemRef_Map.add used_mem hobj heap.hobj_map;
                    next_mem = mem_incr used_mem })
+
+let rec heap_alloc_list : heapobj list -> heap -> memref list * heap =
+  fun hobjs heap -> match hobjs with
+    | [] -> ([], heap)
+    | (hobj :: hobjs_tl) ->
+        let (mem, heap2) = heap_alloc hobj heap in
+        let (mems_tl, heap3) = heap_alloc_list hobjs_tl heap2 in
+          (mem :: mems_tl, heap3)
 
 let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap -> match const with
@@ -211,14 +220,14 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
 (* Environment lookup *)
 let env_empty : env =
   { mem_map = Ident_Map.empty;
-    parent_mem = None }
+    pred_mem = None }
 
 let rec env_find : ident -> env -> heap -> memref option =
   fun id env heap ->
     try
       Some (Ident_Map.find id env.mem_map)
     with
-      Not_found -> match env.parent_mem with
+      Not_found -> match env.pred_mem with
         | None -> None
         | Some mem -> match heap_find mem heap with
           | Some (EnvObj env2) -> env_find id env2 heap
@@ -248,12 +257,12 @@ let rec env_mem_add_list :
   (ident * memref) list -> memref -> heap -> heap option =
   fun pairs env_mem heap -> match pairs with
     | [] -> Some heap
-    | ((id, mem) :: tail) -> match env_mem_add id mem env_mem heap with
+    | ((id, mem) :: pairs_tl) -> match env_mem_add id mem env_mem heap with
       | None -> None
-      | Some heap2 -> env_mem_add_list tail env_mem heap2
+      | Some heap2 -> env_mem_add_list pairs_tl env_mem heap2
 
 let env_nest : memref -> env =
   fun mem ->
-    { env_empty with parent_mem = Some mem }
+    { env_empty with pred_mem = Some mem }
 
 

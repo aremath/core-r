@@ -122,6 +122,16 @@ let match_lambda_app :
     let (positionals, variadics) = match_expr_args un_params expr_args in
       (nameds @ positionals, variadics)
 
+
+let lift_variadic_bind : expr list -> memref -> heap -> heap option =
+  fun exprs env_mem heap ->
+    None
+
+let lift_binds : (ident * expr) list -> memref -> heap -> heap option =
+  fun pairs env_mem heap ->
+    None
+
+
 (* Double arrow reduction relations (cf Fig 3) *)
 
 (*
@@ -265,10 +275,10 @@ let rule_DAss : state -> state option =
         let (p_mem, heap2) = heap_alloc prom state.heap in
           (match heap_find c_env_mem state.heap with
             | Some (EnvObj env) ->
-                let parent_mem = (match env.parent_mem with
-                                    | None -> c_env_mem
-                                    | Some parent_mem -> parent_mem) in
-                  (match env_mem_add id p_mem parent_mem heap2 with
+                let pred_mem = (match env.pred_mem with
+                                 | None -> c_env_mem
+                                 | Some pred_mem -> pred_mem) in
+                  (match env_mem_add id p_mem pred_mem heap2 with
                     | None -> None
                     | Some heap3 ->
                         let p_frame = { frame_default with
