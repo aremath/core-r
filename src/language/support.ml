@@ -164,9 +164,10 @@ let stack_pop_v : stack -> (slot * memref * stack) option =
 let stack_pop_v_2 : stack -> (slot * memref * slot * memref * stack) option =
   fun stack -> match stack_pop_v stack with
     | None -> None
-    | Some (slot1, mem1, stack2) -> match stack_pop_v stack2 with
+    | Some (slot1, env_mem1, stack2) -> match stack_pop_v stack2 with
       | None -> None
-      | Some (slot2, mem2, stack3) -> Some (slot1, mem1, slot2, mem2, stack3)
+      | Some (slot2, env_mem2, stack3) ->
+          Some (slot1, env_mem1, slot2, env_mem2, stack3)
 
 let stack_push : frame -> stack -> stack =
   fun frame stack ->
