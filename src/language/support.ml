@@ -235,13 +235,9 @@ let rec env_find : ident -> env -> heap -> memref option =
           | _ -> None
 
 let env_mem_find : ident -> memref -> heap -> memref option =
-  fun id env_mem heap ->
-    try
-      match heap_find env_mem heap with
-        | Some (EnvObj env) -> env_find id env heap
-        | _ -> None
-    with
-      Not_found -> None
+  fun id env_mem heap -> match heap_find env_mem heap with
+    | Some (EnvObj env) -> env_find id env heap
+    | _ -> None
 
 let env_add : ident -> memref -> env -> env =
   fun id mem env ->
