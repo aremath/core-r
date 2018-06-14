@@ -255,11 +255,11 @@ let env_mem_add : ident -> memref -> memref -> heap -> heap option =
 
 let rec env_mem_add_list :
   (ident * memref) list -> memref -> heap -> heap option =
-  fun pairs env_mem heap -> match pairs with
+  fun binds env_mem heap -> match binds with
     | [] -> Some heap
-    | ((id, mem) :: pairs_tl) -> match env_mem_add id mem env_mem heap with
+    | ((id, mem) :: binds_tl) -> match env_mem_add id mem env_mem heap with
       | None -> None
-      | Some heap2 -> env_mem_add_list pairs_tl env_mem heap2
+      | Some heap2 -> env_mem_add_list binds_tl env_mem heap2
 
 let env_nest : memref -> env =
   fun mem ->
