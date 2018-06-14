@@ -230,14 +230,14 @@ let rec env_find : ident -> env -> heap -> memref option =
     with
       Not_found -> match env.pred_mem with
         | None -> None
-        | Some mem -> match heap_find mem heap with
+        | Some env_mem2 -> match heap_find env_mem2 heap with
           | Some (EnvObj env2) -> env_find id env2 heap
           | _ -> None
 
 let env_mem_find : ident -> memref -> heap -> memref option =
-  fun id mem heap ->
+  fun id env_mem heap ->
     try
-      match heap_find mem heap with
+      match heap_find env_mem heap with
         | Some (EnvObj env) -> env_find id env heap
         | _ -> None
     with
@@ -263,7 +263,7 @@ let rec env_mem_add_list :
       | Some heap2 -> env_mem_add_list binds_tl env_mem heap2
 
 let env_nest : memref -> env =
-  fun mem ->
-    { env_empty with pred_mem = Some mem }
+  fun env_mem ->
+    { env_empty with pred_mem = Some env_mem }
 
 

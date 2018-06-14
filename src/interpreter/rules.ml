@@ -123,9 +123,14 @@ let match_lambda_app :
       (nameds @ positionals, variadics)
 
 
-let lift_variadic_bind : expr list -> memref -> heap -> heap option =
-  fun exprs env_mem heap ->
-    None
+let lift_var_bind : expr list -> memref -> memref -> heap -> heap option =
+  fun exprs expr_env_mem inj_env_mem heap ->
+    let hobjs = List.map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
+    let (mems, heap2) = heap_alloc_list hobjs heap in
+    let data = DataObj (RefArray mems, []) in
+    let (d_mem, heap3) = heap_alloc data heap2 in
+      env_mem_add id_variadic d_mem inj_env_mem heap3
+      
 
 let lift_binds : (ident * expr) list -> memref -> heap -> heap option =
   fun pairs env_mem heap ->
