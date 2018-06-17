@@ -1,4 +1,10 @@
 
+type rint = int option
+type rfloat = float option
+type rcomplex = Complex.t option
+type rbool = int option
+type rstring = string option
+
 type 'a ident = 
   { pkg : string option;
     name : string;
@@ -11,14 +17,14 @@ type 'b tick =
   { annot : 'b }
 
 type numeric =
-    Int of int option
-  | Float of float option
-  | Complex of Complex.t option
+    Int of rint
+  | Float of rfloat
+  | Complex of rcomplex
 
 type const =
     Num of numeric
-  | Str of string option
-  | Bool of int option (* bools are stored as 0,1 *)
+  | Str of rstring
+  | Bool of rbool (* bools are stored as 0,1 *)
 
 type ('a, 'b) param =
     Param of 'a ident

@@ -54,31 +54,31 @@ type ('a , 'b) either =
 let rec split_eithers : (('a , 'b) either) list -> ('a list) * ('b list) =
   fun eithers -> match eithers with
     | [] -> ([], [])
-    | (OptA a :: tail) -> 
-        let (oas, obs) = split_eithers tail in
+    | (OptA a :: e_tl) ->
+        let (oas, obs) = split_eithers e_tl in
           (a :: oas, obs)
-    | (OptB b :: tail) ->
-        let (oas, obs) = split_eithers tail in
+    | (OptB b :: e_tl) ->
+        let (oas, obs) = split_eithers e_tl in
           (oas, b :: obs)
 
 let rec pull_args :
   arg list -> env -> heap -> ((expr, (ident * expr)) either) list =
   fun args env heap -> match args with
     | [] -> []
-    | (Arg expr :: tail) -> OptA expr :: pull_args tail env heap
-    | (Named (id, expr) :: tail) -> OptB (id, expr) :: pull_args tail env heap
-    | (VarArg :: tail) -> match env_find id_variadic env heap with
+    | (Arg expr :: a_tl) -> OptA expr :: pull_args a_tl env heap
+    | (Named (id, expr) :: a_tl) -> OptB (id, expr) :: pull_args a_tl env heap
+    | (VarArg :: a_tl) -> match env_find id_variadic env heap with
       | None -> []
       | Some mem -> match heap_find mem heap with
         | Some (DataObj (RefArray v_mems, _)) ->
             let mem_args = List.map (fun m -> OptA (MemRef m)) v_mems in
-              mem_args @ pull_args tail env heap
+              mem_args @ pull_args a_tl env heap
         | _ -> [] (* WRONG STUFF HERE *)
 
 let rec ids_contains_id : ident list -> ident -> bool =
   fun ids id -> match ids with
     | [] -> false
-    | (hd :: tail) -> hd.name = id.name || ids_contains_id tail id
+    | (hd :: ids_tl) -> hd.name = id.name || ids_contains_id ids_tl id
 
 let rec remove_used_params : param list -> ident list -> param list =
   fun params args -> match params with
@@ -107,11 +107,11 @@ let rec match_expr_args :
     | (_, []) -> (get_default_params params, [])
     | (VarParam :: tail, _) -> (get_default_params tail, args)
     | (Param id :: p_tail, arg :: a_tail) ->
-        let (pairs, vars) = match_expr_args p_tail a_tail in
-          ((id, arg) :: pairs, vars)
+        let (binds, vars) = match_expr_args p_tail a_tail in
+          ((id, arg) :: binds, vars)
     | (Default (id, _) :: p_tail, arg :: a_tail) ->
-        let (pairs, vars) = match_expr_args p_tail a_tail in
-          ((id, arg) :: pairs, vars)
+        let (binds, vars) = match_expr_args p_tail a_tail in
+          ((id, arg) :: binds, vars)
 
 (* Oh god I really hope this function works, I've spent too much time here *)
 let match_lambda_app :
@@ -123,18 +123,31 @@ let match_lambda_app :
       (nameds @ positionals, variadics)
 
 
-let lift_var_bind : expr list -> memref -> memref -> heap -> heap option =
+let lift_var_bind :
+  expr list -> memref -> memref -> heap -> (memref * heap) option =
   fun exprs expr_env_mem inj_env_mem heap ->
-    let hobjs = List.map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
-    let (mems, heap2) = heap_alloc_list hobjs heap in
+    let proms = List.map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
+    let (mems, heap2) = heap_alloc_list proms heap in
     let data = DataObj (RefArray mems, []) in
     let (d_mem, heap3) = heap_alloc data heap2 in
-      env_mem_add id_variadic d_mem inj_env_mem heap3
-      
+      match env_mem_add id_variadic d_mem inj_env_mem heap3 with
+        | None -> None
+        | Some heap4 -> Some (d_mem, heap4)
 
-let lift_binds : (ident * expr) list -> memref -> heap -> heap option =
-  fun pairs env_mem heap ->
-    None
+let lift_binds :
+  (ident * expr) list -> memref -> memref -> heap ->
+  ((ident * memref) list * heap) option =
+  fun binds expr_env_mem inj_env_mem heap ->
+    let pairs1 =
+        List.map (fun (b, e) -> (b, PromiseObj (e, expr_env_mem))) binds in
+    let (pairs2, heap2) =
+        List.fold_left (fun (acc, hp) (b, p) ->
+                          let (m, hp2) = heap_alloc p hp in
+                            ((b, m) :: acc, hp2))
+                       ([], heap) pairs1 in
+      match env_mem_add_list pairs2 inj_env_mem heap2 with
+        | None -> None
+        | Some heap3 -> Some (pairs2, heap3)
 
 
 (* Double arrow reduction relations (cf Fig 3) *)
@@ -192,7 +205,23 @@ let rule_InvF : state -> state option =
     | Some (ReturnSlot f_mem, _,
             ArgsSlot args, c_env_mem,
             c_stack2) -> (match heap_find f_mem state.heap with
-      | Some (DataObj (FuncVal (f_params, f_body, f_env_mem), _)) -> None
+      | Some (DataObj (FuncVal (pars, body, f_env_mem), _)) ->
+        (match heap_find c_env_mem state.heap with
+        | None -> None
+        | Some (EnvObj cenv) ->
+          let (binds, vares) = match_lambda_app pars args cenv state.heap in
+          (match lift_var_bind vares c_env_mem f_env_mem state.heap with
+          | None -> None
+          | Some (vmem, heap2) ->
+            (match lift_binds binds c_env_mem f_env_mem heap2 with
+            | None -> None
+            | Some (bmems, heap3) ->
+                let c_frame = { frame_default with
+                                  env_mem = f_env_mem;
+                                  slot = EvalSlot body } in
+                  Some { state with
+                           heap = heap3;
+                           stack = stack_push c_frame c_stack2 })))
       | _ -> None)
     | _ -> None
 

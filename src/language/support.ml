@@ -42,9 +42,11 @@ type env =
 
 (* Values *)
 type value =
-    NumArray of numeric list
-  | StrArray of (string option) list
-  | BoolArray of (int option) list
+    IntArray of R.rint array
+  | FloatArray of R.rfloat array
+  | ComplexArray of R.rcomplex array
+  | StrArray of R.rstring array
+  | BoolArray of R.rbool array
   | RefArray of memref list
   | FuncVal of param list * expr * memref
 
@@ -212,10 +214,14 @@ let rec heap_alloc_list : heapobj list -> heap -> memref list * heap =
           (mem :: mems_tl, heap3)
 
 let heap_alloc_const : R.const -> heap -> (memref * heap) =
-  fun const heap -> match const with
-    | R.Num n -> heap_alloc (DataObj (NumArray [n], [])) heap
-    | R.Str s -> heap_alloc (DataObj (StrArray [s], [])) heap
-    | R.Bool b -> heap_alloc (DataObj (BoolArray [b], [])) heap
+  fun const heap ->
+    let arr = (match const with
+                  R.Str s -> StrArray (Array.of_list [s])
+                | R.Bool b -> BoolArray (Array.of_list [b])
+                | R.Num (Int i) -> IntArray (Array.of_list [i])
+                | R.Num (Float f) -> FloatArray (Array.of_list [f])
+                | R.Num (Complex c) -> ComplexArray (Array.of_list [c])) in
+    heap_alloc (DataObj (arr, [])) heap
 
 
 (* Environment lookup *)
