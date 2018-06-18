@@ -229,7 +229,7 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
                 | R.Num (R.Int i) -> IntArray (Array.of_list [i])
                 | R.Num (R.Float f) -> FloatArray (Array.of_list [f])
                 | R.Num (R.Complex c) -> ComplexArray (Array.of_list [c])) in
-    heap_alloc (DataObj (arr, [])) heap
+      heap_alloc (DataObj (arr, [])) heap
 
 
 (* Environment lookup *)
@@ -243,8 +243,8 @@ let rec env_find : ident -> env -> heap -> memref option =
       Some (Ident_Map.find id env.mem_map)
     with
       Not_found -> match heap_find env.pred_mem heap with
-          | Some (EnvObj env2) -> env_find id env2 heap
-          | _ -> None
+        | Some (EnvObj env2) -> env_find id env2 heap
+        | _ -> None
 
 let env_mem_find : ident -> memref -> heap -> memref option =
   fun id env_mem heap -> match heap_find env_mem heap with
