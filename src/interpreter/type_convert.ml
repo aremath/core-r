@@ -191,6 +191,25 @@ let coerce_to_vec: S.expr -> S.expr =
     function
     | _ -> failwith "to_vec unimplemented"
 
+let coerce_to_ty S.expr -> S.basic_rty -> S.expr =
+    function
+    | _ => failwith "unimplemented"
+
 (* TODO coerce_vector_to_type coercion *)
 
+(* TODO: S.val -> S.ty/S.symbol -> S.val or something? 
+ do_as takes an evaluated expression (a value), and
+ converts it to another evaluated expression of a different type.
+ Eventually this should do some form of dynamic dispatch first.
+*)
+
+let do_as: S.expr -> string -> S.expr =
+fun e s ->
+    match s with
+    | "as.character"    -> coerce_to_string e
+    | "as.integer"      -> coerce_to_int e
+    | "as.double"       -> coerce_to_float e
+    | "as.complex"      -> coerce_to_complex e
+    | "as.logical"      -> coerce_to_bool e
+    | "as.raw"          -> failwith "raw unimplemented"
 
