@@ -96,9 +96,6 @@ and string_of_expr : expr -> string =
                                   string_of_expr e3 ^ ")"
     | While (e1, e2) -> "While (" ^ string_of_expr e1 ^ "," ^
                                     string_of_expr e2 ^ ")"
-    | For (i, e1, e2) -> "For (" ^ string_of_ident i ^ "," ^
-                                   string_of_expr e1 ^ "," ^
-                                   string_of_expr e2 ^ ")"
     | Break -> "Break"
     | Next -> "Next"
     | Error -> "Error"

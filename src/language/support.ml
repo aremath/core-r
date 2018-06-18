@@ -38,7 +38,7 @@ module Ident_Map = Map.Make (Ident)
 (* Environment *)
 type env =
   { mem_map : memref Ident_Map.t;
-    pred_mem : memref option }
+    pred_mem : memref }
 
 (* Values *)
 type value =
@@ -113,6 +113,10 @@ let mem_incr : memref -> memref =
 let mem_null : memref =
   mem_of_int 0
 
+let is_mem_null : memref -> bool =
+  fun mem ->
+    mem = mem_null
+
 
 (* Fresh identifier *)
 let id_default : ident =
@@ -173,6 +177,12 @@ let stack_push : frame -> stack -> stack =
   fun frame stack ->
     { stack with frame_list = frame :: stack.frame_list }
 
+let rec stack_push_list : frame list -> stack -> stack =
+  fun frames stack -> match frames with
+    | [] -> stack
+    | (frame :: frames_tl) ->
+        stack_push frame (stack_push_list frames_tl stack)
+
 
 (* Heap operations *)
 let heap_empty : heap =
@@ -225,16 +235,14 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
 (* Environment lookup *)
 let env_empty : env =
   { mem_map = Ident_Map.empty;
-    pred_mem = None }
+    pred_mem = mem_null }
 
 let rec env_find : ident -> env -> heap -> memref option =
   fun id env heap ->
     try
       Some (Ident_Map.find id env.mem_map)
     with
-      Not_found -> match env.pred_mem with
-        | None -> None
-        | Some env_mem2 -> match heap_find env_mem2 heap with
+      Not_found -> match heap_find env.pred_mem heap with
           | Some (EnvObj env2) -> env_find id env2 heap
           | _ -> None
 
@@ -264,6 +272,6 @@ let rec env_mem_add_list :
 
 let env_nest : memref -> env =
   fun env_mem ->
-    { env_empty with pred_mem = Some env_mem }
+    { env_empty with pred_mem = env_mem }
 
 

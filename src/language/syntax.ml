@@ -52,7 +52,6 @@ and ('a, 'b) expr =
   | ObjAttrAssign of ('a, 'b) expr * ('a, 'b) expr * ('a, 'b) expr
   | If of ('a, 'b) expr * ('a, 'b) expr * ('a, 'b) expr
   | While of ('a, 'b) expr * ('a, 'b) expr
-  | For of 'a ident * ('a, 'b) expr * ('a, 'b) expr
   | Break
   | Next
   | Error
