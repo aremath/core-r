@@ -119,7 +119,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
         let loop = R.While (cond, block) in
         L.Seq (convert_expr init, convert_expr loop)
     | R.While (e1, e2)      -> L.While (convert_expr e1, convert_expr e2)
-    | R.Repeat e            -> failwith "Repeat not a part of Core R!"
+    | R.Repeat e            -> L.While (L.Const (L.Bool (Some true)), convert_expr e)
     | R.Next                -> L.Next
     | R.Break               -> L.Break
 
