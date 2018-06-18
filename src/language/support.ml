@@ -59,10 +59,8 @@ type slot =
   | SeqSlot of expr list
   | ArgsSlot of arg list
   | UpdateSlot of memref
-  | WhileSlot of expr
-  | ForSlot of unit
+  | LoopSlot of expr * expr * memref option (* body's return value *)
   | IfSlot of expr * expr
-  | RepeatSlot
   | ArraySubSlot of memref option *  memref list * (ident * memref) list *
                     ident option * arg list
 
@@ -163,7 +161,7 @@ let stack_pop_v : stack -> (slot * memref * stack) option =
     | None -> None
     | Some (frame, stack2) -> Some (frame.slot, frame.env_mem, stack2)
 
-let stack_pop_v_2 : stack -> (slot * memref * slot * memref * stack) option =
+let stack_pop_v2 : stack -> (slot * memref * slot * memref * stack) option =
   fun stack -> match stack_pop_v stack with
     | None -> None
     | Some (slot1, env_mem1, stack2) -> match stack_pop_v stack2 with
@@ -218,9 +216,9 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
     let arr = (match const with
                   R.Str s -> StrArray (Array.of_list [s])
                 | R.Bool b -> BoolArray (Array.of_list [b])
-                | R.Num (Int i) -> IntArray (Array.of_list [i])
-                | R.Num (Float f) -> FloatArray (Array.of_list [f])
-                | R.Num (Complex c) -> ComplexArray (Array.of_list [c])) in
+                | R.Num (R.Int i) -> IntArray (Array.of_list [i])
+                | R.Num (R.Float f) -> FloatArray (Array.of_list [f])
+                | R.Num (R.Complex c) -> ComplexArray (Array.of_list [c])) in
     heap_alloc (DataObj (arr, [])) heap
 
 
