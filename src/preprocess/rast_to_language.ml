@@ -30,6 +30,7 @@ let convert_numeric: R.numeric -> L.numeric =
     | R.Complex (f1, f2) -> L.Complex (Some {re = f1; im = f2})
     | R.Na      -> L.Int (None) (* TODO *)
 
+(* TODO: ObjAttr (and convert idents found on the right into strings) *)
 let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     function
     | R.NumericConst n      -> L.Const (L.Num (convert_numeric n))

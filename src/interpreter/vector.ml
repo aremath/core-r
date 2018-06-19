@@ -1,42 +1,3 @@
-
-type rlist = list
-
-type rvector = 
-    | RIntVec of rint Array
-    | RBoolVec of rbool Array
-    | RFloatVec of rfloat Array
-    | RComplexVec of rcomplex Array
-    | RStringVec of rstring Array
-
-type rmatrix = (rvector * int Array * string Array Array option)
-
-(* TODO: mutable things will be /physically/ equivalent... is this ok? *)
-let copy_vector: rvector -> rvector = function
-    | RIntVec v -> RIntVec (Array.copy v)
-    | RBoolVec v -> RBoolVec (Array.copy v)
-    | RFloatVec v -> RFloatVec (Array.copy v)
-    | RComplexVec v -> RCompplexVec (Array.copy v)
-    | RStringVec v -> RStringVec (Array.copy v)
-
-(* TODO: need to do a deeper copy? *)
-let copy_matrix: rmatrix -> bool -> rmatrix = 
-    fun m byrow ->
-    match m with
-    | v, dims, opt_dimnames -> if byrow then
-        let new_array = copy_vector v in (* TODO: inefficient to copy if I'm just going to overwrite *)
-        let nr = dims.(0) in
-        let nc = dims.(1) in
-        let _ = for x = 0 to nr - 1 do
-            for y = 0 to nc - 1 do
-                new_array.(x + y*nr) <- v.(x*nc + y)
-            done
-        done in
-        new_array
-        (* TODO: need to deep copy dimnames? *)
-        else match opt_dimnames with
-        | Some dimnames -> (copy_vector v, Array.copy dims, Array.copy dimnames)
-        | None -> (copy_vector v, Array.copy dims, None)
-
 let vector_length: rvector -> rvector = function
     let make_length_vec = fun v -> Array.make 1 (Some (Array.length v))
     | RIntVec v -> make_length_vec v
@@ -47,7 +8,7 @@ let vector_length: rvector -> rvector = function
 
 (* assumes defaults have been taken care of *)
 (* TODO: do_matrix can also take a list! *)
-let do_matrix: rvector -> rvector -> rvector -> rvector -> rlist -> rmatrix =
+let do_matrix: rvector -> rvector -> rvector -> rvector -> rlist -> rvector =
     fun data nrows ncols byrow dimnames ->
     let bool_byrow = match byrow.(0) with
     | Some 0   -> false
@@ -98,6 +59,9 @@ let do_matrix: rvector -> rvector -> rvector -> rvector -> rlist -> rmatrix =
     let array_dims = Array.make 2 0 in
     let _ = array_dims.(0) <- true_nr in
     let _ = array_dims.(1) <- true_nc in
-    matrix_copy (data, array_dims, None) bool_byrow
+    (* TODO: what if data is NA? *)
+    matrix_copy (data, array_dims, dimnames) bool_byrow
     
+let drop_dims: rvector -> rvector =
+    fun x ->
 
