@@ -8,7 +8,7 @@ let vector_length: rvector -> rvector = function
 
 (* assumes defaults have been taken care of *)
 (* TODO: do_matrix can also take a list! *)
-let do_matrix: rvector -> rvector -> rvector -> rvector -> rlist -> rmatrix =
+let do_matrix: rvector -> rvector -> rvector -> rvector -> rlist -> rvector =
     fun data nrows ncols byrow dimnames ->
     let bool_byrow = match byrow.(0) with
     | Some 0   -> false
