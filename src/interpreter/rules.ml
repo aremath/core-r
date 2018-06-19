@@ -257,7 +257,8 @@ let rule_NativeInvF : state -> state option =
       (match heap_find c_env_mem state.heap with
         | Some (DataObj (EnvVal env, _)) ->
             (match pull_all_ids arg_ids env state.heap with
-              | Some arg_mems -> native_call f_id arg_mems env state
+              | Some mems ->
+                  native_call f_id mems env { state with stack = c_stack2 }
               | _ -> None)
         | _ -> None)
   | _ -> None
@@ -516,4 +517,52 @@ let rule_Seq : state -> state option =
                    stack = stack_push_list [t_frame; c_frame] c_stack2 }
     | _ -> None
 
+let rule_ObjAttrEval : state -> state option =
+  fun state -> match stack_pop_v state.stack with
+    | Some (EvalSlot (ObjAttr (obj_expr, attr_expr)), c_env_mem, c_stack2) ->
+        let o_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = EvalSlot obj_expr } in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = AttrSlot (None, Some attr_expr) } in
+          Some { state with
+                   stack = stack_push_list [o_frame; c_frame] c_stack2 }
+    | _ -> None
+
+let rule_ObjAttrObjRet : state -> state option =
+  fun state -> match stack_pop_v2 state.stack with
+    | Some (ReturnSlot obj_mem, _,
+            AttrSlot (None, Some attr_expr), c_env_mem,
+            c_stack2) ->
+        let a_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = EvalSlot attr_expr } in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = AttrSlot (Some obj_mem, None) } in
+          Some { state with
+                   stack = stack_push_list [a_frame; c_frame] c_stack2 }
+    | _ -> None
+
+let rule_ObjAttrObjGet : state -> state option =
+  fun state -> match stack_pop_v2 state.stack with
+    | Some (ReturnSlot attr_mem, _,
+            AttrSlot (Some obj_mem, None), c_env_mem,
+            c_stack2) ->
+      (match (heap_find obj_mem state.heap, heap_find attr_mem state.heap) with
+        | (Some (DataObj (_, attrs)), Some (DataObj (Vec (StrVec strs), _))) ->
+          if Array.length strs > 0 then
+            (match attrs_find (Array.get strs 0) attrs with
+              | Some val_mem ->
+                  let c_frame = { frame_default with
+                                    env_mem = c_env_mem;
+                                    slot = ReturnSlot val_mem } in
+                    Some { state with
+                             stack = stack_push c_frame c_stack2 }
+              | _ -> None)
+          else
+            None
+        | _ -> None)
+    | _ -> None
 
