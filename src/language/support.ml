@@ -40,19 +40,22 @@ type env =
   { mem_map : memref Ident_Map.t;
     pred_mem : memref }
 
-
 (* Values *)
+type rvector =
+    | IntVec of R.rint array
+    | FloatVec of R.rfloat array
+    | ComplexVec of R.rcomplex array
+    | StrVec of R.rstring array
+    | BoolVec of R.rbool array
+
 type value =
-    IntArray of R.rint array
-  | FloatArray of R.rfloat array
-  | ComplexArray of R.rcomplex array
-  | StrArray of R.rstring array
-  | BoolArray of R.rbool array
+  | Vec of rvector
   | RefArray of memref list
   | FuncVal of param list * expr * memref
+  | EnvVal of env
+  | ListVal of (ident option * value) list
 
-type attribute = unit
-
+type attributes = value Ident_Map.t 
 
 (* Stack *)
 type slot =
@@ -79,7 +82,7 @@ type stack =
 (* Heap *)
 type heapobj =
     PromiseObj of expr * memref
-  | DataObj of value * attribute list
+  | DataObj of value * attributes
   | EnvObj of env
 
 type heap =
@@ -227,11 +230,11 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap ->
     heap_alloc
       (DataObj ((match const with
-                    R.Str s -> StrArray (Array.of_list [s])
-                  | R.Num (R.Int i) -> IntArray (Array.of_list [i])
-                  | R.Num (R.Float f) -> FloatArray (Array.of_list [f])
-                  | R.Num (R.Complex c) -> ComplexArray (Array.of_list [c])
-                  | R.Bool b -> BoolArray (Array.of_list [b])), [])) heap
+                    R.Str s -> Vec (StrVec (Array.of_list [s]))
+                  | R.Num (R.Int i) -> Vec (IntVec (Array.of_list [i]))
+                  | R.Num (R.Float f) -> Vec (FloatVec (Array.of_list [f]))
+                  | R.Num (R.Complex c) -> Vec (ComplexVec (Array.of_list [c]))
+                  | R.Bool b -> Vec (BoolVec (Array.of_list [b]))), Ident_Map.empty)) heap
 
 
 (* Environment lookup *)
