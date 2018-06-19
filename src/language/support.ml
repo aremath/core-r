@@ -53,7 +53,7 @@ type value =
   | RefArray of memref list
   | FuncVal of param list * expr * memref
   | EnvVal of env
-  | ListVal of (ident option * value) list
+  | ListVal of (ident option * memref) list
 
 type attributes = value Ident_Map.t 
 
