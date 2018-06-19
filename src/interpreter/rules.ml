@@ -1,6 +1,7 @@
 
 open Syntax
 open Support
+open Natives
 
 type rule =
     RuleExp
@@ -168,12 +169,13 @@ let rec unwind_to_loop_slot :
     | Some (_, _, stack2) -> unwind_to_loop_slot stack2
     | None -> None
 
-
-let rec find_all_ids : ident list -> env -> heap -> (memref list) option =
+let rec pull_all_ids : ident list -> env -> heap -> (memref list) option =
   fun ids env heap -> match ids with
     | [] -> Some []
-    | (id :: ids_tl) -> None
-    
+    | (id :: ids_tl) ->
+        match (env_find id env heap, pull_all_ids ids_tl env heap) with
+          | (Some mem, Some mems_tl) -> Some (mem :: mems_tl)
+          | _ -> None
 
 (* Double arrow reduction relations (cf Fig 3) *)
 
@@ -252,7 +254,12 @@ let rule_InvF : state -> state option =
 let rule_NativeInvF : state -> state option =
   fun state -> match stack_pop_v state.stack with
   | Some (EvalSlot (NativeLambdaApp (f_id, arg_ids)), c_env_mem, c_stack2) ->
-      None
+      (match heap_find c_env_mem state.heap with
+        | Some (DataObj (EnvVal env, _)) ->
+            (match pull_all_ids arg_ids env state.heap with
+              | Some arg_mems -> native_call f_id arg_mems env state
+              | _ -> None)
+        | _ -> None)
   | _ -> None
 
 

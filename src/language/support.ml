@@ -56,7 +56,7 @@ type value =
   | ListVal of (ident option * value) list
 
 type attributes =
-  { val_map : value Ident_Map.t }
+  { attr_mem_map : memref Ident_Map.t }
 
 (* Stack *)
 type slot =
@@ -145,23 +145,23 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
 
 (* Attributes *)
 let attrs_empty : attributes =
-  { val_map = Ident_Map.empty }
+  { attr_mem_map = Ident_Map.empty }
 
-let attrs_find : ident -> attributes -> value option =
+let attrs_find : ident -> attributes -> memref option =
   fun id attrs ->
     try
-      Some (Ident_Map.find id attrs.val_map)
+      Some (Ident_Map.find id attrs.attr_mem_map)
     with Not_found -> None
 
-let attrs_add : ident -> value -> attributes -> attributes =
-  fun id value attrs ->
-    { attrs with val_map = Ident_Map.add id value attrs.val_map }
+let attrs_add : ident -> memref -> attributes -> attributes =
+  fun id mem attrs ->
+    { attrs with attr_mem_map = Ident_Map.add id mem attrs.attr_mem_map }
 
-let rec attrs_add_list : (ident * value) list -> attributes -> attributes =
+let rec attrs_add_list : (ident * memref) list -> attributes -> attributes =
   fun binds attrs -> match binds with
     | [] -> attrs
-    | ((id, value) :: binds_tl) ->
-        attrs_add_list binds_tl (attrs_add id value attrs)
+    | ((id, mem) :: binds_tl) ->
+        attrs_add_list binds_tl (attrs_add id mem attrs)
 
 
 (* Frame operations *)
