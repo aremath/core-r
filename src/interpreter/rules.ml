@@ -128,7 +128,7 @@ let lift_var_bind :
   fun exprs expr_env_mem inj_env_mem heap ->
     let proms = List.map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
     let (mems, heap2) = heap_alloc_list proms heap in
-    let data = DataObj (RefArray mems, Ident_Map.empty) in
+    let data = DataObj (RefArray mems, attrs_empty) in
     let (d_mem, heap3) = heap_alloc data heap2 in
       match env_mem_add id_variadic d_mem inj_env_mem heap3 with
         | None -> None
@@ -231,7 +231,7 @@ let rule_InvF : state -> state option =
       | Some (DataObj (FuncVal (pars, body, f_env_mem), _)) ->
         (match heap_find c_env_mem state.heap with
         | None -> None
-        | Some (EnvObj cenv) ->
+        | Some (DataObj (EnvVal cenv, _)) ->
           let (binds, vares) = match_lambda_app pars args cenv state.heap in
           (match lift_var_bind vares c_env_mem f_env_mem state.heap with
           | None -> None
@@ -273,7 +273,7 @@ let rule_Const : state -> state option =
 let rule_Fun : state -> state option =
   fun state -> match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
-        let data = DataObj (FuncVal (params, expr, c_env_mem), Ident_Map.empty) in
+        let data = DataObj (FuncVal (params, expr, c_env_mem), attrs_empty) in
         let (f_mem, heap2) = heap_alloc data state.heap in
         let c_frame = { frame_default with
                           slot = ReturnSlot f_mem } in
@@ -337,7 +337,7 @@ let rule_DAss : state -> state option =
       let prom = PromiseObj (expr, c_env_mem) in
       let (p_mem, heap2) = heap_alloc prom state.heap in
       (match heap_find c_env_mem state.heap with
-        | Some (EnvObj env) ->
+        | Some (DataObj (EnvVal env, _)) ->
           (match env_mem_add id p_mem env.pred_mem heap2 with
             | None -> None
             | Some heap3 ->
