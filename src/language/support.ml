@@ -42,11 +42,11 @@ type env =
 
 (* Values *)
 type rvector =
-    | IntVec of R.rint array
-    | FloatVec of R.rfloat array
-    | ComplexVec of R.rcomplex array
-    | StrVec of R.rstring array
-    | BoolVec of R.rbool array
+  | IntVec of R.rint array
+  | FloatVec of R.rfloat array
+  | ComplexVec of R.rcomplex array
+  | StrVec of R.rstring array
+  | BoolVec of R.rbool array
 
 type value =
   | Vec of rvector
@@ -55,7 +55,8 @@ type value =
   | EnvVal of env
   | ListVal of (ident option * memref) list
 
-type attributes = value Ident_Map.t 
+type attributes =
+  { attr_mem_map : memref Ident_Map.t }
 
 (* Stack *)
 type slot =
@@ -83,7 +84,6 @@ type stack =
 type heapobj =
     PromiseObj of expr * memref
   | DataObj of value * attributes
-  | EnvObj of env
 
 type heap =
   { hobj_map : heapobj MemRef_Map.t;
@@ -141,6 +141,27 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
       let (id, state2) = id_fresh state in
       let (ids_tl, state3) = id_fresh_list (n - 1) state2 in
         (id :: ids_tl, state3)
+
+
+(* Attributes *)
+let attrs_empty : attributes =
+  { attr_mem_map = Ident_Map.empty }
+
+let attrs_find : ident -> attributes -> memref option =
+  fun id attrs ->
+    try
+      Some (Ident_Map.find id attrs.attr_mem_map)
+    with Not_found -> None
+
+let attrs_add : ident -> memref -> attributes -> attributes =
+  fun id mem attrs ->
+    { attrs with attr_mem_map = Ident_Map.add id mem attrs.attr_mem_map }
+
+let rec attrs_add_list : (ident * memref) list -> attributes -> attributes =
+  fun binds attrs -> match binds with
+    | [] -> attrs
+    | ((id, mem) :: binds_tl) ->
+        attrs_add_list binds_tl (attrs_add id mem attrs)
 
 
 (* Frame operations *)
@@ -230,11 +251,11 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap ->
     heap_alloc
       (DataObj ((match const with
-                    R.Str s -> Vec (StrVec (Array.of_list [s]))
-                  | R.Num (R.Int i) -> Vec (IntVec (Array.of_list [i]))
-                  | R.Num (R.Float f) -> Vec (FloatVec (Array.of_list [f]))
-                  | R.Num (R.Complex c) -> Vec (ComplexVec (Array.of_list [c]))
-                  | R.Bool b -> Vec (BoolVec (Array.of_list [b]))), Ident_Map.empty)) heap
+          R.Str s -> Vec (StrVec (Array.of_list [s]))
+        | R.Num (R.Int i) -> Vec (IntVec (Array.of_list [i]))
+        | R.Num (R.Float f) -> Vec (FloatVec (Array.of_list [f]))
+        | R.Num (R.Complex c) -> Vec (ComplexVec (Array.of_list [c]))
+        | R.Bool b -> Vec (BoolVec (Array.of_list [b]))), attrs_empty)) heap
 
 
 (* Environment lookup *)
@@ -248,12 +269,12 @@ let rec env_find : ident -> env -> heap -> memref option =
       Some (Ident_Map.find id env.mem_map)
     with
       Not_found -> match heap_find env.pred_mem heap with
-        | Some (EnvObj env2) -> env_find id env2 heap
+        | Some (DataObj (EnvVal env2, _)) -> env_find id env2 heap
         | _ -> None
 
 let env_mem_find : ident -> memref -> heap -> memref option =
   fun id env_mem heap -> match heap_find env_mem heap with
-    | Some (EnvObj env) -> env_find id env heap
+    | Some (DataObj (EnvVal env, _)) -> env_find id env heap
     | _ -> None
 
 let env_add : ident -> memref -> env -> env =
@@ -268,15 +289,17 @@ let rec env_add_list : (ident * memref) list -> env -> env =
 
 let env_mem_add : ident -> memref -> memref -> heap -> heap option =
   fun id mem env_mem heap -> match heap_find env_mem heap with
-    | Some (EnvObj env) ->
-        Some (heap_add env_mem (EnvObj (env_add id mem env)) heap)
+    | Some (DataObj (EnvVal env, attrs)) ->
+        let env2 = env_add id mem env in
+          Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
     | _ -> None
 
 let env_mem_add_list :
   (ident * memref) list -> memref -> heap -> heap option =
   fun binds env_mem heap -> match heap_find env_mem heap with
-    | Some (EnvObj env) ->
-        Some (heap_add env_mem (EnvObj (env_add_list binds env)) heap)
+    | Some (DataObj (EnvVal env, attrs)) ->
+        let env2 = env_add_list binds env in
+          Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
     | _ -> None
 
 let env_nest : memref -> env =
