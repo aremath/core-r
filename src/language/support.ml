@@ -40,6 +40,7 @@ type env =
   { mem_map : memref Ident_Map.t;
     pred_mem : memref }
 
+
 (* Values *)
 type value =
     IntArray of R.rint array
@@ -52,6 +53,7 @@ type value =
 
 type attribute = unit
 
+
 (* Stack *)
 type slot =
     ReturnSlot of memref
@@ -60,9 +62,11 @@ type slot =
   | ArgsSlot of arg list
   | UpdateSlot of memref
   | LoopSlot of expr * expr * memref option (* body's return value *)
-  | IfSlot of expr * expr
+  | BranchSlot of expr * expr
+  (*
   | ArraySubSlot of memref option *  memref list * (ident * memref) list *
                     ident option * arg list
+  *)
 
 type frame =
   { env_mem : memref;
@@ -91,14 +95,6 @@ type state =
 
 
 (* Utility functions *)
-
-(* Syntax tree utilities *)
-
-let id_expr_of_arg : arg -> (ident option * expr) option =
-  fun arg -> match arg with
-    | R.VarArg -> None
-    | R.Arg expr -> Some (None, expr)
-    | R.Named (id, expr) -> Some (Some id, expr)
 
 
 (* Memory references *)
@@ -163,7 +159,8 @@ let stack_pop : stack -> (frame * stack) option =
 let stack_pop_v : stack -> (slot * memref * stack) option =
   fun stack -> match stack_pop stack with
     | None -> None
-    | Some (frame, stack2) -> Some (frame.slot, frame.env_mem, stack2)
+    | Some (frame, stack2) ->
+        Some (frame.slot, frame.env_mem, stack2)
 
 let stack_pop_v2 : stack -> (slot * memref * slot * memref * stack) option =
   fun stack -> match stack_pop_v stack with
@@ -206,12 +203,17 @@ let heap_add : memref -> heapobj -> heap -> heap =
   fun mem hobj heap ->
     { heap with hobj_map = MemRef_Map.add mem hobj heap.hobj_map }
 
+let rec heap_add_list : (memref * heapobj) list -> heap -> heap =
+  fun binds heap -> match binds with
+    | [] -> heap
+    | ((mem, hobj) :: binds_tl) ->
+        heap_add_list binds (heap_add mem hobj heap)
+
 let heap_alloc : heapobj -> heap -> memref * heap =
   fun hobj heap ->
     let used_mem = heap.next_mem in
-      (used_mem,
-       { heap with hobj_map = MemRef_Map.add used_mem hobj heap.hobj_map;
-                   next_mem = mem_incr used_mem })
+      (used_mem, { (heap_add used_mem hobj heap) with
+                     next_mem = mem_incr used_mem })
 
 let rec heap_alloc_list : heapobj list -> heap -> memref list * heap =
   fun hobjs heap -> match hobjs with
@@ -223,13 +225,13 @@ let rec heap_alloc_list : heapobj list -> heap -> memref list * heap =
 
 let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap ->
-    let arr = (match const with
-                  R.Str s -> StrArray (Array.of_list [s])
-                | R.Bool b -> BoolArray (Array.of_list [b])
-                | R.Num (R.Int i) -> IntArray (Array.of_list [i])
-                | R.Num (R.Float f) -> FloatArray (Array.of_list [f])
-                | R.Num (R.Complex c) -> ComplexArray (Array.of_list [c])) in
-      heap_alloc (DataObj (arr, [])) heap
+    heap_alloc
+      (DataObj ((match const with
+                    R.Str s -> StrArray (Array.of_list [s])
+                  | R.Num (R.Int i) -> IntArray (Array.of_list [i])
+                  | R.Num (R.Float f) -> FloatArray (Array.of_list [f])
+                  | R.Num (R.Complex c) -> ComplexArray (Array.of_list [c])
+                  | R.Bool b -> BoolArray (Array.of_list [b])), [])) heap
 
 
 (* Environment lookup *)
@@ -255,20 +257,24 @@ let env_add : ident -> memref -> env -> env =
   fun id mem env ->
     { env with mem_map = Ident_Map.add id mem env.mem_map }
 
+let rec env_add_list : (ident * memref) list -> env -> env =
+  fun binds env -> match binds with
+    | [] -> env
+    | ((id, mem) :: binds_tl) ->
+        env_add_list binds_tl (env_add id mem env)
+
 let env_mem_add : ident -> memref -> memref -> heap -> heap option =
   fun id mem env_mem heap -> match heap_find env_mem heap with
     | Some (EnvObj env) ->
-        let env2 = env_add id mem env in
-          Some (heap_add env_mem (EnvObj env2) heap)
+        Some (heap_add env_mem (EnvObj (env_add id mem env)) heap)
     | _ -> None
 
-let rec env_mem_add_list :
+let env_mem_add_list :
   (ident * memref) list -> memref -> heap -> heap option =
-  fun binds env_mem heap -> match binds with
-    | [] -> Some heap
-    | ((id, mem) :: binds_tl) -> match env_mem_add id mem env_mem heap with
-      | None -> None
-      | Some heap2 -> env_mem_add_list binds_tl env_mem heap2
+  fun binds env_mem heap -> match heap_find env_mem heap with
+    | Some (EnvObj env) ->
+        Some (heap_add env_mem (EnvObj (env_add_list binds env)) heap)
+    | _ -> None
 
 let env_nest : memref -> env =
   fun env_mem ->

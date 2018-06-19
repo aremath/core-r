@@ -77,6 +77,9 @@ and string_of_expr : expr -> string =
     | LambdaApp (e1, e2s) -> "LambdaApp (" ^
                                 string_of_expr e1 ^ "," ^
                                 string_of_list (string_of_arg) e2s ^ ")"
+    | NativeLambdaApp (f, is) -> "NativeLambdaApp (" ^
+                                    string_of_ident f ^ "," ^
+                                    string_of_list (string_of_ident) is ^ ")"
     | Assign (e1, e2) -> "Assign (" ^ string_of_expr e1 ^ "," ^
                                       string_of_expr e2 ^ ")"
     | SuperAssign (e1, e2) -> "SuperAssign (" ^ string_of_expr e1 ^ "," ^

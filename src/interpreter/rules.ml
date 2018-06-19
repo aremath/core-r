@@ -113,6 +113,7 @@ let rec match_expr_args :
         let (binds, vars) = match_expr_args p_tail a_tail in
           ((id, arg) :: binds, vars)
 
+
 (* Oh god I really hope this function works, I've spent too much time here *)
 let match_lambda_app :
   param list -> arg list -> env -> heap -> (ident * expr) list * expr list =
@@ -148,8 +149,13 @@ let lift_binds :
         | None -> None
         | Some heap3 -> Some (pairs2, heap3)
 
-let is_true_mem : memref -> heap -> bool =
+let is_mem_true : memref -> heap -> bool =
   fun mem heap -> true
+
+let is_mem_val : memref -> heap -> bool =
+  fun mem heap -> match heap_find mem heap with
+    | Some(DataObj _) -> true
+    | _-> false
 
 let rec unwind_to_loop_slot :
   stack -> (expr * expr * memref * memref * stack) option =
@@ -162,6 +168,12 @@ let rec unwind_to_loop_slot :
     | Some (_, _, stack2) -> unwind_to_loop_slot stack2
     | None -> None
 
+
+let rec find_all_ids : ident list -> env -> heap -> (memref list) option =
+  fun ids env heap -> match ids with
+    | [] -> Some []
+    | (id :: ids_tl) -> None
+    
 
 (* Double arrow reduction relations (cf Fig 3) *)
 
@@ -235,6 +247,13 @@ let rule_InvF : state -> state option =
                            stack = stack_push c_frame c_stack2 })))
       | _ -> None)
     | _ -> None
+
+
+let rule_NativeInvF : state -> state option =
+  fun state -> match stack_pop_v state.stack with
+  | Some (EvalSlot (NativeLambdaApp (f_id, arg_ids)), c_env_mem, c_stack2) ->
+      None
+  | _ -> None
 
 
 (* Single arrow expression manipulations (cf Fig 5) *)
@@ -360,90 +379,6 @@ let rule_DAssStr : state -> state option =
                    stack = stack_push c_frame c_stack2 }
     | _ -> None
 
-
-
-(* Array access *)
-let rule_ArrSubEvalArr : state -> state option =
-  fun state -> match stack_pop_v state.stack with
-    | Some (EvalSlot (ArraySub (arr, args)), c_env_mem, c_stack2) ->
-        let a_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = EvalSlot arr } in
-        let c_slot = ArraySubSlot (None, [], [], None, args) in
-        let c_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = c_slot } in
-          Some { state with
-                   stack = stack_push_list [a_frame; c_frame] c_stack2 }
-    | _ -> None
-
-let rule_ArrSubEvalArg : state -> state option =
-  fun state -> match stack_pop_v state.stack with
-    | Some (ArraySubSlot (Some arr, oks, noks, None, arg :: tail),
-            c_env_mem, c_stack2) ->
-        (match id_expr_of_arg arg with
-          | None -> None
-          | Some (o_id, a_expr) ->
-              let a_frame = { frame_default with
-                                env_mem = c_env_mem;
-                                slot = EvalSlot a_expr } in
-              let c_slot = ArraySubSlot (Some arr, oks, noks, o_id, tail) in
-              let c_frame = { frame_default with
-                                env_mem = c_env_mem;
-                                slot = c_slot } in
-                Some { state with
-                         stack = stack_push_list [a_frame; c_frame] c_stack2 })
-    | _ -> None
-
-let rule_ArrSubRetArr : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
-    | Some (ReturnSlot mem, _,
-            ArraySubSlot (None, [], [], None, args), c_env_mem,
-            c_stack2) ->
-        let c_slot = ArraySubSlot (Some mem, [], [], None, args) in
-        let c_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = c_slot } in
-          Some { state with
-                   stack = stack_push c_frame c_stack2 }
-    | _ -> None
-
-let rule_ArrSubRetArg : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
-    | Some (ReturnSlot mem, _,
-            ArraySubSlot (Some arr, oks, noks, None, args), c_env_mem,
-            c_stack2) ->
-        let oks2 = mem :: oks in
-        let c_slot = ArraySubSlot (Some arr, oks2, noks, None, args) in
-        let c_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = c_slot } in
-          Some { state with
-                   stack = stack_push c_frame c_stack2 }
-    | _ -> None
-
-let rule_ArrSubRetNamed : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
-    | Some (ReturnSlot mem, _,
-            ArraySubSlot (Some arr, oks, noks, Some id, args), c_env_mem,
-            c_stack2) ->
-        let noks2 = (id, mem) :: noks in
-        let c_slot = ArraySubSlot (Some arr, oks, noks2, None, args) in
-        let c_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = c_slot } in
-          Some { state with
-                   stack = stack_push c_frame c_stack2 }
-    | _ -> None
-
-let rule_ArrSubRetData : state -> state option =
-  fun state -> match stack_pop_v state.stack with
-    | Some (ArraySubSlot (Some arr, oks, noks, None, []), c_env_mem,
-            c_stack2) ->
-        None
-    | _ -> None
-
-
 let rule_IfEval : state -> state option =
   fun state -> match stack_pop_v state.stack with
     | Some (EvalSlot (If (c_expr, t_expr, f_expr)), c_env_mem, c_stack2) ->
@@ -452,7 +387,7 @@ let rule_IfEval : state -> state option =
                           slot = EvalSlot c_expr } in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = IfSlot (t_expr, f_expr) } in
+                          slot = BranchSlot (t_expr, f_expr) } in
           Some { state with
                    stack = stack_push_list [t_frame; c_frame] c_stack2 }
     | _ -> None
@@ -460,11 +395,11 @@ let rule_IfEval : state -> state option =
 let rule_IfRet : state -> state option =
   fun state -> match stack_pop_v2 state.stack with
     | Some (ReturnSlot mem, _,
-            IfSlot (t_expr, f_expr), c_env_mem,
+            BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = if is_true_mem mem state.heap then
+                          slot = if is_mem_true mem state.heap then
                                    EvalSlot t_expr
                                  else
                                    EvalSlot f_expr } in
@@ -490,7 +425,7 @@ let rule_WhileCondTrue : state -> state option =
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
-        if is_true_mem cond_mem state.heap then
+        if is_mem_true cond_mem state.heap then
           let b_frame = { frame_default with
                             env_mem = c_env_mem;
                             slot = EvalSlot body } in
@@ -508,7 +443,7 @@ let rule_WhileCondFalse : state -> state option =
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
-        if is_true_mem cond_mem state.heap then
+        if is_mem_true cond_mem state.heap then
           None
         else
           let c_frame = { frame_default with
@@ -573,4 +508,5 @@ let rule_Seq : state -> state option =
           Some { state with
                    stack = stack_push_list [t_frame; c_frame] c_stack2 }
     | _ -> None
+
 

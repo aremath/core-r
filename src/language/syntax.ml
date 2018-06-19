@@ -45,6 +45,7 @@ and ('a, 'b) expr =
   | Seq of ('a, 'b) expr * ('a, 'b) expr
   | LambdaAbs of (('a, 'b) param) list * ('a, 'b) expr
   | LambdaApp of ('a, 'b) expr * (('a, 'b) arg) list
+  | NativeLambdaApp of 'a ident * 'a ident list
   | Assign of ('a, 'b) expr * ('a, 'b) expr
   | SuperAssign of ('a, 'b) expr * ('a, 'b) expr
   | ArrayAssign of ('a, 'b) expr * ('a, 'b) expr * ('a, 'b) expr
