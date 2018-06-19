@@ -12,6 +12,12 @@ type ident = tag R.ident
 type param = (tag, annot) R.param
 type arg = (tag, annot) R.arg
 type expr = (tag, annot) R.expr
+type rint = R.rint
+type rfloat = R.rfloat
+type rcomplex = R.rcomplex
+type rstring = R.rstring
+type rbool = R.rbool
+
 
 (* Memory reference Map *)
 module MemRef = struct
@@ -35,6 +41,17 @@ end
 
 module Ident_Map = Map.Make (Ident)
 
+(* RString Map *)
+module RString = struct
+  type t = rstring
+
+  let compare : t -> t -> int =
+    fun a b ->
+      compare a b
+end
+
+module RString_Map = Map.Make (RString)
+
 (* Environment *)
 type env =
   { mem_map : memref Ident_Map.t;
@@ -42,11 +59,11 @@ type env =
 
 (* Values *)
 type rvector =
-  | IntVec of R.rint array
-  | FloatVec of R.rfloat array
-  | ComplexVec of R.rcomplex array
-  | StrVec of R.rstring array
-  | BoolVec of R.rbool array
+  | IntVec of rint array
+  | FloatVec of rfloat array
+  | ComplexVec of rcomplex array
+  | StrVec of rstring array
+  | BoolVec of rbool array
 
 type value =
   | Vec of rvector
@@ -56,15 +73,16 @@ type value =
   | ListVal of (ident option * value) list
 
 type attributes =
-  { attr_mem_map : memref Ident_Map.t }
+  { rstr_map : memref RString_Map.t }
 
 (* Stack *)
 type slot =
     ReturnSlot of memref
+  | UpdateSlot of memref
   | EvalSlot of expr
   | SeqSlot of expr list
   | ArgsSlot of arg list
-  | UpdateSlot of memref
+  | AttrSlot of memref option * expr option
   | LoopSlot of expr * expr * memref option (* body's return value *)
   | BranchSlot of expr * expr
   (*
@@ -145,23 +163,24 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
 
 (* Attributes *)
 let attrs_empty : attributes =
-  { attr_mem_map = Ident_Map.empty }
+  { rstr_map = RString_Map.empty }
 
-let attrs_find : ident -> attributes -> memref option =
-  fun id attrs ->
+let attrs_find : rstring -> attributes -> memref option =
+  fun rstr attrs ->
     try
-      Some (Ident_Map.find id attrs.attr_mem_map)
-    with Not_found -> None
+      Some (RString_Map.find rstr attrs.rstr_map)
+    with
+      Not_found -> None
 
-let attrs_add : ident -> memref -> attributes -> attributes =
-  fun id mem attrs ->
-    { attrs with attr_mem_map = Ident_Map.add id mem attrs.attr_mem_map }
+let attrs_add : rstring -> memref -> attributes -> attributes =
+  fun rstr mem attrs ->
+    { attrs with rstr_map = RString_Map.add rstr mem attrs.rstr_map }
 
-let rec attrs_add_list : (ident * memref) list -> attributes -> attributes =
+let rec attrs_add_list : (rstring * memref) list -> attributes -> attributes =
   fun binds attrs -> match binds with
     | [] -> attrs
-    | ((id, mem) :: binds_tl) ->
-        attrs_add_list binds_tl (attrs_add id mem attrs)
+    | ((rstr, mem) :: binds_tl) ->
+        attrs_add_list binds_tl (attrs_add rstr mem attrs)
 
 
 (* Frame operations *)
