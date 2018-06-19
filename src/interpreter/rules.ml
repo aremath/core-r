@@ -4,43 +4,35 @@ open Support
 open Natives
 
 type rule =
-    RuleExp
   | RuleForceP
   | RuleForceF
   | RuleGetF
   | RuleInvF
-  | RuleRetP
-  | RuleRetF
+  | RuleNativeInvF
 
-  | RuleGetF1
-  | RuleGetF2
-  | RuleGetF3
-  | RuleGetF4
-  | RuleGetF5
-  | RuleSplit1
-  | RuleSplit2
-  | RuleSplit3
-  | RuleArgs
-  | RuleArgs1
-  | RuleArgs2
-  | RuleArgs3
-  | RuleArgs4
-  | RuleArgs5
-
-  | RuleNum
-  | RuleStr
+  | RuleConst
   | RuleFun
   | RuleFind
   | RuleGetP
-  | RuleAss
+  | RuleAssId
   | RuleDAss
-  | RuleGet
-  | RuleSetL
-  | RuleSetG
-  | RuleGetA
-  | RuleReplA
-  | RuleSetA
-  | RuleSetB
+  | RuleAssStr
+  | RuleDAssStr
+
+  | RuleIfEval
+  | RuleIfRet
+  | RuleWhileEval
+  | RuleWhileCondTrue
+  | RuleWhileCondFalse
+  | RuleWhileBodyDone
+  | RuleBreak
+  | RuleNext
+
+  | RuleSeq
+  | RuleObjAttrEval
+  | RuleObjAttrObjRet
+  | RuleObjAttrObjGet
+
 
 let id_variadic : ident =
   id_of_string "..."
@@ -565,4 +557,36 @@ let rule_ObjAttrObjGet : state -> state option =
             None
         | _ -> None)
     | _ -> None
+
+
+
+let rule_table : (rule * (state -> state option)) list =
+  [ (RuleForceP, rule_ForceP);
+    (RuleForceF, rule_ForceF);
+    (RuleGetF, rule_GetF);
+    (RuleInvF, rule_InvF);
+    (RuleNativeInvF, rule_NativeInvF);
+
+    (RuleConst, rule_Const);
+    (RuleFun, rule_Fun);
+    (RuleFind, rule_Find);
+    (RuleGetP, rule_GetP);
+    (RuleAssId, rule_AssId);
+    (RuleDAss, rule_DAss);
+    (RuleAssStr, rule_AssStr);
+    (RuleDAssStr, rule_DAssStr);
+
+    (RuleIfEval, rule_IfEval);
+    (RuleIfRet, rule_IfRet);
+    (RuleWhileEval, rule_WhileEval);
+    (RuleWhileCondTrue, rule_WhileCondTrue);
+    (RuleWhileBodyDone, rule_WhileBodyDone);
+    (RuleBreak, rule_Break);
+    (RuleNext, rule_Next);
+
+    (RuleSeq, rule_Seq);
+    (RuleObjAttrEval, rule_ObjAttrEval);
+    (RuleObjAttrObjRet, rule_ObjAttrObjRet);
+    (RuleObjAttrObjGet, rule_ObjAttrObjGet) ]
+
 
