@@ -40,6 +40,7 @@ and string_of_const : const -> string =
     | Str None      -> "Str (Na)"
     | Bool (Some b) -> "Bool (" ^ string_of_int b ^ ")"
     | Bool None     -> "Bool (Na)"
+    | Nil           -> "Nil"
 
 and string_of_param : param -> string =
   fun param -> match param with

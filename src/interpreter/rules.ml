@@ -2,6 +2,7 @@
 open Syntax
 open Support
 open Natives
+open Copy
 
 type rule =
   | RuleForceP
@@ -14,6 +15,8 @@ type rule =
   | RuleFun
   | RuleFind
   | RuleGetP
+
+  | RuleUpdate
   | RuleAssId
   | RuleDAss
   | RuleAssStr
@@ -310,6 +313,20 @@ let rule_GetP : state -> state option =
           | _ -> None)
     | _ -> None
 
+(* Updates *)
+let rule_Update : state -> state option =
+  fun state -> match stack_pop_v2 state.stack with
+    | Some (ReturnSlot ret_mem, _,
+            UpdateSlot upd_mem, c_env_mem,
+            c_stack2) ->
+      let (cpy_mem, heap2) = deep_copy ret_mem state.heap in
+        (match heap_find cpy_mem heap2 with
+           | Some hobj ->
+              Some { state with
+                       heap = heap_add upd_mem hobj heap2 }
+           | _ -> None)
+    | _ -> None
+
 
 (* Assignment *)
 let rule_AssId : state -> state option =
@@ -317,15 +334,16 @@ let rule_AssId : state -> state option =
     | Some (EvalSlot (Assign (Ident id, expr)), c_env_mem, c_stack2) ->
         let prom = PromiseObj (expr, c_env_mem) in
         let (p_mem, heap2) = heap_alloc prom state.heap in
-          (match env_mem_add id p_mem c_env_mem heap2 with
+        let (u_mem, heap3) = heap_alloc_const Nil heap2 in
+          (match env_mem_add id u_mem c_env_mem heap3 with
             | None -> None
-            | Some heap3 ->
+            | Some heap4 ->
               let p_frame = { frame_default with
                                 slot = EvalSlot (MemRef p_mem) } in
               let c_frame = { frame_default with
-                                slot = UpdateSlot p_mem } in
+                                slot = UpdateSlot u_mem } in
                 Some { state with
-                         heap = heap3;
+                         heap = heap4;
                          stack = stack_push_list [p_frame; c_frame] c_stack2 })
     | _ -> None
 
@@ -336,17 +354,18 @@ let rule_DAss : state -> state option =
     | Some (EvalSlot (Assign (Ident id, expr)), c_env_mem, c_stack2) ->
       let prom = PromiseObj (expr, c_env_mem) in
       let (p_mem, heap2) = heap_alloc prom state.heap in
-      (match heap_find c_env_mem state.heap with
+      let (u_mem, heap3) = heap_alloc_const Nil heap2 in
+      (match heap_find c_env_mem heap3 with
         | Some (DataObj (EnvVal env, _)) ->
-          (match env_mem_add id p_mem env.pred_mem heap2 with
+          (match env_mem_add id u_mem env.pred_mem heap3 with
             | None -> None
-            | Some heap3 ->
+            | Some heap4 ->
               let p_frame = { frame_default with
                                 slot = EvalSlot (MemRef p_mem) } in
               let c_frame = { frame_default with
-                                slot = UpdateSlot p_mem } in
+                                slot = UpdateSlot u_mem } in
                 Some { state with
-                         heap = heap3;
+                         heap = heap4;
                          stack = stack_push_list [p_frame; c_frame] c_stack2 })
         | _ -> None)
     | _ -> None
@@ -571,6 +590,8 @@ let rule_table : (rule * (state -> state option)) list =
     (RuleFun, rule_Fun);
     (RuleFind, rule_Find);
     (RuleGetP, rule_GetP);
+
+    (RuleUpdate, rule_Update);
     (RuleAssId, rule_AssId);
     (RuleDAss, rule_DAss);
     (RuleAssStr, rule_AssStr);
