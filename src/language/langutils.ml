@@ -65,11 +65,6 @@ and string_of_expr : expr -> string =
     | Ident i -> "Ident (" ^ string_of_ident i ^ ")"
     | MemRef m -> "MemRef (" ^ string_of_memref m ^ ")"
     | Const c -> "Const (" ^ string_of_const c ^ ")"
-    | ArraySub (e1, e2s) -> "ArraySub (" ^
-                              string_of_expr e1 ^ "," ^
-                              string_of_list (string_of_arg) e2s ^ ")"
-    | ObjAttr (e1, e2) -> "ObjAttr (" ^ string_of_expr e1 ^ "," ^
-                                        string_of_expr e2 ^ ")"
     | Seq (e1, e2) -> "Seq (" ^ string_of_expr e1 ^ "," ^
                                 string_of_expr e2 ^ ")"
     | LambdaAbs (ps, e) -> "LambdaAbs (" ^
@@ -85,16 +80,6 @@ and string_of_expr : expr -> string =
                                       string_of_expr e2 ^ ")"
     | SuperAssign (e1, e2) -> "SuperAssign (" ^ string_of_expr e1 ^ "," ^
                                                 string_of_expr e2 ^ ")"
-    | ArrayAssign (e1, e2, e3) -> "ArrayAssign (" ^ string_of_expr e1 ^ "," ^
-                                                    string_of_expr e2 ^ "," ^
-                                                    string_of_expr e3 ^ ")"
-    | ArraySuperAssign (e1, e2, e3) -> "ArraySuperAssign (" ^
-                                          string_of_expr e1 ^ "," ^
-                                          string_of_expr e2 ^ "," ^
-                                          string_of_expr e3 ^ ")"
-    | ObjAttrAssign (e1, e2, e3) -> "Assign (" ^ string_of_expr e1 ^ "," ^
-                                                 string_of_expr e2 ^ "," ^
-                                                 string_of_expr e3 ^ ")"
     | If (e1, e2, e3) -> "If (" ^ string_of_expr e1 ^ "," ^
                                   string_of_expr e2 ^ "," ^
                                   string_of_expr e3 ^ ")"

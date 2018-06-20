@@ -102,7 +102,8 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 | []        -> convert_expr R.Null (* TODO: is this really what R does? *)
                                 end
     | R.ListProj (e, args)  -> failwith "ListProj not a part of Core R!"
-    | R.ListSub (e, args)   -> L.ArraySub (convert_expr e, List.map convert_arg args)
+    | R.ListSub (e, args)   -> failwith "TODO: translate ListSub"
+                              (* L.ArraySub (convert_expr e, List.map convert_arg args) *)
     | R.If (e1, e2)         -> L.If (convert_expr e1, convert_expr e2, convert_expr R.Null) (* TODO ^ *)
     | R.IfElse (e1, e2, e3) -> L.If (convert_expr e1, convert_expr e2, convert_expr e3)
     (* | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2) *)
