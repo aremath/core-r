@@ -85,6 +85,7 @@ type 'a arg =
   | NullAssign of 'a expr
   (* Variadic argument *)
   | ArgDots
+  | EmptyArg
 
 
 and 'a param =
@@ -98,7 +99,6 @@ and 'a expr =
   | NumericConst of numeric
   | StringConst of string
   | BoolConst of bool
-  (* Valued constants *)
   | Null
   (* Identifiers *)
   | Ident of 'a ident
@@ -239,6 +239,7 @@ let rec string_of_expr : 'a expr -> string =
 
 and string_of_arg : 'a arg -> string =
   function
+    | EmptyArg            -> "Empty_Arg"
     | ExprArg e           -> string_of_expr e
     | IdentAssignEmpty i  -> "i="
     | IdentAssign (i, e)  -> "i=" ^ (string_of_expr e)

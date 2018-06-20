@@ -126,6 +126,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
 
 and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     function
+    | R.EmptyArg            -> L.Arg (L.Const L.NilConst)
     | R.ExprArg e           -> let c_expr = convert_expr e in
                                 L.Arg c_expr
     | R.IdentAssignEmpty i  -> failwith "Empty Assign not part of Core R!" (* TODO: what the heck *)

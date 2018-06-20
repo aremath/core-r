@@ -25,6 +25,7 @@ type const =
     Num of numeric
   | Str of rstring
   | Bool of rbool (* bools are stored as 0,1 *)
+  | NilConst (* for a[,1] *)
 
 type ('a, 'b) param =
     Param of 'a ident

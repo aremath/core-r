@@ -274,7 +274,9 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
         | R.Num (R.Int i) -> Vec (IntVec (Array.of_list [i]))
         | R.Num (R.Float f) -> Vec (FloatVec (Array.of_list [f]))
         | R.Num (R.Complex c) -> Vec (ComplexVec (Array.of_list [c]))
-        | R.Bool b -> Vec (BoolVec (Array.of_list [b]))), attrs_empty)) heap
+        | R.Bool b -> Vec (BoolVec (Array.of_list [b]))
+        | R.NilConst -> Vec (BoolVec (Array.of_list []))
+        ), attrs_empty)) heap
 
 
 (* Environment lookup *)

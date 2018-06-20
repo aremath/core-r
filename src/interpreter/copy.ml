@@ -1,4 +1,7 @@
 module S = Support
+(* TODO: Current copying strategy goes into an infinite loop on cyclic pointer graphs.
+Fortunately, I think that because R passes objects by deep copy, it's not possible to
+create a cyclic pointer graph. *)
 (*
 (* TODO: need to do a deeper copy? *)
 let copy_matrix: rmatrix -> bool -> rmatrix = 
