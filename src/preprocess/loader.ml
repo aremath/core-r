@@ -53,10 +53,8 @@ let rec dependency_graph_list :
                             (acc @ c_acc, c_s))
                        ([canon_name], set2) file_deps
 
-(*
 let env_of_rast : rastexpr list -> T.env =
-  fun 
-*)
+  fun rast -> T.env_empty
 
 
 let merge_heap : T.heap -> T.heap -> T.heap =

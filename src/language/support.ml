@@ -162,7 +162,8 @@ let id_default : ident =
     R.tag = None }
 
 let id_of_rstring : rstring -> ident =
-  fun name -> { id_default with R.name = name }
+  fun name ->
+    { id_default with R.name = name }
 
 let id_fresh : state -> ident * state =
   fun state ->
@@ -232,10 +233,10 @@ let stack_pop_v2 : stack -> (slot * memref * slot * memref * stack) option =
     match stack_pop_v stack with
     | None -> None
     | Some (slot1, env_mem1, stack2) ->
-      match stack_pop_v stack2 with
-      | None -> None
-      | Some (slot2, env_mem2, stack3) ->
-          Some (slot1, env_mem1, slot2, env_mem2, stack3)
+        match stack_pop_v stack2 with
+        | None -> None
+        | Some (slot2, env_mem2, stack3) ->
+            Some (slot1, env_mem1, slot2, env_mem2, stack3)
 
 let stack_push : frame -> stack -> stack =
   fun frame stack ->
@@ -324,7 +325,7 @@ let env_empty : env =
     pred_mem = mem_null }
 
 (* Flattening *)
-let list_of_mem : env -> (ident * memref) list =
+let binds_of_env : env -> (ident * memref) list =
   fun env ->
     IdentMap.bindings env.id_map
 
@@ -339,13 +340,26 @@ let rec env_find : ident -> env -> heap -> memref option =
         | Some (DataObj (EnvVal env2, _)) -> env_find id env2 heap
         | _ -> None
 
+let rec env_find_rstr : rstring -> env -> heap -> memref option =
+  fun rstr env heap ->
+    match List.filter (fun (i, m) -> i.R.name = rstr) (binds_of_env env) with
+    | ((_, mem) :: _)-> Some mem
+    | [] ->
+        match heap_find env.pred_mem heap with
+        | Some (DataObj (EnvVal env2, _)) -> env_find_rstr rstr env2 heap
+        | _ -> None
+
 let env_mem_find : ident -> memref -> heap -> memref option =
   fun id env_mem heap ->
     match heap_find env_mem heap with
     | Some (DataObj (EnvVal env, _)) -> env_find id env heap
     | _ -> None
 
-(* Find first occurrence whose package matches *)
+let env_mem_find_rstr : rstring -> memref -> heap -> memref option =
+  fun rstr env_mem heap ->
+    match heap_find env_mem heap with
+    | Some (DataObj (EnvVal env, _)) -> env_find_rstr rstr env heap
+    | _ -> None
 
 (* Add to outrmost level of environment *)
 let env_add : ident -> memref -> env -> env =
@@ -376,6 +390,7 @@ let env_mem_add_list :
           Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
     | _ -> None
 
+(* Remove at the top level *)
 let env_remove : ident -> env -> env =
   fun id env ->
     { env with id_map = IdentMap.remove id env.id_map }
@@ -386,6 +401,7 @@ let rec env_remove_list : ident list -> env -> env =
     | [] -> env
     | (id :: ids_tl) -> env_remove_list ids_tl (env_remove id env)
 
+(* Remove all occurrences *)
 let rec env_mem_remove_all : ident -> memref -> heap -> heap option =
   fun id env_mem heap ->
     match heap_find env_mem heap with
@@ -403,10 +419,11 @@ let rec env_mem_remove_all_list : ident list -> memref -> heap -> heap option =
     match ids with
     | [] -> Some heap
     | (id :: ids_tl) ->
-      match env_mem_remove_all id env_mem heap with
-      | None -> None
-      | Some heap2 -> env_mem_remove_all_list ids_tl env_mem heap2
+        match env_mem_remove_all id env_mem heap with
+        | None -> None
+        | Some heap2 -> env_mem_remove_all_list ids_tl env_mem heap2
 
+(* Nesting *)
 let env_nest : memref -> env =
   fun env_mem ->
     { env_empty with pred_mem = env_mem }

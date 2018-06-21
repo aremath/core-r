@@ -48,7 +48,8 @@ type ('a , 'b) either =
   | OptB of 'b
 
 let rec split_eithers : (('a , 'b) either) list -> ('a list) * ('b list) =
-  fun eithers -> match eithers with
+  fun eithers ->
+    match eithers with
     | [] -> ([], [])
     | (OptA a :: e_tl) ->
         let (oas, obs) = split_eithers e_tl in
@@ -59,25 +60,30 @@ let rec split_eithers : (('a , 'b) either) list -> ('a list) * ('b list) =
 
 let rec pull_args :
   arg list -> env -> heap -> ((expr, (ident * expr)) either) list =
-  fun args env heap -> match args with
+  fun args env heap ->
+    match args with
     | [] -> []
     | (Arg expr :: a_tl) -> OptA expr :: pull_args a_tl env heap
     | (Named (id, expr) :: a_tl) -> OptB (id, expr) :: pull_args a_tl env heap
-    | (VarArg :: a_tl) -> match env_find id_variadic env heap with
+    | (VarArg :: a_tl) ->
+      match env_find id_variadic env heap with
       | None -> []
-      | Some mem -> match heap_find mem heap with
+      | Some mem ->
+        match heap_find mem heap with
         | Some (DataObj (RefArray v_mems, _)) ->
             let mem_args = List.map (fun m -> OptA (MemRef m)) v_mems in
               mem_args @ pull_args a_tl env heap
         | _ -> [] (* WRONG STUFF HERE *)
 
 let rec ids_contains_id : ident list -> ident -> bool =
-  fun ids id -> match ids with
+  fun ids id ->
+    match ids with
     | [] -> false
     | (hd :: ids_tl) -> hd.name = id.name || ids_contains_id ids_tl id
 
 let rec remove_used_params : param list -> ident list -> param list =
-  fun params args -> match params with
+  fun params args ->
+    match params with
     | [] -> []
     | (Param id :: tail) ->
         if ids_contains_id args id
@@ -90,7 +96,8 @@ let rec remove_used_params : param list -> ident list -> param list =
     | (VarParam :: tail) -> VarParam :: remove_used_params tail args
 
 let rec get_default_params : param list -> (ident * expr) list =
-  fun params -> match params with
+  fun params ->
+    match params with
     | [] -> []
     | (Param _ :: tail) -> get_default_params tail
     | (VarParam :: tail) -> get_default_params tail
@@ -98,7 +105,8 @@ let rec get_default_params : param list -> (ident * expr) list =
 
 let rec match_expr_args :
   param list -> expr list -> (ident * expr) list * (expr list) =
-  fun params args -> match (params, args) with
+  fun params args ->
+    match (params, args) with
     | ([], _) -> ([], []) (* OH NO?? *)
     | (_, []) -> (get_default_params params, [])
     | (VarParam :: tail, _) -> (get_default_params tail, args)
@@ -149,13 +157,15 @@ let is_mem_true : memref -> heap -> bool =
   fun mem heap -> true
 
 let is_mem_val : memref -> heap -> bool =
-  fun mem heap -> match heap_find mem heap with
+  fun mem heap ->
+    match heap_find mem heap with
     | Some(DataObj _) -> true
     | _-> false
 
 let rec unwind_to_loop_slot :
   stack -> (expr * expr * memref * memref * stack) option =
-  fun stack -> match stack_pop_v stack with
+  fun stack ->
+    match stack_pop_v stack with
     | Some (LoopSlot (cond, body, o_body_mem), env_mem, stack2) ->
         let body_mem = (match o_body_mem with
                          | None -> mem_null
@@ -165,7 +175,8 @@ let rec unwind_to_loop_slot :
     | None -> None
 
 let rec pull_all_ids : ident list -> env -> heap -> (memref list) option =
-  fun ids env heap -> match ids with
+  fun ids env heap ->
+    match ids with
     | [] -> Some []
     | (id :: ids_tl) ->
         match (env_find id env heap, pull_all_ids ids_tl env heap) with
@@ -174,16 +185,11 @@ let rec pull_all_ids : ident list -> env -> heap -> (memref list) option =
 
 (* Double arrow reduction relations (cf Fig 3) *)
 
-(*
-let rule_Exp : state -> state option =
-  fun state -> match stack_pop state.stack with
-    | None -> None
-    | _ -> None
-*)
 
 (* Promise Evaluation *)
 let rule_ForceP : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (MemRef p_mem), c_env_mem, c_stack2) ->
         (match heap_find p_mem state.heap with
           | Some (PromiseObj (p_expr, p_env_mem)) ->
@@ -200,7 +206,8 @@ let rule_ForceP : state -> state option =
 
 (* Force function *)
 let rule_ForceF : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaApp (fn, args)), c_env_mem, c_stack2) ->
         let f_frame = { frame_default with
                           env_mem = c_env_mem;
@@ -221,7 +228,8 @@ let rule_GetF : state -> state option =
 
 
 let rule_InvF : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
+  fun state ->
+    match stack_pop_v2 state.stack with
     | Some (ReturnSlot f_mem, _,
             ArgsSlot args, c_env_mem,
             c_stack2) -> (match heap_find f_mem state.heap with
@@ -247,22 +255,24 @@ let rule_InvF : state -> state option =
 
 
 let rule_NativeInvF : state -> state option =
-  fun state -> match stack_pop_v state.stack with
-  | Some (EvalSlot (NativeLambdaApp (f_id, arg_ids)), c_env_mem, c_stack2) ->
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (EvalSlot (NativeLambdaApp (f_id, arg_ids)), c_env_mem, c_stack2) ->
       (match heap_find c_env_mem state.heap with
-        | Some (DataObj (EnvVal env, _)) ->
-            (match pull_all_ids arg_ids env state.heap with
-              | Some mems ->
-                  native_call f_id mems env { state with stack = c_stack2 }
-              | _ -> None)
+      | Some (DataObj (EnvVal env, _)) ->
+        (match pull_all_ids arg_ids env state.heap with
+        | Some mems ->
+            native_call f_id mems env { state with stack = c_stack2 }
         | _ -> None)
-  | _ -> None
+      | _ -> None)
+    | _ -> None
 
 
 (* Single arrow expression manipulations (cf Fig 5) *)
 
 let rule_Const : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (Const const), _, c_stack2) ->
         let (const_mem, heap2) = heap_alloc_const const state.heap in
         let c_frame = { frame_default with
@@ -274,7 +284,8 @@ let rule_Const : state -> state option =
 
 (* Function Definition *)
 let rule_Fun : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
         let data = DataObj (FuncVal (params, expr, c_env_mem), attrs_empty) in
         let (f_mem, heap2) = heap_alloc data state.heap in
@@ -288,7 +299,8 @@ let rule_Fun : state -> state option =
 
 (* Symbol. Actual search code in language/support.ml *)
 let rule_Find : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (Ident id), c_env_mem, c_stack2) ->
         (match env_mem_find id c_env_mem state.heap with
           | None -> None
@@ -302,7 +314,8 @@ let rule_Find : state -> state option =
 
 (* Promise Indirection: shortcut when a promise pointer points to a pointer *)
 let rule_GetP : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (MemRef p_mem), c_frame2, c_stack2) ->
         (match heap_find p_mem state.heap with
           | Some (PromiseObj (MemRef p_mem2, _)) ->
@@ -315,22 +328,24 @@ let rule_GetP : state -> state option =
 
 (* Updates *)
 let rule_Update : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
+  fun state ->
+    match stack_pop_v2 state.stack with
     | Some (ReturnSlot ret_mem, _,
             UpdateSlot upd_mem, c_env_mem,
             c_stack2) ->
       let (cpy_mem, heap2) = deep_copy ret_mem state.heap in
         (match heap_find cpy_mem heap2 with
-           | Some hobj ->
-              Some { state with
-                       heap = heap_add upd_mem hobj heap2 }
-           | _ -> None)
+         | Some hobj ->
+            Some { state with
+                     heap = heap_add upd_mem hobj heap2 }
+         | _ -> None)
     | _ -> None
 
 
 (* Assignment *)
 let rule_AssId : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (Assign (Ident id, expr)), c_env_mem, c_stack2) ->
         let prom = PromiseObj (expr, c_env_mem) in
         let (p_mem, heap2) = heap_alloc prom state.heap in
@@ -350,14 +365,15 @@ let rule_AssId : state -> state option =
 
 (* Super assignment *)
 let rule_DAss : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (Assign (Ident id, expr)), c_env_mem, c_stack2) ->
       let prom = PromiseObj (expr, c_env_mem) in
       let (p_mem, heap2) = heap_alloc prom state.heap in
       let (u_mem, heap3) = heap_alloc_const Nil heap2 in
-      (match heap_find c_env_mem heap3 with
+        (match heap_find c_env_mem heap3 with
         | Some (DataObj (EnvVal env, _)) ->
-          (match env_mem_add id u_mem env.pred_mem heap3 with
+            (match env_mem_add id u_mem env.pred_mem heap3 with
             | None -> None
             | Some heap4 ->
               let p_frame = { frame_default with
@@ -372,7 +388,8 @@ let rule_DAss : state -> state option =
 
 
 let rule_AssStr : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (Assign (Const (Str rstr), expr)),
             c_env_mem, c_stack2) ->
         let c_slot =
@@ -385,7 +402,8 @@ let rule_AssStr : state -> state option =
     | _ -> None
 
 let rule_DAssStr : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (SuperAssign (Const (Str rstr), expr)),
             c_env_mem, c_stack2) ->
         let c_slot =
@@ -399,7 +417,8 @@ let rule_DAssStr : state -> state option =
     | _ -> None
 
 let rule_IfEval : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (If (c_expr, t_expr, f_expr)), c_env_mem, c_stack2) ->
         let t_frame = { frame_default with
                           env_mem = c_env_mem;
@@ -412,7 +431,8 @@ let rule_IfEval : state -> state option =
     | _ -> None
 
 let rule_IfRet : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
+  fun state ->
+    match stack_pop_v2 state.stack with
     | Some (ReturnSlot mem, _,
             BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
@@ -427,7 +447,8 @@ let rule_IfRet : state -> state option =
     | _ -> None
 
 let rule_WhileEval : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (While (cond, body)), c_env_mem, c_stack2) ->
         let d_frame = { frame_default with
                           env_mem = c_env_mem;
@@ -440,7 +461,8 @@ let rule_WhileEval : state -> state option =
     | _ ->  None
 
 let rule_WhileCondTrue : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
+  fun state ->
+    match stack_pop_v2 state.stack with
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
@@ -458,7 +480,8 @@ let rule_WhileCondTrue : state -> state option =
     | _ -> None
 
 let rule_WhileCondFalse : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
+  fun state ->
+    match stack_pop_v2 state.stack with
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
@@ -473,7 +496,8 @@ let rule_WhileCondFalse : state -> state option =
     | _ -> None
 
 let rule_WhileBodyDone : state -> state option =
-  fun state -> match stack_pop_v2 state.stack with
+  fun state ->
+    match stack_pop_v2 state.stack with
     | Some (ReturnSlot body_mem, _,
             LoopSlot (cond, body, None), c_env_mem,
             c_stack2) ->
@@ -488,7 +512,8 @@ let rule_WhileBodyDone : state -> state option =
     | _ -> None
 
 let rule_Break : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot Break, _, c_stack2) ->
       (match unwind_to_loop_slot c_stack2 with
         | Some (_, _, body_mem, l_env_mem, c_stack3) ->
@@ -501,7 +526,8 @@ let rule_Break : state -> state option =
     | _ -> None
 
 let rule_Next : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot Next, _, c_stack2) ->
       (match unwind_to_loop_slot c_stack2 with
         | Some (cond, body, body_mem, l_env_mem, c_stack3) ->
@@ -516,7 +542,8 @@ let rule_Next : state -> state option =
     | _ -> None
 
 let rule_Seq : state -> state option =
-  fun state -> match stack_pop_v state.stack with
+  fun state ->
+    match stack_pop_v state.stack with
     | Some (EvalSlot (Seq (expr1, expr2)), c_env_mem, c_stack2) ->
         let t_frame = { frame_default with
                           env_mem = c_env_mem;
