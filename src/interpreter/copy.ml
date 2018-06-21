@@ -68,7 +68,7 @@ and copy_alist:'a. ('a * S.memref) list -> S.heap -> ('a * S.memref) list * S.he
 
 and copy_env: S.env -> S.heap -> (S.env * S.heap) =
     fun env heap ->
-    let bindings = S.IdentMap.bindings env.S.mem_map in
+    let bindings = S.IdentMap.bindings env.S.id_map in
     let idmems, heap' = copy_alist bindings heap in
     let env' = S.env_add_list idmems S.env_empty in
     let env'' = {env' with S.pred_mem = env.S.pred_mem} in (* parent is shared *)
@@ -91,7 +91,7 @@ and copy_list: (S.ident option * S.memref) list -> S.heap -> ((S.ident option * 
 (* deep copy a memory reference *)
 and deep_copy: S.memref -> S.heap -> (S.memref * S.heap) =
     fun mem heap ->
-    let obj = try Some (S.MemRefMap.find mem heap.S.hobj_map) with Not_found -> None in
+    let obj = try Some (S.MemRefMap.find mem heap.S.mem_map) with Not_found -> None in
     match obj with
     | Some (S.PromiseObj _)   -> failwith "can't copy promises" (* TODO: force evaluation somehow? *)
     | Some (S.DataObj (v,a))    -> let (a', h') = copy_attributes a heap in

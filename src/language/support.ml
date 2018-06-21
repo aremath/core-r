@@ -57,7 +57,7 @@ module IdentMap = Map.Make(Ident)
 
 (* Environment *)
 type env =
-  { mem_map : memref IdentMap.t;
+  { id_map : memref IdentMap.t;
     pred_mem : memref }
 
 (* Values *)
@@ -103,7 +103,7 @@ type heapobj =
   | DataObj of value * attributes
 
 type heap =
-  { hobj_map : heapobj MemRefMap.t;
+  { mem_map : heapobj MemRefMap.t;
     next_mem : memref }
 
 (* Execution state *)
@@ -116,7 +116,6 @@ type state =
 
 (* Utility functions *)
 
-
 (* Memory references *)
 let mem_of_int : int -> memref =
   fun addr -> { R.addr = addr }
@@ -128,6 +127,7 @@ let mem_null : memref = mem_of_int 0
 
 let is_mem_null : memref -> bool =
   fun mem -> mem = mem_null
+
 
 (* R type utility *)
 let rint_of_int : int -> rint =
@@ -205,7 +205,7 @@ let rec attrs_add_list : (rstring * memref) list -> attributes -> unit =
 
 (* Frame operations *)
 let frame_default : frame =
-  { env_mem = mem_null ;
+  { env_mem = mem_null;
     slot = ReturnSlot mem_null }
 
 
@@ -251,13 +251,13 @@ let rec stack_push_list : frame list -> stack -> stack =
 
 (* Heap operations *)
 let heap_empty : heap =
-  { hobj_map = MemRefMap.empty;
+  { mem_map = MemRefMap.empty;
     next_mem = mem_incr mem_null }
 
 let heap_find : memref -> heap -> heapobj option =
   fun mem heap ->
     try
-      Some (MemRefMap.find mem heap.hobj_map)
+      Some (MemRefMap.find mem heap.mem_map)
     with
       Not_found -> None
 
@@ -270,7 +270,7 @@ let rec heap_find_deep : memref -> heap -> (memref * heapobj) option =
 
 let heap_add : memref -> heapobj -> heap -> heap =
   fun mem hobj heap ->
-    { heap with hobj_map = MemRefMap.add mem hobj heap.hobj_map }
+    { heap with mem_map = MemRefMap.add mem hobj heap.mem_map }
 
 let rec heap_add_list : (memref * heapobj) list -> heap -> heap =
   fun binds heap ->
@@ -308,7 +308,7 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
 
 let heap_remove : memref -> heap -> heap =
   fun mem heap ->
-    { heap with hobj_map = MemRefMap.remove mem heap.hobj_map }
+    { heap with mem_map = MemRefMap.remove mem heap.mem_map }
 
 let rec heap_remove_list : memref list -> heap -> heap =
   fun mems heap ->
@@ -320,16 +320,19 @@ let rec heap_remove_list : memref list -> heap -> heap =
 (* Environment functions *)
 
 let env_empty : env =
-  { mem_map = IdentMap.empty;
+  { id_map = IdentMap.empty;
     pred_mem = mem_null }
 
 (* Flattening *)
+let list_of_mem : env -> (ident * memref) list =
+  fun env ->
+    IdentMap.bindings env.id_map
 
 (* First occurrence within the environment *)
 let rec env_find : ident -> env -> heap -> memref option =
   fun id env heap ->
     try
-      Some (IdentMap.find id env.mem_map)
+      Some (IdentMap.find id env.id_map)
     with
       Not_found ->
         match heap_find env.pred_mem heap with
@@ -347,7 +350,7 @@ let env_mem_find : ident -> memref -> heap -> memref option =
 (* Add to outrmost level of environment *)
 let env_add : ident -> memref -> env -> env =
   fun id mem env ->
-    { env with mem_map = IdentMap.add id mem env.mem_map }
+    { env with id_map = IdentMap.add id mem env.id_map }
 
 let rec env_add_list : (ident * memref) list -> env -> env =
   fun binds env ->
@@ -375,7 +378,7 @@ let env_mem_add_list :
 
 let env_remove : ident -> env -> env =
   fun id env ->
-    { env with mem_map = IdentMap.remove id env.mem_map }
+    { env with id_map = IdentMap.remove id env.id_map }
 
 let rec env_remove_list : ident list -> env -> env =
   fun ids env ->
