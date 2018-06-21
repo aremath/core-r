@@ -11,12 +11,7 @@ open Sys
 
 type rastexpr = unit R.expr
 
-module StringMap = Map.Make(String)
-
-type deptable = string StringMap.t
-
-let empty_deptable : deptable =
-  StringMap.empty
+module StringSet = Set.Make(String)
 
 let canonicalize_R_file : string -> string -> string =
   fun dir file ->
@@ -41,10 +36,22 @@ let source_call_of_rast : rastexpr -> string list =
 let file_dependencies : string -> string -> string list =
   fun dir file ->
     let rasts = rasts_of_file (canonicalize_R_file dir file) in
-      List.concat (List.map source_call_of_rast rasts)
+    let deps = List.concat (List.map source_call_of_rast rasts) in
+      List.map (canonicalize_R_file dir) deps
 
-let dependency_graph : string -> string -> deptable -> string =
-  fun a _ _ -> a
+let rec dependency_list :
+  string -> string -> StringSet.t -> string list * StringSet.t =
+  fun dir file set ->
+    let canon_name = canonicalize_R_file dir file in
+    if StringSet.mem canon_name set then
+      failwith ("circular dependency: already seen: " ^ canon_name)
+    else
+      let set2 = StringSet.add canon_name set in
+      let file_deps = file_dependencies dir file in
+        List.fold_left (fun (acc, s) c ->
+                          let (c_acc, c_s) = dependency_list dir c s in
+                            (acc @ c_acc, c_s))
+                       ([canon_name], set2) file_deps
 
 let merge_heap : T.heap -> T.heap -> T.heap =
   fun heap1 heap2 -> heap2
