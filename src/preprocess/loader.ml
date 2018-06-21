@@ -6,7 +6,6 @@ module R = Rast
 module S = Syntax
 module T = Support
 open Absyn_generator
-open Batteries
 open Filename
 open Sys
 
@@ -44,8 +43,8 @@ let file_dependencies : string -> string -> string list =
     let rasts = rasts_of_file (canonicalize_R_file dir file) in
       List.concat (List.map source_call_of_rast rasts)
 
-let dependency_graph : string -> string -> deptable -> string
-
+let dependency_graph : string -> string -> deptable -> string =
+  fun a _ _ -> a
 
 let merge_heap : T.heap -> T.heap -> T.heap =
   fun heap1 heap2 -> heap2
