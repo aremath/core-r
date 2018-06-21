@@ -6,8 +6,8 @@ type rbool = int option
 type rstring = string option
 
 type 'a ident = 
-  { pkg : string option;
-    name : string;
+  { pkg : rstring option;
+    name : rstring;
     tag : 'a option }
 
 type memref =

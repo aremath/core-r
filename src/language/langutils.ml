@@ -14,10 +14,16 @@ let rec string_of_source : source -> string =
             "col:" ^ string_of_int src.col ^ "}"
 *)
 
+let string_of_rstring : rstring -> string =
+  fun rstr -> match rstr with
+     | None -> "NA_character_"
+     | Some str -> str
+
 let rec string_of_ident : ident -> string =
   fun id -> match id.pkg with
-    | None -> "ident {pkg:" ^ "_" ^ ";name:" ^ id.name ^ "}"
-    | Some p -> "ident {pkg:" ^ p ^ ";name:" ^ id.name ^ "}"
+    | None -> "ident {pkg:" ^ "_" ^ ";name:" ^ string_of_rstring id.name ^ "}"
+    | Some p -> "ident {pkg:" ^ string_of_rstring p ^
+                ";name:" ^ string_of_rstring id.name ^ "}"
 
 and string_of_memref : memref -> string =
   fun mem ->

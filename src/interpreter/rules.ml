@@ -38,7 +38,7 @@ type rule =
 
 
 let id_variadic : ident =
-  id_of_string "..."
+  id_of_rstring (rstring_of_string "...")
 
 let pair_first : 'a * 'b -> 'a =
   fun (a, b) -> a
@@ -373,10 +373,10 @@ let rule_DAss : state -> state option =
 
 let rule_AssStr : state -> state option =
   fun state -> match stack_pop_v state.stack with
-    | Some (EvalSlot (Assign (Const (Str (Some str)), expr)),
+    | Some (EvalSlot (Assign (Const (Str rstr), expr)),
             c_env_mem, c_stack2) ->
         let c_slot =
-            EvalSlot (Assign (Ident { id_default with name = str }, expr)) in
+            EvalSlot (Assign (Ident { id_default with name = rstr }, expr)) in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = c_slot } in
@@ -386,11 +386,11 @@ let rule_AssStr : state -> state option =
 
 let rule_DAssStr : state -> state option =
   fun state -> match stack_pop_v state.stack with
-    | Some (EvalSlot (SuperAssign (Const (Str (Some str)), expr)),
+    | Some (EvalSlot (SuperAssign (Const (Str rstr), expr)),
             c_env_mem, c_stack2) ->
         let c_slot =
             EvalSlot (SuperAssign (Ident { id_default with
-                                             name = str }, expr)) in
+                                             name = rstr }, expr)) in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = c_slot } in

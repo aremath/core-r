@@ -30,16 +30,6 @@ end
 
 module MemRefMap = Map.Make(MemRef)
 
-(* Identifier Map *)
-module Ident = struct
-  type t = ident
-
-  let compare : t -> t -> int =
-    fun a b ->
-      compare a.R.name b.R.name
-end
-
-module IdentMap = Map.Make(Ident)
 
 (* RString Map *)
 module RString = struct
@@ -51,6 +41,19 @@ module RString = struct
 end
 
 module RStringMap = Map.Make(RString)
+
+
+(* Identifier Map *)
+module Ident = struct
+  type t = ident
+
+  let compare : t -> t -> int =
+    fun a b ->
+      compare (a.R.pkg, a.R.name) (b.R.pkg, b.R.name)
+end
+
+module IdentMap = Map.Make(Ident)
+
 
 (* Environment *)
 type env =
@@ -85,10 +88,6 @@ type slot =
   | AttrSlot of memref option * expr option
   | LoopSlot of expr * expr * memref option (* body's return value *)
   | BranchSlot of expr * expr
-  (*
-  | ArraySubSlot of memref option *  memref list * (ident * memref) list *
-                    ident option * arg list
-  *)
 
 type frame =
   { env_mem : memref;
@@ -127,29 +126,53 @@ let mem_incr : memref -> memref =
   fun mem ->
     { mem with R.addr = mem.R.addr + 1 }
 
-let mem_null : memref =
-  mem_of_int 0
+let mem_null : memref = mem_of_int 0
 
 let is_mem_null : memref -> bool =
   fun mem ->
     mem = mem_null
 
+(* R type utility *)
+let rint_of_int : int -> rint =
+  fun i -> Some i
+
+let na_rint : rint = None
+
+let rfloat_of_float : float -> rfloat =
+  fun f -> Some f
+
+let na_rfloat : rfloat = None
+
+let rcomplex_of_complex : Complex.t -> rcomplex =
+  fun c -> Some c
+
+let na_rcomplex : rcomplex = None
+
+let rbool_of_bool : int -> rbool =
+  fun b -> Some b
+
+let na_rbool : rbool = None
+
+let rstring_of_string : string -> rstring =
+  fun s -> Some s
+
+let na_rstring : rstring = None
 
 (* Fresh identifier *)
 let id_default : ident =
   { R.pkg = None;
-    R.name = "";
+    R.name = na_rstring;
     R.tag = None }
 
-let id_of_string : string -> ident =
+let id_of_rstring : rstring -> ident =
   fun name ->
     { id_default with R.name = name }
 
 let id_fresh : state -> ident * state =
   fun state ->
     let count2 = state.fresh_count + 1 in
-    let name = "fs$" ^ string_of_int count2 in
-      (id_of_string name, { state with fresh_count = count2 })
+    let name = rstring_of_string ("fs$" ^ string_of_int count2) in
+      (id_of_rstring name, { state with fresh_count = count2 })
 
 let rec id_fresh_list : int -> state -> (ident list) * state =
   fun n state ->
@@ -278,12 +301,23 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
         | R.Nil -> Vec (BoolVec (Array.of_list []))
         ), attrs_empty)) heap
 
+let heap_remove : memref -> heap -> heap =
+  fun mem heap ->
+    { heap with hobj_map = MemRefMap.remove mem heap.hobj_map }
 
-(* Environment lookup *)
+let rec heap_remove_list : memref list -> heap -> heap =
+  fun mems heap -> match mems with
+    | [] -> heap
+    | (mem :: mems_tl) -> heap_remove_list mems_tl (heap_remove mem heap)
+
+
+(* Environment functions *)
+
 let env_empty : env =
   { mem_map = IdentMap.empty;
     pred_mem = mem_null }
 
+(* First occurrence within the environment *)
 let rec env_find : ident -> env -> heap -> memref option =
   fun id env heap ->
     try
@@ -298,6 +332,9 @@ let env_mem_find : ident -> memref -> heap -> memref option =
     | Some (DataObj (EnvVal env, _)) -> env_find id env heap
     | _ -> None
 
+(* Find first occurrence whose package matches *)
+
+(* Add to outrmost level of environment *)
 let env_add : ident -> memref -> env -> env =
   fun id mem env ->
     { env with mem_map = IdentMap.add id mem env.mem_map }
@@ -322,6 +359,33 @@ let env_mem_add_list :
         let env2 = env_add_list binds env in
           Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
     | _ -> None
+
+let env_remove : ident -> env -> env =
+  fun id env ->
+    { env with mem_map = IdentMap.remove id env.mem_map }
+
+let rec env_remove_list : ident list -> env -> env =
+  fun ids env -> match ids with
+    | [] -> env
+    | (id :: ids_tl) -> env_remove_list ids_tl (env_remove id env)
+
+let rec env_mem_remove_all : ident -> memref -> heap -> heap option =
+  fun id env_mem heap -> match heap_find env_mem heap with
+    | Some (DataObj (EnvVal env, attrs)) ->
+        let env2 = env_remove id env in
+        let heap2 = heap_add env_mem (DataObj (EnvVal env2, attrs)) heap in
+          if is_mem_null env.pred_mem || env_mem = env.pred_mem then
+            Some heap2
+          else
+            env_mem_remove_all id env.pred_mem heap2
+    | _ -> None
+
+let rec env_mem_remove_all_list : ident list -> memref -> heap -> heap option =
+  fun ids env_mem heap -> match ids with
+    | [] -> Some heap
+    | (id :: ids_tl) -> match env_mem_remove_all id env_mem heap with
+      | None -> None
+      | Some heap2 -> env_mem_remove_all_list ids_tl env_mem heap2
 
 let env_nest : memref -> env =
   fun env_mem ->
