@@ -28,6 +28,20 @@ let unzip_list: ('a * 'b) list -> 'a list * 'b list =
     fun zipped_list -> List.fold_right (fun (x, y) (al, bl) -> x::al, y::bl)
     zipped_list ([], [])
 
+let zip_list: 'a list -> 'b list -> ('a * 'b) list =
+    fun l1 l2 -> List.map2 (fun x y -> (x,y)) l1 l2
+
+let hashtable_to_alist: ('a, 'b) Hashtbl.t -> ('a * 'b) list =
+    fun hashtable ->
+    Hashtbl.fold (fun k v l -> (k,v)::l) hashtable []
+
+let alist_to_hashtable: ('a * 'b) list -> ('a, 'b) Hashtbl.t =
+    fun alist ->
+        let h = Hashtbl.create (List.length alist) in (* TODO: default value? *)
+        let _ = List.iter (fun (k, v) -> Hashtbl.add h k v) alist in
+        h
+
+(* deep copy and associated functions *)
 let copy_rvector: S.rvector -> S.rvector =
     function
     | S.IntVec v -> S.IntVec (Array.copy v)
@@ -36,23 +50,7 @@ let copy_rvector: S.rvector -> S.rvector =
     | S.StrVec v -> S.StrVec (Array.copy v)
     | S.BoolVec v -> S.BoolVec (Array.copy v)
 
-(* converts an ident -> memref association list to a map.
-Unfortunately not generalized over map types *)
-let rec ident_map_of_alist: (S.ident * S.memref) list -> S.memref S.Ident_Map.t -> S.memref S.Ident_Map.t =
-    fun idmems map ->
-    match idmems with
-    | (id, mem)::tl -> let map' = S.Ident_Map.add id mem map in
-            ident_map_of_alist tl map'
-    | []    -> map
-
-let rec string_map_of_alist: (S.rstring * S.memref) list -> S.memref S.RString_Map.t -> S.memref S.RString_Map.t =
-    fun idmems map ->
-    match idmems with
-    | (id, mem)::tl -> let map' = S.RString_Map.add id mem map in
-            string_map_of_alist tl map'
-    | []    -> map
-
-(* recursively copy the elements of a reference array *)
+(* recursively copy the elements of a reference list *)
 let rec copy_ref_array: S.memref list -> S.heap -> (S.memref list * S.heap) =
     fun mems heap ->
     match mems with
@@ -61,41 +59,49 @@ let rec copy_ref_array: S.memref list -> S.heap -> (S.memref list * S.heap) =
         (m'::ms, h'')
     | []        -> ([], heap)
 
-and copy_ident_map: S.memref S.Ident_Map.t -> S.heap -> (S.memref S.Ident_Map.t * S.heap) =
-    fun map heap ->
-    let bindings = S.Ident_Map.bindings map in
-    let (ids, mems) = unzip_list bindings in (* unzip bindings to get list of idents and mem refs *)
-    let mems', heap' = copy_ref_array mems heap in (* deep copy the mems present in the map *)
-    (* association list of ids, mems' *)
-    let idmems = List.map2 (fun id mem -> (id, mem)) ids mems' in (* no need to copy ids *)
-    let map' = ident_map_of_alist idmems S.Ident_Map.empty in
-    (map', heap')
+(* TODO: OCAML's type checker is terrible
+(* copy an associative list of keys to memory references *)
+and copy_alist: ('a * S.memref) list -> S.heap -> ('a * S.memref) list * S.heap =
+    fun alist heap ->
+    let keys, mems = unzip_list alist in
+    let mems', heap' = copy_ref_array mems heap in
+    ((zip_list keys mems'), heap) (* no need to copy keys *)
+*)
 
-and copy_string_map: S.memref S.RString_Map.t -> S.heap -> (S.memref S.RString_Map.t * S.heap) =
-    fun map heap ->
-    let bindings = S.RString_Map.bindings map in
-    let (strs, mems) = unzip_list bindings in (* unzip bindings to get list of idents and mem refs *)
-    let mems', heap' = copy_ref_array mems heap in (* deep copy the mems present in the map *)
-    (* association list of ids, mems' *)
-    let strmems = List.map2 (fun str mem -> (str, mem)) strs mems' in (* no need to copy ids *)
-    let map' = string_map_of_alist strmems S.RString_Map.empty in
-    (map', heap')
+(* copy an associative list of keys to memory references *)
+and copy_alist_ident: (S.ident * S.memref) list -> S.heap -> (S.ident * S.memref) list * S.heap =
+    fun alist heap ->
+    let keys, mems = unzip_list alist in
+    let mems', heap' = copy_ref_array mems heap in
+    ((zip_list keys mems'), heap) (* no need to copy keys *)
 
-and copy_attributes: S.attributes -> S.heap -> (S.attributes * S.heap) =
-    fun attrib heap ->
-    let map', heap' = copy_string_map attrib.S.rstr_map heap in
-    ({S.rstr_map = map'}, heap')
+(* copy an associative list of keys to memory references *)
+and copy_alist_rstring: (S.rstring * S.memref) list -> S.heap -> (S.rstring * S.memref) list * S.heap =
+    fun alist heap ->
+    let keys, mems = unzip_list alist in
+    let mems', heap' = copy_ref_array mems heap in
+    ((zip_list keys mems'), heap) (* no need to copy keys *)
 
 and copy_env: S.env -> S.heap -> (S.env * S.heap) =
     fun env heap ->
-    let map', heap' = copy_ident_map env.S.mem_map heap in
-    ({S.mem_map = map'; S.pred_mem = env.S.pred_mem}, heap') (* parent is shared *)
+    let bindings = S.Ident_Map.bindings env.S.mem_map in
+    let idmems, heap' = copy_alist_ident bindings heap in
+    let env' = S.env_add_list idmems S.env_empty in
+    let env'' = {env' with S.pred_mem = env.S.pred_mem} in (* parent is shared *)
+    (env'', heap')
+
+and copy_attributes: S.attributes -> S.heap -> (S.attributes * S.heap) =
+    fun attrib heap ->
+    let attr_alist = hashtable_to_alist attrib.S.rstr_map in
+    let attr_alist', heap' = copy_alist_rstring attr_alist heap in
+    let new_table = alist_to_hashtable attr_alist' in (* can use S.attrs_add_list too *)
+    ({S.rstr_map = new_table}, heap')
 
 and copy_list: (S.ident option * S.memref) list -> S.heap -> ((S.ident option * S.memref) list * S.heap) =
     fun l heap ->
     let (ids, mems) = unzip_list l in 
     let mems', heap' = copy_ref_array mems heap in
-    let idmems = List.map2 (fun id mem -> (id, mem)) ids mems' in (* no need to copy ids *)
+    let idmems = zip_list ids mems' in
     idmems, heap'
 
 (* deep copy a memory reference *)

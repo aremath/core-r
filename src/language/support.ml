@@ -50,8 +50,6 @@ module RString = struct
       compare a b
 end
 
-module RString_Map = Map.Make (RString)
-
 (* Environment *)
 type env =
   { mem_map : memref Ident_Map.t;
@@ -73,7 +71,7 @@ type value =
   | ListVal of (ident option * memref) list
 
 type attributes =
-  { rstr_map : memref RString_Map.t }
+  { rstr_map : (rstring, memref) Hashtbl.t }
 
 (* Stack *)
 type slot =
@@ -163,25 +161,25 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
 
 (* Attributes *)
 let attrs_empty : attributes =
-  { rstr_map = RString_Map.empty }
+  { rstr_map = Hashtbl.create 20 } (* TODO: what is the expected attribute size? *)
 
 let attrs_find : rstring -> attributes -> memref option =
   fun rstr attrs ->
     try
-      Some (RString_Map.find rstr attrs.rstr_map)
+      Some (Hashtbl.find attrs.rstr_map rstr)
     with
       Not_found -> None
 
-let attrs_add : rstring -> memref -> attributes -> attributes =
+let attrs_add : rstring -> memref -> attributes -> unit =
   fun rstr mem attrs ->
-    { attrs with rstr_map = RString_Map.add rstr mem attrs.rstr_map }
+    Hashtbl.add attrs.rstr_map rstr mem
 
-let rec attrs_add_list : (rstring * memref) list -> attributes -> attributes =
+let rec attrs_add_list : (rstring * memref) list -> attributes -> unit =
   fun binds attrs -> match binds with
-    | [] -> attrs
+    | [] -> ()
     | ((rstr, mem) :: binds_tl) ->
-        attrs_add_list binds_tl (attrs_add rstr mem attrs)
-
+        let _ = attrs_add rstr mem attrs in
+        attrs_add_list binds_tl attrs
 
 (* Frame operations *)
 let frame_default : frame =
