@@ -6,10 +6,18 @@ module R = Rast
 module S = Syntax
 module T = Support
 open Absyn_generator
+open Batteries
 open Filename
 open Sys
 
 type rastexpr = unit R.expr
+
+module StringMap = Map.Make(String)
+
+type deptable = string StringMap.t
+
+let empty_deptable : deptable =
+  StringMap.empty
 
 let canonicalize_R_file : string -> string -> string =
   fun dir file ->
@@ -25,7 +33,7 @@ let rasts_of_file : string -> rastexpr list =
 let source_call_of_rast : rastexpr -> string list =
   fun expr -> match expr with
     | R.FuncCall (R.Ident id, [R.ExprArg (R.StringConst src)]) ->
-        if id.name = "source" then
+        if id.R.name = "source" then
           [src]
         else
           []
@@ -34,7 +42,10 @@ let source_call_of_rast : rastexpr -> string list =
 let file_dependencies : string -> string -> string list =
   fun dir file ->
     let rasts = rasts_of_file (canonicalize_R_file dir file) in
-      []
+      List.concat (List.map source_call_of_rast rasts)
+
+let dependency_graph : string -> string -> deptable -> string
+
 
 let merge_heap : T.heap -> T.heap -> T.heap =
   fun heap1 heap2 -> heap2

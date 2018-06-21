@@ -28,7 +28,7 @@ module MemRef = struct
       compare a.R.addr b.R.addr
 end
 
-module MemRef_Map = Map.Make (MemRef)
+module MemRefMap = Map.Make(MemRef)
 
 (* Identifier Map *)
 module Ident = struct
@@ -39,7 +39,7 @@ module Ident = struct
       compare a.R.name b.R.name
 end
 
-module Ident_Map = Map.Make (Ident)
+module IdentMap = Map.Make(Ident)
 
 (* RString Map *)
 module RString = struct
@@ -50,11 +50,11 @@ module RString = struct
       compare a b
 end
 
-module RString_Map = Map.Make (RString)
+module RStringMap = Map.Make(RString)
 
 (* Environment *)
 type env =
-  { mem_map : memref Ident_Map.t;
+  { mem_map : memref IdentMap.t;
     pred_mem : memref }
 
 (* Values *)
@@ -73,7 +73,7 @@ type value =
   | ListVal of (ident option * memref) list
 
 type attributes =
-  { rstr_map : memref RString_Map.t }
+  { rstr_map : memref RStringMap.t }
 
 (* Stack *)
 type slot =
@@ -104,7 +104,7 @@ type heapobj =
   | DataObj of value * attributes
 
 type heap =
-  { hobj_map : heapobj MemRef_Map.t;
+  { hobj_map : heapobj MemRefMap.t;
     next_mem : memref }
 
 (* Execution state *)
@@ -163,18 +163,18 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
 
 (* Attributes *)
 let attrs_empty : attributes =
-  { rstr_map = RString_Map.empty }
+  { rstr_map = RStringMap.empty }
 
 let attrs_find : rstring -> attributes -> memref option =
   fun rstr attrs ->
     try
-      Some (RString_Map.find rstr attrs.rstr_map)
+      Some (RStringMap.find rstr attrs.rstr_map)
     with
       Not_found -> None
 
 let attrs_add : rstring -> memref -> attributes -> attributes =
   fun rstr mem attrs ->
-    { attrs with rstr_map = RString_Map.add rstr mem attrs.rstr_map }
+    { attrs with rstr_map = RStringMap.add rstr mem attrs.rstr_map }
 
 let rec attrs_add_list : (rstring * memref) list -> attributes -> attributes =
   fun binds attrs -> match binds with
@@ -226,13 +226,13 @@ let rec stack_push_list : frame list -> stack -> stack =
 
 (* Heap operations *)
 let heap_empty : heap =
-  { hobj_map = MemRef_Map.empty;
+  { hobj_map = MemRefMap.empty;
     next_mem = mem_incr mem_null }
 
 let heap_find : memref -> heap -> heapobj option =
   fun mem heap ->
     try
-      Some (MemRef_Map.find mem heap.hobj_map)
+      Some (MemRefMap.find mem heap.hobj_map)
     with
       Not_found -> None
 
@@ -244,7 +244,7 @@ let rec heap_find_deep : memref -> heap -> (memref * heapobj) option =
 
 let heap_add : memref -> heapobj -> heap -> heap =
   fun mem hobj heap ->
-    { heap with hobj_map = MemRef_Map.add mem hobj heap.hobj_map }
+    { heap with hobj_map = MemRefMap.add mem hobj heap.hobj_map }
 
 let rec heap_add_list : (memref * heapobj) list -> heap -> heap =
   fun binds heap -> match binds with
@@ -281,13 +281,13 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
 
 (* Environment lookup *)
 let env_empty : env =
-  { mem_map = Ident_Map.empty;
+  { mem_map = IdentMap.empty;
     pred_mem = mem_null }
 
 let rec env_find : ident -> env -> heap -> memref option =
   fun id env heap ->
     try
-      Some (Ident_Map.find id env.mem_map)
+      Some (IdentMap.find id env.mem_map)
     with
       Not_found -> match heap_find env.pred_mem heap with
         | Some (DataObj (EnvVal env2, _)) -> env_find id env2 heap
@@ -300,7 +300,7 @@ let env_mem_find : ident -> memref -> heap -> memref option =
 
 let env_add : ident -> memref -> env -> env =
   fun id mem env ->
-    { env with mem_map = Ident_Map.add id mem env.mem_map }
+    { env with mem_map = IdentMap.add id mem env.mem_map }
 
 let rec env_add_list : (ident * memref) list -> env -> env =
   fun binds env -> match binds with
