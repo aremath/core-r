@@ -59,24 +59,8 @@ let rec copy_ref_array: S.memref list -> S.heap -> (S.memref list * S.heap) =
         (m'::ms, h'')
     | []        -> ([], heap)
 
-(* TODO: OCAML's type checker is terrible
 (* copy an associative list of keys to memory references *)
-and copy_alist: ('a * S.memref) list -> S.heap -> ('a * S.memref) list * S.heap =
-    fun alist heap ->
-    let keys, mems = unzip_list alist in
-    let mems', heap' = copy_ref_array mems heap in
-    ((zip_list keys mems'), heap) (* no need to copy keys *)
-*)
-
-(* copy an associative list of keys to memory references *)
-and copy_alist_ident: (S.ident * S.memref) list -> S.heap -> (S.ident * S.memref) list * S.heap =
-    fun alist heap ->
-    let keys, mems = unzip_list alist in
-    let mems', heap' = copy_ref_array mems heap in
-    ((zip_list keys mems'), heap) (* no need to copy keys *)
-
-(* copy an associative list of keys to memory references *)
-and copy_alist_rstring: (S.rstring * S.memref) list -> S.heap -> (S.rstring * S.memref) list * S.heap =
+and copy_alist:'a. ('a * S.memref) list -> S.heap -> ('a * S.memref) list * S.heap =
     fun alist heap ->
     let keys, mems = unzip_list alist in
     let mems', heap' = copy_ref_array mems heap in
@@ -84,8 +68,8 @@ and copy_alist_rstring: (S.rstring * S.memref) list -> S.heap -> (S.rstring * S.
 
 and copy_env: S.env -> S.heap -> (S.env * S.heap) =
     fun env heap ->
-    let bindings = S.Ident_Map.bindings env.S.mem_map in
-    let idmems, heap' = copy_alist_ident bindings heap in
+    let bindings = S.IdentMap.bindings env.S.mem_map in
+    let idmems, heap' = copy_alist bindings heap in
     let env' = S.env_add_list idmems S.env_empty in
     let env'' = {env' with S.pred_mem = env.S.pred_mem} in (* parent is shared *)
     (env'', heap')
@@ -93,7 +77,7 @@ and copy_env: S.env -> S.heap -> (S.env * S.heap) =
 and copy_attributes: S.attributes -> S.heap -> (S.attributes * S.heap) =
     fun attrib heap ->
     let attr_alist = hashtable_to_alist attrib.S.rstr_map in
-    let attr_alist', heap' = copy_alist_rstring attr_alist heap in
+    let attr_alist', heap' = copy_alist attr_alist heap in
     let new_table = alist_to_hashtable attr_alist' in (* can use S.attrs_add_list too *)
     ({S.rstr_map = new_table}, heap')
 
@@ -107,7 +91,7 @@ and copy_list: (S.ident option * S.memref) list -> S.heap -> ((S.ident option * 
 (* deep copy a memory reference *)
 and deep_copy: S.memref -> S.heap -> (S.memref * S.heap) =
     fun mem heap ->
-    let obj = try Some (S.MemRef_Map.find mem heap.S.hobj_map) with Not_found -> None in
+    let obj = try Some (S.MemRefMap.find mem heap.S.hobj_map) with Not_found -> None in
     match obj with
     | Some (S.PromiseObj _)   -> failwith "can't copy promises" (* TODO: force evaluation somehow? *)
     | Some (S.DataObj (v,a))    -> let (a', h') = copy_attributes a heap in
