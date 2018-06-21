@@ -76,7 +76,7 @@ type value =
   | ListVal of (ident option * memref) list
 
 type attributes =
-  { rstr_map : memref RStringMap.t }
+  { rstr_map : (rstring, memref) Hashtbl.t }
 
 (* Stack *)
 type slot =
@@ -119,18 +119,15 @@ type state =
 
 (* Memory references *)
 let mem_of_int : int -> memref =
-  fun addr ->
-    { R.addr = addr }
+  fun addr -> { R.addr = addr }
 
 let mem_incr : memref -> memref =
-  fun mem ->
-    { mem with R.addr = mem.R.addr + 1 }
+  fun mem -> { mem with R.addr = mem.R.addr + 1 }
 
 let mem_null : memref = mem_of_int 0
 
 let is_mem_null : memref -> bool =
-  fun mem ->
-    mem = mem_null
+  fun mem -> mem = mem_null
 
 (* R type utility *)
 let rint_of_int : int -> rint =
@@ -165,8 +162,7 @@ let id_default : ident =
     R.tag = None }
 
 let id_of_rstring : rstring -> ident =
-  fun name ->
-    { id_default with R.name = name }
+  fun name -> { id_default with R.name = name }
 
 let id_fresh : state -> ident * state =
   fun state ->
@@ -186,25 +182,26 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
 
 (* Attributes *)
 let attrs_empty : attributes =
-  { rstr_map = RStringMap.empty }
+  { rstr_map = Hashtbl.create 20 } (* TODO: what is the expected size? *)
 
 let attrs_find : rstring -> attributes -> memref option =
   fun rstr attrs ->
     try
-      Some (RStringMap.find rstr attrs.rstr_map)
+      Some (Hashtbl.find attrs.rstr_map rstr)
     with
       Not_found -> None
 
-let attrs_add : rstring -> memref -> attributes -> attributes =
+let attrs_add : rstring -> memref -> attributes -> unit =
   fun rstr mem attrs ->
-    { attrs with rstr_map = RStringMap.add rstr mem attrs.rstr_map }
+    Hashtbl.add attrs.rstr_map rstr mem
 
-let rec attrs_add_list : (rstring * memref) list -> attributes -> attributes =
-  fun binds attrs -> match binds with
-    | [] -> attrs
+let rec attrs_add_list : (rstring * memref) list -> attributes -> unit =
+  fun binds attrs ->
+    match binds with
+    | [] -> ()
     | ((rstr, mem) :: binds_tl) ->
-        attrs_add_list binds_tl (attrs_add rstr mem attrs)
-
+        attrs_add rstr mem attrs;
+        attrs_add_list binds_tl attrs;;
 
 (* Frame operations *)
 let frame_default : frame =
@@ -217,21 +214,25 @@ let stack_empty : stack =
   { frame_list = [] }
 
 let stack_pop : stack -> (frame * stack) option =
-  fun stack -> match stack.frame_list with
+  fun stack ->
+    match stack.frame_list with
     | [] -> None
     | (frame :: frames_tl) ->
         Some (frame, { stack with frame_list = frames_tl })
 
 let stack_pop_v : stack -> (slot * memref * stack) option =
-  fun stack -> match stack_pop stack with
+  fun stack ->
+    match stack_pop stack with
     | None -> None
     | Some (frame, stack2) ->
         Some (frame.slot, frame.env_mem, stack2)
 
 let stack_pop_v2 : stack -> (slot * memref * slot * memref * stack) option =
-  fun stack -> match stack_pop_v stack with
+  fun stack ->
+    match stack_pop_v stack with
     | None -> None
-    | Some (slot1, env_mem1, stack2) -> match stack_pop_v stack2 with
+    | Some (slot1, env_mem1, stack2) ->
+      match stack_pop_v stack2 with
       | None -> None
       | Some (slot2, env_mem2, stack3) ->
           Some (slot1, env_mem1, slot2, env_mem2, stack3)
@@ -241,7 +242,8 @@ let stack_push : frame -> stack -> stack =
     { stack with frame_list = frame :: stack.frame_list }
 
 let rec stack_push_list : frame list -> stack -> stack =
-  fun frames stack -> match frames with
+  fun frames stack ->
+    match frames with
     | [] -> stack
     | (frame :: frames_tl) ->
         stack_push frame (stack_push_list frames_tl stack)
@@ -260,7 +262,8 @@ let heap_find : memref -> heap -> heapobj option =
       Not_found -> None
 
 let rec heap_find_deep : memref -> heap -> (memref * heapobj) option =
-  fun mem heap -> match heap_find mem heap with
+  fun mem heap ->
+    match heap_find mem heap with
     | None -> None
     | Some (PromiseObj (R.MemRef mem2, _)) -> heap_find_deep mem2 heap
     | Some hobj -> Some (mem, hobj)
@@ -270,7 +273,8 @@ let heap_add : memref -> heapobj -> heap -> heap =
     { heap with hobj_map = MemRefMap.add mem hobj heap.hobj_map }
 
 let rec heap_add_list : (memref * heapobj) list -> heap -> heap =
-  fun binds heap -> match binds with
+  fun binds heap ->
+    match binds with
     | [] -> heap
     | ((mem, hobj) :: binds_tl) ->
         heap_add_list binds (heap_add mem hobj heap)
@@ -282,7 +286,8 @@ let heap_alloc : heapobj -> heap -> memref * heap =
                      next_mem = mem_incr used_mem })
 
 let rec heap_alloc_list : heapobj list -> heap -> memref list * heap =
-  fun hobjs heap -> match hobjs with
+  fun hobjs heap ->
+    match hobjs with
     | [] -> ([], heap)
     | (hobj :: hobjs_tl) ->
         let (mem, heap2) = heap_alloc hobj heap in
@@ -306,7 +311,8 @@ let heap_remove : memref -> heap -> heap =
     { heap with hobj_map = MemRefMap.remove mem heap.hobj_map }
 
 let rec heap_remove_list : memref list -> heap -> heap =
-  fun mems heap -> match mems with
+  fun mems heap ->
+    match mems with
     | [] -> heap
     | (mem :: mems_tl) -> heap_remove_list mems_tl (heap_remove mem heap)
 
@@ -317,18 +323,22 @@ let env_empty : env =
   { mem_map = IdentMap.empty;
     pred_mem = mem_null }
 
+(* Flattening *)
+
 (* First occurrence within the environment *)
 let rec env_find : ident -> env -> heap -> memref option =
   fun id env heap ->
     try
       Some (IdentMap.find id env.mem_map)
     with
-      Not_found -> match heap_find env.pred_mem heap with
+      Not_found ->
+        match heap_find env.pred_mem heap with
         | Some (DataObj (EnvVal env2, _)) -> env_find id env2 heap
         | _ -> None
 
 let env_mem_find : ident -> memref -> heap -> memref option =
-  fun id env_mem heap -> match heap_find env_mem heap with
+  fun id env_mem heap ->
+    match heap_find env_mem heap with
     | Some (DataObj (EnvVal env, _)) -> env_find id env heap
     | _ -> None
 
@@ -340,13 +350,15 @@ let env_add : ident -> memref -> env -> env =
     { env with mem_map = IdentMap.add id mem env.mem_map }
 
 let rec env_add_list : (ident * memref) list -> env -> env =
-  fun binds env -> match binds with
+  fun binds env ->
+    match binds with
     | [] -> env
     | ((id, mem) :: binds_tl) ->
         env_add_list binds_tl (env_add id mem env)
 
 let env_mem_add : ident -> memref -> memref -> heap -> heap option =
-  fun id mem env_mem heap -> match heap_find env_mem heap with
+  fun id mem env_mem heap ->
+    match heap_find env_mem heap with
     | Some (DataObj (EnvVal env, attrs)) ->
         let env2 = env_add id mem env in
           Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
@@ -354,7 +366,8 @@ let env_mem_add : ident -> memref -> memref -> heap -> heap option =
 
 let env_mem_add_list :
   (ident * memref) list -> memref -> heap -> heap option =
-  fun binds env_mem heap -> match heap_find env_mem heap with
+  fun binds env_mem heap ->
+    match heap_find env_mem heap with
     | Some (DataObj (EnvVal env, attrs)) ->
         let env2 = env_add_list binds env in
           Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
@@ -365,12 +378,14 @@ let env_remove : ident -> env -> env =
     { env with mem_map = IdentMap.remove id env.mem_map }
 
 let rec env_remove_list : ident list -> env -> env =
-  fun ids env -> match ids with
+  fun ids env ->
+    match ids with
     | [] -> env
     | (id :: ids_tl) -> env_remove_list ids_tl (env_remove id env)
 
 let rec env_mem_remove_all : ident -> memref -> heap -> heap option =
-  fun id env_mem heap -> match heap_find env_mem heap with
+  fun id env_mem heap ->
+    match heap_find env_mem heap with
     | Some (DataObj (EnvVal env, attrs)) ->
         let env2 = env_remove id env in
         let heap2 = heap_add env_mem (DataObj (EnvVal env2, attrs)) heap in
@@ -381,9 +396,11 @@ let rec env_mem_remove_all : ident -> memref -> heap -> heap option =
     | _ -> None
 
 let rec env_mem_remove_all_list : ident list -> memref -> heap -> heap option =
-  fun ids env_mem heap -> match ids with
+  fun ids env_mem heap ->
+    match ids with
     | [] -> Some heap
-    | (id :: ids_tl) -> match env_mem_remove_all id env_mem heap with
+    | (id :: ids_tl) ->
+      match env_mem_remove_all id env_mem heap with
       | None -> None
       | Some heap2 -> env_mem_remove_all_list ids_tl env_mem heap2
 
