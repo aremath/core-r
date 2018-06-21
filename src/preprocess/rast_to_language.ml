@@ -12,16 +12,18 @@ let fresh_rident _: 'a R.ident =
 let fresh_lident _: 'a L.ident =
     let next = !ident_count in
     let _ = incr ident_count in
-    {L.pkg = None; L.name = "t$syn_" ^ string_of_int next; L.tag = None}
+    {L.pkg = None; L.name = Some ("t$syn_" ^ string_of_int next); L.tag = None}
 
 let uop_to_ident: R.unop -> 'a L.ident =
-    fun u -> {L.pkg = None; L.name = (R.string_of_unop u); L.tag = None}
+    fun u -> {L.pkg = None; L.name = Some (R.string_of_unop u); L.tag = None}
 
 let bop_to_ident: R.binop -> 'a L.ident =
-    fun b -> {L.pkg = None; L.name = (R.string_of_binop b); L.tag = None}
+    fun b -> {L.pkg = None; L.name = Some (R.string_of_binop b); L.tag = None}
 
 let convert_ident: 'a R.ident -> 'a L.ident =
-    fun i -> {L.pkg = i.R.pkg; L.name = i.R.name; L.tag = i.R.tag}
+    fun i -> match i.R.pkg with
+      | None -> { L.pkg = None; L.name = Some i.R.name; L.tag = i.R.tag}
+      | Some s -> {L.pkg = Some i.R.pkg; L.name = Some i.R.name; L.tag = i.R.tag}
 
 let convert_numeric: R.numeric -> L.numeric =
     function
@@ -147,7 +149,7 @@ and convert_param: 'a R.param -> ('a, 'b) L.param =
 and assign_special_body: string -> 'a R.arg list -> 'a R.expr -> 'a R.expr option -> ('a, 'b) L.expr =
     fun s args e1 oe2 ->
     let c_args = List.map convert_arg args in
-    let c_i = L.Ident {L.pkg=None; L.name=s^"<-"; L.tag=None} in
+    let c_i = L.Ident {L.pkg=None; L.name=Some (s^"<-"); L.tag=None} in
     let c_e1 = convert_arg (R.ExprArg e1) in
     let c_args2 = match oe2 with
         | Some e2   -> let c_e2 = convert_arg (R.ExprArg e2) in

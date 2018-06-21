@@ -1,4 +1,5 @@
 
+open List
 open Syntax
 open Support
 open Natives
@@ -71,7 +72,7 @@ let rec pull_args :
       | Some mem ->
         match heap_find mem heap with
         | Some (DataObj (RefArray v_mems, _)) ->
-            let mem_args = List.map (fun m -> OptA (MemRef m)) v_mems in
+            let mem_args = map (fun m -> OptA (MemRef m)) v_mems in
               mem_args @ pull_args a_tl env heap
         | _ -> [] (* WRONG STUFF HERE *)
 
@@ -123,14 +124,14 @@ let match_lambda_app :
   param list -> arg list -> env -> heap -> (ident * expr) list * expr list =
   fun params args env heap ->
     let (expr_args, nameds) = split_eithers (pull_args args env heap) in
-    let un_params = remove_used_params params (List.map pair_first nameds) in
+    let un_params = remove_used_params params (map pair_first nameds) in
     let (positionals, variadics) = match_expr_args un_params expr_args in
       (nameds @ positionals, variadics)
 
 let lift_var_bind :
   expr list -> memref -> memref -> heap -> (memref * heap) option =
   fun exprs expr_env_mem inj_env_mem heap ->
-    let proms = List.map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
+    let proms = map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
     let (mems, heap2) = heap_alloc_list proms heap in
     let data = DataObj (RefArray mems, attrs_empty) in
     let (d_mem, heap3) = heap_alloc data heap2 in
@@ -143,9 +144,9 @@ let lift_binds :
   ((ident * memref) list * heap) option =
   fun binds expr_env_mem inj_env_mem heap ->
     let pairs1 =
-        List.map (fun (b, e) -> (b, PromiseObj (e, expr_env_mem))) binds in
+        map (fun (b, e) -> (b, PromiseObj (e, expr_env_mem))) binds in
     let (pairs2, heap2) =
-        List.fold_left (fun (acc, hp) (b, p) ->
+        fold_left (fun (acc, hp) (b, p) ->
                           let (m, hp2) = heap_alloc p hp in
                             ((b, m) :: acc, hp2))
                        ([], heap) pairs1 in

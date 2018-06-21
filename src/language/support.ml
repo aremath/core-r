@@ -255,6 +255,10 @@ let heap_empty : heap =
   { mem_map = MemRefMap.empty;
     next_mem = mem_incr mem_null }
 
+let binds_of_heap : heap -> (memref * heapobj) list =
+  fun heap ->
+    MemRefMap.bindings heap.mem_map
+
 let heap_find : memref -> heap -> heapobj option =
   fun mem heap ->
     try
@@ -408,7 +412,7 @@ let rec env_mem_remove_all : ident -> memref -> heap -> heap option =
     | Some (DataObj (EnvVal env, attrs)) ->
         let env2 = env_remove id env in
         let heap2 = heap_add env_mem (DataObj (EnvVal env2, attrs)) heap in
-          if is_mem_null env.pred_mem || env_mem = env.pred_mem then
+          if is_mem_null env.pred_mem then
             Some heap2
           else
             env_mem_remove_all id env.pred_mem heap2
