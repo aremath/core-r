@@ -58,10 +58,7 @@ let rec exectree_of_file : string -> string -> exectree =
     let (f, opts) = cats_of_file canon_file in
     let nodelist =
         List.map (fun c -> match c with
-                   | OptA child_file ->
-                      let child_tree = exectree_of_file in
-                      let canon_child = canon_of_R_file dir child_file in
-                        (exectree_of_file dir canon_child)
+                   | OptA child_file -> exectree_of_file dir child_file
                    | OptB expr -> ExprLeaf (f, expr)) opts in
       ExprNode (f, nodelist)
 
@@ -97,47 +94,6 @@ let dump_file_linearization : string -> string -> unit =
                          print_endline (string_of_expr e)) exprs;
       print_endline "--- end dump";;
 
-
-(*
-let source_call_of_expr : expr -> string list =
-  fun expr ->
-    match expr with
-    | S.LambdaApp (S.Ident id, [S.Arg (S.Const (S.Str (Some src)))]) ->
-      (match id.S.name with
-      | Some ("source") -> [src]
-      | _ -> [])
-    | _ -> []
-
-let assigns_of_expr : expr -> (ident * expr) list =
-  fun expr ->
-    match expr with
-    | S.Assign (S.Ident id, rhs) -> [(id, rhs)]
-    | S.Assign (S.Const (S.Str rstr), rhs) -> [(T.id_of_rstring rstr, rhs)]
-    | _ -> []
-
-let file_dependencies : string -> string -> string list =
-  fun dir file ->
-    let exprs = exprs_of_file (canon_of_R_file dir file) in
-    let deps = concat (map source_call_of_expr exprs) in
-      map (fun f -> canon_of_R_file dir f) deps
-
-let rec dependency_graph_list :
-  string -> string -> StringSet.t -> string list * StringSet.t =
-  fun dir file set ->
-    let canon_name = canon_of_R_file dir file in
-    if StringSet.mem canon_name set then
-      failwith ("dependency_graph_list: circular dependency: already seen: " ^
-                canon_name)
-    else
-      let set2 = StringSet.add canon_name set in
-      let file_deps = file_dependencies dir file in
-        fold_left (fun (acc, s) c ->
-                          let (c_acc, c_s) = dependency_graph_list dir c s in
-                            (acc @ c_acc, c_s))
-                       ([canon_name], set2) file_deps
-
-*)
-
 let inj_binds_to_env_heap : (ident * expr) list -> memref -> heap -> heap =
   fun binds env_mem heap ->
     match T.heap_find env_mem heap with
@@ -160,6 +116,28 @@ let rec inj_heap_list : (memref * heapobj) list -> heap -> heap =
         | None -> inj_heap_list binds_tl (T.heap_add mem hobj heap)
         | Some _ -> failwith ("inj_heap_list: binding exists at: " ^
                                string_of_memref mem)
+
+(* The ones closer to the tail are closer to the super duper env *)
+let alloc_file_envs :
+  string list -> memref -> heap -> (string * memref) list * heap =
+  fun files sup_env_mem heap ->
+    if length files = 0 then
+      ([], heap)
+    else
+      let envs = map (fun f -> T.DataObj (T.EnvVal T.env_empty,
+                                          T.attrs_empty)) files in
+      let (mems, heap2) = T.heap_alloc_list envs heap in
+      let pred_mems = sup_env_mem :: mems in
+      let pairs = combine mems (rev (tl (rev pred_mems))) in
+      let heap3 = fold_left (fun h (e, s) -> match T.heap_find e h with
+                            | Some (DataObj (EnvVal env, attrs)) ->
+                                let env2 = { env with pred_mem = s } in
+                                  T.heap_add e (DataObj (EnvVal env2, attrs)) h
+                            | _ -> failwith ("alloc_file_envs: " ^
+                                                string_of_memref e)
+                          ) heap2 pairs in
+        (combine files (rev mems), heap3)
+
 
 
 (* Inject heap1 into heap2 *)
