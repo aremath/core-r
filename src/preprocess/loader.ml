@@ -22,6 +22,14 @@ type rastexpr = unit R.expr
 
 module StringSet = Set.Make(String)
 
+type ('a, 'b) either =
+    OptA of 'a
+  | OptB of 'b
+
+type exectree =
+  | ExprLeaf of expr
+  | ExprNode of string * (exectree) list
+
 let canonicalize_R_file : string -> string -> string =
   fun dir file ->
     if F.is_relative file then
@@ -33,6 +41,32 @@ let exprs_of_file : string -> expr list =
   fun file ->
     map convert_expr (parseFile file)
 
+let cat_of_expr : expr -> (string, expr) either =
+  fun expr ->
+    match expr with
+    | S.LambdaApp (S.Ident ({ S.name = Some "source" }),
+                  [S.Arg (S.Const (S.Str (Some src)))]) -> OptA src
+    | _ -> OptB expr
+
+let cats_of_file : string -> string * ((string, expr) either) list =
+  fun file ->
+    (file, map cat_of_expr (exprs_of_file file))
+
+let rec exectree_of_file : string -> string -> exectree =
+  fun dir file ->
+    let canon_file = canonicalize_R_file dir file in
+    let (f, opts) = cats_of_file canon_file in
+    let nodelist =
+        List.map (fun c -> match c with
+                   | OptA child_file ->
+                      let child_tree = exectree_of_file in
+                      let canon_child = canonicalize_R_file dir child_file in
+                        (exectree_of_file dir canon_child)
+                   | OptB expr -> ExprLeaf expr) opts in
+      ExprNode (f, nodelist)
+
+
+(*
 let source_call_of_expr : expr -> string list =
   fun expr ->
     match expr with
@@ -70,7 +104,9 @@ let rec dependency_graph_list :
                             (acc @ c_acc, c_s))
                        ([canon_name], set2) file_deps
 
-let inj_binds_to_heap_global : (ident * expr) list -> memref -> heap -> heap =
+*)
+
+let inj_binds_to_env_heap : (ident * expr) list -> memref -> heap -> heap =
   fun binds env_mem heap ->
     match T.heap_find env_mem heap with
     | Some (T.DataObj (T.EnvVal env, attrs)) ->
@@ -92,6 +128,7 @@ let rec inj_heap_list : (memref * heapobj) list -> heap -> heap =
         | None -> inj_heap_list binds_tl (T.heap_add mem hobj heap)
         | Some _ -> failwith ("inj_heap_list: binding exists at: " ^
                                string_of_memref mem)
+
 
 (* Inject heap1 into heap2 *)
 let merge_heap : heap -> heap -> heap =

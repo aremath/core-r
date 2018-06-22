@@ -545,15 +545,19 @@ let rule_Next : state -> state option =
 let rule_Seq : state -> state option =
   fun state ->
     match stack_pop_v state.stack with
-    | Some (EvalSlot (Seq (expr1, expr2)), c_env_mem, c_stack2) ->
-        let t_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = EvalSlot expr1 } in
-        let c_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = EvalSlot expr2 } in
-          Some { state with
-                   stack = stack_push_list [t_frame; c_frame] c_stack2 }
+    | Some (EvalSlot (Seq exprs), c_env_mem, c_stack2) ->
+        if List.length exprs = 0 then
+          let c_frame = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot mem_null; } in
+            Some { state with
+                     stack = stack_push c_frame c_stack2 }
+        else
+          let c_frames = List.map (fun e -> { frame_default with
+                                                env_mem = c_env_mem;
+                                                slot = EvalSlot e }) exprs in
+            Some { state with
+                     stack = stack_push_list c_frames c_stack2 }
     | _ -> None
 
 

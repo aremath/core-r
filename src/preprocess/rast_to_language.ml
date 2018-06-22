@@ -100,7 +100,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     | R.Block []            -> convert_expr R.Null
     | R.Block es            -> begin match es with
                                 | [hd]      -> convert_expr hd
-                                | hd :: tl  -> L.Seq(convert_expr hd, convert_expr (R.Block tl))
+                                | hd :: tl  -> L.Seq (List.map convert_expr es)
                                 | []        -> convert_expr R.Null (* TODO: is this really what R does? *)
                                 end
     | R.ListProj (e, args)  -> failwith "ListProj not a part of Core R!"
@@ -121,7 +121,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
         | e                 -> R.Block [access; incr; e]
         end in
         let loop = R.While (cond, block) in
-        L.Seq (convert_expr init, convert_expr loop)
+        L.Seq [convert_expr init; convert_expr loop]
     | R.While (e1, e2)      -> L.While (convert_expr e1, convert_expr e2)
     | R.Repeat e            -> L.While (L.Const (L.Bool (Some 1)), convert_expr e)
     | R.Next                -> L.Next

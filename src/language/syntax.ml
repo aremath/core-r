@@ -41,7 +41,7 @@ and ('a, 'b) expr =
     Ident of 'a ident
   | MemRef of memref
   | Const of const
-  | Seq of ('a, 'b) expr * ('a, 'b) expr
+  | Seq of (('a, 'b) expr) list
   | LambdaAbs of (('a, 'b) param) list * ('a, 'b) expr
   | LambdaApp of ('a, 'b) expr * (('a, 'b) arg) list
   | NativeLambdaApp of 'a ident * 'a ident list

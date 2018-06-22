@@ -71,8 +71,7 @@ and string_of_expr : expr -> string =
     | Ident i -> "Ident (" ^ string_of_ident i ^ ")"
     | MemRef m -> "MemRef (" ^ string_of_memref m ^ ")"
     | Const c -> "Const (" ^ string_of_const c ^ ")"
-    | Seq (e1, e2) -> "Seq (" ^ string_of_expr e1 ^ "," ^
-                                string_of_expr e2 ^ ")"
+    | Seq es -> "Seq (" ^ string_of_list (string_of_expr) es ^ ")"
     | LambdaAbs (ps, e) -> "LambdaAbs (" ^
                                string_of_list (string_of_param) ps ^ "," ^
                                string_of_expr e ^ ")"
