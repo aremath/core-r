@@ -32,8 +32,9 @@ let dumpTokens : string -> unit =
       done
     
 
+(*
 let main () =
-  let args = Array.to_list Sys.argv  in
+  let args = Array.to_list Sys.argv in
   let in_filename = match args with
                   | [_; arg] -> arg
                   | _     -> failwith "exactly one filename expected"  in
@@ -45,3 +46,4 @@ let main () =
 
 main ()
 
+*)

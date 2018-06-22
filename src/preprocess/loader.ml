@@ -27,13 +27,13 @@ type ('a, 'b) either =
   | OptB of 'b
 
 type exectree =
-  | ExprLeaf of expr
-  | ExprNode of string * (exectree) list
+  | ExprLeaf of string * expr
+  | ExprNode of string * exectree list
 
-let canonicalize_R_file : string -> string -> string =
+let canon_of_R_file : string -> string -> string =
   fun dir file ->
     if F.is_relative file then
-      F.dirname dir ^ "/" ^ file
+      dir ^ "/" ^ file
     else
       file
 
@@ -54,16 +54,47 @@ let cats_of_file : string -> string * ((string, expr) either) list =
 
 let rec exectree_of_file : string -> string -> exectree =
   fun dir file ->
-    let canon_file = canonicalize_R_file dir file in
+    let canon_file = canon_of_R_file dir file in
     let (f, opts) = cats_of_file canon_file in
     let nodelist =
         List.map (fun c -> match c with
                    | OptA child_file ->
                       let child_tree = exectree_of_file in
-                      let canon_child = canonicalize_R_file dir child_file in
+                      let canon_child = canon_of_R_file dir child_file in
                         (exectree_of_file dir canon_child)
-                   | OptB expr -> ExprLeaf expr) opts in
+                   | OptB expr -> ExprLeaf (f, expr)) opts in
       ExprNode (f, nodelist)
+
+let rec linearization_of_exectree :
+  exectree -> string list * (string * expr) list =
+  fun tree ->
+    match tree with
+      | ExprLeaf (file, expr) -> ([], [(file, expr)])
+      | ExprNode (file, currs) ->
+          let level = map linearization_of_exectree currs in
+          let (files, exprs) =
+              List.fold_left (fun (fs, es) (cfs, ces) -> (fs @ cfs, es @ ces))
+                             ([], []) level in
+            (file :: files, exprs)
+
+let linearize_source :
+  string -> string -> string list * (string * expr) list =
+  fun dir file ->
+    linearization_of_exectree (exectree_of_file dir file)
+
+let dump_file_linearization : string -> string -> unit =
+  fun dir file ->
+    let (files, exprs) = linearize_source dir file in
+      print_string "--- files:";
+      print_newline ();
+      map (fun f -> print_string f; print_newline ()) files;
+      print_string "--- exprs:";
+      print_newline ();
+      map (fun (f, e) -> print_string ("[" ^ f ^ "] ");
+                         print_string (string_of_expr e);
+                         print_newline ()) exprs;
+      print_string "--- end dump";
+      print_newline ();;
 
 
 (*
@@ -85,14 +116,14 @@ let assigns_of_expr : expr -> (ident * expr) list =
 
 let file_dependencies : string -> string -> string list =
   fun dir file ->
-    let exprs = exprs_of_file (canonicalize_R_file dir file) in
+    let exprs = exprs_of_file (canon_of_R_file dir file) in
     let deps = concat (map source_call_of_expr exprs) in
-      map (fun f -> canonicalize_R_file dir f) deps
+      map (fun f -> canon_of_R_file dir f) deps
 
 let rec dependency_graph_list :
   string -> string -> StringSet.t -> string list * StringSet.t =
   fun dir file set ->
-    let canon_name = canonicalize_R_file dir file in
+    let canon_name = canon_of_R_file dir file in
     if StringSet.mem canon_name set then
       failwith ("dependency_graph_list: circular dependency: already seen: " ^
                 canon_name)
