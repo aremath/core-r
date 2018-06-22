@@ -1,16 +1,6 @@
 module S = Support
 module C = Copy
 
-let dereference_rvector: S.memref -> S.heap -> S.rvector =
-    fun mem heap ->
-    match S.MemRef_Map.find mem heap with
-    | DataObj (Vec v, _) -> v
-    | _ -> failwith "Vec expected in dereference"
-
-(* TODO: catch a dereference error somehow? *)
-let dereference: S.memref list -> S.heap -> S.heapobj list =
-    fun mems heap ->
-    List.map (fun mem -> S.MemRef_Map.find mem heap) mems
 
 let vector_length: (S.rvector * S.attributes) -> (S.rvector * S.attributes) =
     fun (vec, attrs) ->
@@ -104,7 +94,7 @@ let get_dims: rvector -> rvector -> rvector -> rvector -> rlist -> rvector =
     let _ = matrix_dims.(1) <- true_nc in
     matrix_dims
 
-(* removes unnecessary dimensions from the rvector *)
+(* (* removes unnecessary dimensions from the rvector *)
 (* TODO: should be (memref list/array) -> heap -> (memref * heap) *)
 let drop_dims: (rvector * attributes) -> (rvector * attributes) =
     fun (vec, attrs) ->
@@ -112,3 +102,4 @@ let drop_dims: (rvector * attributes) -> (rvector * attributes) =
     match dims_opt with
     | None -> (vec, attrs) (* no change to attrs is needed *)
     | Some dim_ref -> (* dereference! *)
+*)
