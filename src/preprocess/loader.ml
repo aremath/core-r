@@ -23,7 +23,7 @@ type rastexpr = unit R.expr
 module StringSet = Set.Make(String)
 
 type ('a, 'b) either =
-    OptA of 'a
+  | OptA of 'a
   | OptB of 'b
 
 type exectree =
@@ -82,19 +82,20 @@ let linearize_source :
   fun dir file ->
     linearization_of_exectree (exectree_of_file dir file)
 
+let dump_file_ast : string -> unit =
+  fun file ->
+    let absyn = parseFile file in
+    print_endline (Rast.string_of_program absyn)
+
 let dump_file_linearization : string -> string -> unit =
   fun dir file ->
     let (files, exprs) = linearize_source dir file in
-      print_string "--- files:";
-      print_newline ();
+      print_endline "--- files:";
       map (fun f -> print_string f; print_newline ()) files;
-      print_string "--- exprs:";
-      print_newline ();
-      map (fun (f, e) -> print_string ("[" ^ f ^ "] ");
-                         print_string (string_of_expr e);
-                         print_newline ()) exprs;
-      print_string "--- end dump";
-      print_newline ();;
+      print_endline "--- exprs:";
+      map (fun (f, e) -> print_string ("[" ^ (*f ^ *) "] ");
+                         print_endline (string_of_expr e)) exprs;
+      print_endline "--- end dump";;
 
 
 (*

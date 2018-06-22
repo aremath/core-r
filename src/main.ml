@@ -4,7 +4,8 @@ open Loader
 
 let main () =
   print_endline "complies!";
-  dump_file_linearization "/home/celery/foo/harvard/r-test/tutorial/Rdemo" "Notes.R"
+  dump_file_linearization "/home/celery/foo/harvard/r-test/tutorial/Rdemo" "Notes.R";
+  dump_file_ast "/home/celery/foo/harvard/r-test/tutorial/Rdemo/Notes.R"
   ;;
   
 
