@@ -5,6 +5,11 @@ let rvector_to_int_array: S.rvector -> S.rint array =
     | S.IntVec i  -> i
     | _         -> failwith "can't cast vector to int array!" (* TODO other types can be coerced *)
 
+let rvector_to_str_array: S.rvector -> S.rstring array =
+    fun vec -> match vec with
+    | S.StrVec s -> s
+    | _         -> failwith "can't cast vector to string array!"
+
 let value_to_rvector: S.value -> S.rvector =
     fun value -> match value with
     | S.Vec vec   -> vec

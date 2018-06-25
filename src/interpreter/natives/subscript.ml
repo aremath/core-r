@@ -131,13 +131,27 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
         | _ -> failwith "data is a promise" end
     | _ -> failwith "Bad call to subset"
 
-let subscript_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
-    fun args heap ->
-    match args with
-    | [data_mem;subscript_mem] -> let subscript_vec = 
-            resolve_vec (C.rvector_to_int_array 
-            (C.dereference_rvector subscript_mem heap)) in
-        let data_rvec = C.dereference_rvector data_mem heap in
+(* find the index of x in a *)
+let rec find a x n =
+    if a.(n) = x then n else
+    find a x (n+1)
+
+let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.heap -> (S.memref * S.heap) = 
+    fun data_rvec names subscript_vec heap ->
+    let _ = if Array.length subscript_vec = 1 then () else failwith "Subscript of length not 1" in
+    let sub = subscript_vec.(0) in
+    let idx = find names sub 0 in
+    let out_rvec = match data_rvec with
+    | S.IntVec i -> S.IntVec (Array.make 1 i.(idx))
+    | S.FloatVec f -> S.FloatVec (Array.make 1 f.(idx))
+    | S.ComplexVec c -> S.ComplexVec (Array.make 1 c.(idx))
+    | S.StrVec s -> S.StrVec (Array.make 1 s.(idx))
+    | S.BoolVec b -> S.BoolVec (Array.make 1 b.(idx)) in
+    S.heap_alloc (S.DataObj ((S.Vec out_rvec), S.attrs_empty)) heap
+
+let subscript_int: S.rvector -> int array -> S.heap -> (S.memref * S.heap) =
+    fun data_rvec subscript_vec heap ->
+        let _ = if Array.length subscript_vec = 1 then () else failwith "Subscript of length not 1" in
         (* the index to get *)
         let n = subscript_vec.(0) in
         let _ = if n = 0 then failwith "0 subscript" else () in
@@ -156,5 +170,25 @@ let subscript_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
         end in
         (* allocate it as a data object on the heap *)
         S.heap_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty)) heap
+
+let subscript_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
+    fun args heap ->
+    match args with
+    | [data_mem;subscript_mem] -> begin match S.heap_find data_mem heap with
+        | Some (S.DataObj (S.Vec data_rvec, data_attrs)) ->
+            begin match C.dereference_rvector subscript_mem heap with
+            | S.StrVec subscript_vec -> let names_ref = begin
+                    match S.attrs_find (Some "names") data_attrs with
+                    | Some r -> r
+                    | None -> failwith "Cannot string subscript a vector with no names attribute"
+                    end in
+                (* get the names attribute *)
+                let names = C.rvector_to_str_array (C.dereference_rvector names_ref heap) in
+                subscript_str data_rvec names subscript_vec heap
+            | rvec -> let subscript_vec = C.rvector_to_int_array rvec in
+                subscript_int data_rvec (resolve_vec subscript_vec) heap
+            end
+        | _ -> failwith "Vector expected"
+        end
     | _ -> failwith "Bad call to subscript"
 
