@@ -147,7 +147,7 @@
             | IF                -> true  (* expect (cond) *)
             | GT                -> true
             | GE                -> true
-            | FUNCTION          -> true (* expect (args) *)
+            | FUNCTION          -> true (* expect (args) expr *)
             | FOR               -> true (* expect (var in expr) expr *)
             | FLOAT_CONST _     -> false (* a value *)
             | FALSE             -> false (* a value *)
@@ -173,7 +173,7 @@
     let to_push: Parser.token -> Parser.token list =
         function
             | WHILE             -> [WHILE; WHILE] (* expect (cond) expr *)
-            | TRUE              -> [TRUE]
+            | TRUE              -> []
             | SYMBOL _          -> []
             | STRING_CONST _    -> []
             | SEMI              -> []
@@ -262,7 +262,7 @@
             | IF                -> true  (*  *)
             | GT                -> true
             | GE                -> true
-            | FUNCTION          -> true (* expect (args) *)
+            | FUNCTION          -> true (* expect (args) expr *)
             | FOR               -> true (* expect (var in expr) expr *)
             | EQ_ASSIGN         -> true
             | EQ                -> true
@@ -284,6 +284,11 @@ let get_top : Parser.token list ref -> Parser.token =
         | hd::tl -> hd
         | []     -> LBRACE (* TODO *)
 
+let string_of_context: Parser.token list ref -> string =
+    fun context_ref ->
+    let context_strs = List.map string_of_token !context_ref in
+    "[" ^ (String.concat ", " context_strs) ^ "]"
+
 (* The general algorithm for this is when we see a token, if it affects the context,
 put it on the stack, then use its behavior until a match is found, at which point it is
 removed from the stack, and we go back to the newline behavior of the character under it.
@@ -291,6 +296,8 @@ Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
+            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
+            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in *)
             (* if the top token of the context matches the current token, pop the top*)
             let _ = if (token_match top tok) then
                 context_ref := (List.tl !context_ref)
@@ -449,11 +456,11 @@ rule tokenize context = parse
   | "FALSE"     { step FALSE context; FALSE }
 
   (* Valued tokens *)
-  | ident       { step (SYMBOL "") context;
+  | ident       { step (SYMBOL (Lexing.lexeme lexbuf)) context;
                     SYMBOL (Lexing.lexeme lexbuf) }
-  | user_op     { step (USER_OP "") context;
+  | user_op     { step (USER_OP (Lexing.lexeme lexbuf)) context;
                     USER_OP (Lexing.lexeme lexbuf) }
-  | string      { step (STRING_CONST "") context;
+  | string      { step (STRING_CONST (Lexing.lexeme lexbuf)) context;
                     STRING_CONST (Lexing.lexeme lexbuf) }
   | hex         { step (INT_CONST 0) context;
                     INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
@@ -473,6 +480,6 @@ rule tokenize context = parse
   | ','         { step COMMA context; COMMA }
 
   (* Everybody's favorite thing that's technically not a char some times *)
-  | eof         { step END_OF_INPUT context; END_OF_INPUT }
+  | eof         { END_OF_INPUT }
 
 

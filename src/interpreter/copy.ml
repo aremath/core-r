@@ -81,7 +81,7 @@ and copy_attributes: S.attributes -> S.heap -> (S.attributes * S.heap) =
     let new_table = alist_to_hashtable attr_alist' in (* can use S.attrs_add_list too *)
     ({S.rstr_map = new_table}, heap')
 
-and copy_list: (S.ident option * S.memref) list -> S.heap -> ((S.ident option * S.memref) list * S.heap) =
+and copy_list: (S.rstring * S.memref) list -> S.heap -> ((S.rstring * S.memref) list * S.heap) =
     fun l heap ->
     let (ids, mems) = unzip_list l in 
     let mems', heap' = copy_ref_array mems heap in

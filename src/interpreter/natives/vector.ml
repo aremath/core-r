@@ -10,6 +10,57 @@ let rvec_length: S.rvector -> int =
     | S.ComplexVec c -> Array.length c
     | S.StrVec s -> Array.length s
 
+(* TODO: does not return a memref (?) *)
+let set_dims_mem: S.memref list -> S.heap -> S.heap =
+    fun mems heap ->
+    match mems with
+    (* first, copy the reference to the dimension vector, since data will keep it *)
+    | [data_ref;dim_ref] -> let dim_ref',heap' = Copy.deep_copy dim_ref heap in
+    (* check if dims is compatible with data (product of dims == length of data) *)
+        let dim_vec = C.resolve_vec (C.rvector_to_int_array (C.dereference_rvector dim_ref' heap')) in
+        let data_len = rvec_length (C.dereference_rvector data_ref heap) in
+        let dim_size = Array.fold_left (fun x y -> x * y) 1 dim_vec in
+        if dim_size = data_len then
+            match S.heap_find data_ref heap' with
+            | Some (S.DataObj(_, attrs)) ->
+                let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
+                heap'
+            | _ -> failwith "data missing in set_dims"
+        else
+            failwith "Dimension not compatible with vector length" (* TODO: sprintf to show what the size was *)
+    | _ -> failwith "Bad call to set_dims"
+
+(*
+let concat_rvectors: S.rvector -> S.rvector -> S.rvector =
+    fun v1 v2 ->
+    match (v1, v2) with
+    | ()
+    | ()
+    | ()
+    | ()
+
+
+(* Given n, make a1, a2, ..., an *)
+let make_index_names: S.rstring -> int -> S.rstring array =
+    fun str n ->
+    Array.init n (fun i -> str ^ (string_of_int (i+1)))
+
+(* From ("a", c(2,2)) to ("a1", "a2"), (2,2). Does not allocate the new rvectors *)
+let make_vector_help: (S.rstring * S.memref) -> S.heap -> (S.rvector * S.rvector) =
+    fun (str, mem) -> let mem_vec = dereference_rvector mem heap in
+    let indices = make_index_names (rvec_length mem_vec) in
+    (indices, mem_vec)
+
+(* does make vector help for each vector, and concatenates them *)
+let make_vector: (S.ident option * S.memref) list -> heap -> (S.rvector * S.rvector) =
+    fun l heap ->
+    List.map
+
+
+(*let make_vector_mems: S.memref list -> heap -> (memref * heap)*)
+
+*)
+
 (*
 (* assumes defaults have been taken care of *)
 let get_dims: S.rvector -> S.rvector -> S.rvector -> S.rvector =

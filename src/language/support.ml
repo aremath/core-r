@@ -73,7 +73,7 @@ type value =
   | RefArray of memref list
   | FuncVal of param list * expr * memref
   | EnvVal of env
-  | ListVal of (ident option * memref) list
+  | ListVal of (rstring * memref) list
 
 type attributes =
   { rstr_map : (rstring, memref) Hashtbl.t }

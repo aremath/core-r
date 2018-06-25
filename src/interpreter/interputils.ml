@@ -66,10 +66,8 @@ let string_of_value: value -> string =
         "\n\tExpr:\t" ^ expr_str ^
         "\n\tMem:\t" ^ mem_str ^ "\n"
     | EnvVal e -> string_of_env e
-    | ListVal l -> let list_strs = (List.map (fun (iopt,mem) ->
-            match iopt with
-            | Some i -> (L.string_of_ident i) ^ " = " ^ (string_of_memref mem)
-            | None  -> (string_of_memref mem)) l) in
+    | ListVal l -> let list_strs = (List.map (fun (rs,mem) ->
+            (L.string_of_rstring rs) ^ " = " ^ (string_of_memref mem)) l) in
             "List:\n" ^
             (String.concat "\n" list_strs) ^ "\n"
 
