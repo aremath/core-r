@@ -33,7 +33,6 @@ let dumpTokens : string -> unit =
       done
     
 
-(*
 let main () =
   let args = Array.to_list Sys.argv in
   let in_filename = match args with
@@ -46,5 +45,4 @@ let main () =
     ;;
 
 main ()
-*)
 

@@ -2,15 +2,6 @@ module S = Support
 module C = Coerce
 module V = Vector
 
-let resolve_vec: 'a option array -> 'a array =
-    fun v ->
-    Array.map (fun x -> match x with
-        | Some x' -> x'
-        | None    -> failwith "NA when resolving vector") v
-
-let unresolve_vec: 'a array -> 'a option array =
-    fun v ->
-    Array.map (fun x -> Some x) v
 
 (* The offset array tells the subscripter how much variation in a single dimension
  affects the linear index. For example, if x is a 5x2 vector it is stored in memory
@@ -71,23 +62,23 @@ let do_subset: ('a array * int array) -> int array list -> ('a array * int array
 (* thanks ocaml types *)
 let do_subset_int: (int option array * int array) -> int array list -> (int array * int array) =
     fun (i,idims) subs ->
-        do_subset ((resolve_vec i), idims) subs
+        do_subset ((C.resolve_vec i), idims) subs
 
 let do_subset_float: (float option array * int array) -> int array list -> (float array * int array) =
     fun (i, idims) subs ->
-        do_subset ((resolve_vec i), idims) subs
+        do_subset ((C.resolve_vec i), idims) subs
 
 let do_subset_complex: (Complex.t option array * int array) -> int array list -> (Complex.t array * int array) =
     fun (i, idims) subs ->
-        do_subset ((resolve_vec i), idims) subs
+        do_subset ((C.resolve_vec i), idims) subs
 
 let do_subset_string: (string option array * int array) -> int array list -> (string array * int array) =
     fun (i, idims) subs ->
-        do_subset ((resolve_vec i), idims) subs
+        do_subset ((C.resolve_vec i), idims) subs
 
 let do_subset_bool: (int option array * int array) -> int array list -> (int array * int array) =
     fun (i, idims) subs ->
-        do_subset ((resolve_vec i), idims) subs
+        do_subset ((C.resolve_vec i), idims) subs
 
 let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
     fun args heap ->
@@ -97,7 +88,7 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
     match args with
     | data_ref::tl -> let subs = List.map (fun m ->
             let rvec = C.dereference_rvector m heap in
-            resolve_vec (C.rvector_to_int_array rvec)) tl in
+            C.resolve_vec (C.rvector_to_int_array rvec)) tl in
         begin match S.heap_find data_ref heap with
         | Some (S.DataObj (data_val, data_attributes)) ->
             (* find the dims as a reference *)
@@ -107,20 +98,20 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
             end in
             let data_dims = C.dereference_rvector data_dims_ref heap in
             (* coerce it to an int array *)
-            let data_dims_val = resolve_vec (C.rvector_to_int_array data_dims) in
+            let data_dims_val = C.resolve_vec (C.rvector_to_int_array data_dims) in
             (* get data as an rvector *)
             let data_rvector = C.value_to_rvector data_val in
             let slice_rvec, slice_dims = begin match data_rvector with
             | S.IntVec i      -> let (iv, id) = do_subset_int (i, data_dims_val) subs in
-                S.IntVec (unresolve_vec iv), S.IntVec (unresolve_vec id)
+                S.IntVec (C.unresolve_vec iv), S.IntVec (C.unresolve_vec id)
             | S.FloatVec f    -> let (fv, fd) = do_subset_float (f, data_dims_val) subs in
-                S.FloatVec (unresolve_vec fv), S.IntVec (unresolve_vec fd)
+                S.FloatVec (C.unresolve_vec fv), S.IntVec (C.unresolve_vec fd)
             | S.ComplexVec c  -> let (cv, cd) = do_subset_complex (c, data_dims_val) subs in
-                S.ComplexVec (unresolve_vec cv), S.IntVec (unresolve_vec cd)
+                S.ComplexVec (C.unresolve_vec cv), S.IntVec (C.unresolve_vec cd)
             | S.StrVec s      -> let (sv, sd) = do_subset_string (s, data_dims_val) subs in
-                S.StrVec (unresolve_vec sv), S.IntVec (unresolve_vec sd)
+                S.StrVec (C.unresolve_vec sv), S.IntVec (C.unresolve_vec sd)
             | S.BoolVec b     -> let (bv, bd) = do_subset_bool (b, data_dims_val) subs in
-                S.BoolVec (unresolve_vec bv), S.IntVec (unresolve_vec bd)
+                S.BoolVec (C.unresolve_vec bv), S.IntVec (C.unresolve_vec bd)
             end in
             (* allocate dims on the heap, give data it as dim *)
             let slice_dims_mem, heap' = S.heap_alloc (S.DataObj (S.Vec (slice_dims), S.attrs_empty)) heap in
@@ -131,7 +122,7 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
         | _ -> failwith "data is a promise" end
     | _ -> failwith "Bad call to subset"
 
-(* find the index of x in a *)
+(* find the index of x in a - used to index a vector by its names attribute *)
 let rec find a x n =
     if a.(n) = x then n else
     find a x (n+1)
@@ -186,7 +177,7 @@ let subscript_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
                 let names = C.rvector_to_str_array (C.dereference_rvector names_ref heap) in
                 subscript_str data_rvec names subscript_vec heap
             | rvec -> let subscript_vec = C.rvector_to_int_array rvec in
-                subscript_int data_rvec (resolve_vec subscript_vec) heap
+                subscript_int data_rvec (C.resolve_vec subscript_vec) heap
             end
         | _ -> failwith "Vector expected"
         end

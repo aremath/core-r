@@ -1,5 +1,15 @@
 module S = Support
 
+let resolve_vec: 'a option array -> 'a array =
+    fun v ->
+    Array.map (fun x -> match x with
+        | Some x' -> x'
+        | None    -> failwith "NA when resolving vector") v
+
+let unresolve_vec: 'a array -> 'a option array =
+    fun v ->
+    Array.map (fun x -> Some x) v
+
 let rvector_to_int_array: S.rvector -> S.rint array =
     fun vec -> match vec with
     | S.IntVec i  -> i
