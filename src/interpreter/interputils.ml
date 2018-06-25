@@ -137,3 +137,14 @@ let string_of_stack: stack -> string =
     "Stack:\n\t" ^
     (String.concat "\n\t" frame_strs) ^ "\n"
 
+let string_of_state: state -> string =
+    fun state ->
+    let stack_str = string_of_stack state.stack in
+    let heap_str = string_of_heap state.heap in
+    let env_str = string_of_memref state.global_env_mem in
+    (* let count = string_of_int state.fresh_count in *)
+    "STATE:\n" ^
+    stack_str ^
+    heap_str ^
+    "\nGlobal Environment:\t" ^ env_str
+
