@@ -1,5 +1,6 @@
 module S = Support
 module C = Coerce
+module V = Vector
 
 let resolve_vec: 'a option array -> 'a array =
     fun v ->
@@ -102,14 +103,11 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
             (* find the dims as a reference *)
             let data_dims_ref = begin match S.attrs_find (Some "dim") data_attributes with
                 | Some (v)  -> v
-                | None      -> failwith "data has no dim attribute" (* TODO: this can be valid *)
+                | None      -> failwith "data has no dim attribute" (* TODO: this can be valid, i.e. when the array is one-dimensional *)
             end in
-            let data_dims = begin match S.heap_find data_dims_ref heap with
-                | Some (S.DataObj (dims_val, dims_attributes)) -> dims_val
-                | _ -> failwith "data_dims is a promise"
-            end in
+            let data_dims = C.dereference_rvector data_dims_ref heap in
             (* coerce it to an int array *)
-            let data_dims_val = resolve_vec (C.value_to_int_array data_dims) in
+            let data_dims_val = resolve_vec (C.rvector_to_int_array data_dims) in
             (* get data as an rvector *)
             let data_rvector = C.value_to_rvector data_val in
             let slice_rvec, slice_dims = begin match data_rvector with
@@ -132,3 +130,31 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
             S.heap_alloc (S.DataObj (S.Vec (slice_rvec), slice_attrs)) heap'
         | _ -> failwith "data is a promise" end
     | _ -> failwith "Bad call to subset"
+
+let subscript_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
+    fun args heap ->
+    match args with
+    | [data_mem;subscript_mem] -> let subscript_vec = 
+            resolve_vec (C.rvector_to_int_array 
+            (C.dereference_rvector subscript_mem heap)) in
+        let data_rvec = C.dereference_rvector data_mem heap in
+        (* the index to get *)
+        let n = subscript_vec.(0) in
+        let _ = if n = 0 then failwith "0 subscript" else () in
+        let true_n = if n < 0 then (V.rvec_length data_rvec) + (n - 1) else n - 1 in
+        let sub_rvec = begin match data_rvec with
+        | S.IntVec i -> let v = i.(true_n) in
+            S.IntVec (Array.make 1 v)
+        | S.FloatVec f -> let v = f.(true_n) in
+            S.FloatVec (Array.make 1 v)
+        | S.ComplexVec c -> let v = c.(true_n) in
+            S.ComplexVec (Array.make 1 v)
+        | S.StrVec s -> let v = s.(true_n) in
+            S.StrVec (Array.make 1 v)
+        | S.BoolVec b -> let v = b.(true_n) in
+            S.BoolVec (Array.make 1 v)
+        end in
+        (* allocate it as a data object on the heap *)
+        S.heap_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty)) heap
+    | _ -> failwith "Bad call to subscript"
+

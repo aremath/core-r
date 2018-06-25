@@ -1,51 +1,18 @@
 module S = Support
-module C = Copy
+module C = Coerce
+module Copy = Copy
 
+let rvec_length: S.rvector -> int =
+    function
+    | S.IntVec i -> Array.length i
+    | S.BoolVec b -> Array.length b
+    | S.FloatVec f -> Array.length f
+    | S.ComplexVec c -> Array.length c
+    | S.StrVec s -> Array.length s
 
-let vector_length: (S.rvector * S.attributes) -> (S.rvector * S.attributes) =
-    fun (vec, attrs) ->
-    let make_length_vec = fun v -> Array.make 1 (Some (Array.length v)) in
-    match vec with
-    | S.RIntVec v -> (make_length_vec v, S.attrs_empty)
-    | S.RBoolVec v -> (make_length_vec v, S.attrs_empty)
-    | S.RFloatVec v -> (make_length_vec v, S.attrs_empty)
-    | S.RComplexVec v -> (make_length_vec v, S.attrs_empty)
-    | S.RStringVec v -> (make_length_vec v, S.attrs_empty)
-
-let do_matrix_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
-    fun args heap ->
-    match args with
-    | [data_ref;nrows_ref;ncols_ref;byrow_ref;dimnames_ref] ->
-        (* copy data, dimnames *)
-        let data_ref', heap' = C.deep_copy data_ref heap in
-        let dimnames_ref', heap'' = C.deep_copy dimnames_ref heap' in
-
-        (* dereference data that is not assigned to *)
-        let nrows = dereference_rvector nrows_ref heap in
-        let ncols = dereference_rvector ncols_ref heap in
-        let byrow = dereference_rvector byrow_ref heap in
-        let old_data  = dereference_rvector data_ref' heap in
-
-        (* Create and allocate the new dims *)
-        let dims = get_dims old_data nrows ncols in
-        let dims_ref, heap''' = heap_alloc (S.DataObj (S.IntVec dims, attrs_empty)) heap'' in
-
-        (* Add dim and dimnames to the new vector's attrs *)
-        (* TODO: want to mutably access data attributes without reallocating the object *)
-        let new_data, data_attrs = match S.MemRef_Map.find data_ref' heap''' with
-        | S.DataObj(d, a) -> (d, a)
-        | _ -> failwith "invalid attributes in do_matrix"
-        in
-        let _ = S.attrs_add "dim" dims_ref data_attrs
-        let _ = S.attrs_add "dimnames" dimnames_ref' data_attrs in
-        (* Rearrange the new vector according to dims *)
-        let _ = rearrange_vec new_data byrow dims in
-        (* return the copied vector and the heap with dims allocated *)
-        (data_ref', heap''')
-    | _ -> failwith "bad call to do_matrix" (* wrong number of arguments *)
-
+(*
 (* assumes defaults have been taken care of *)
-let get_dims: rvector -> rvector -> rvector -> rvector -> rlist -> rvector =
+let get_dims: S.rvector -> S.rvector -> S.rvector -> S.rvector =
     fun data nrows ncols ->
     let int_nr = match nrows.(0) with
     | Some x    -> x
@@ -93,6 +60,39 @@ let get_dims: rvector -> rvector -> rvector -> rvector -> rlist -> rvector =
     let _ = matrix_dims.(0) <- true_nr in
     let _ = matrix_dims.(1) <- true_nc in
     matrix_dims
+
+let do_matrix_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
+    fun args heap ->
+    match args with
+    | [data_ref;nrows_ref;ncols_ref;byrow_ref;dimnames_ref] ->
+        (* copy data, dimnames *)
+        let data_ref', heap' = Copy.deep_copy data_ref heap in
+        let dimnames_ref', heap'' = Copy.deep_copy dimnames_ref heap' in
+
+        (* dereference data that is not assigned to *)
+        let nrows = C.dereference_rvector nrows_ref heap in
+        let ncols = C.dereference_rvector ncols_ref heap in
+        let byrow = C.dereference_rvector byrow_ref heap in
+        let old_data  = C.dereference_rvector data_ref' heap in
+
+        (* Create and allocate the new dims *)
+        let dims = get_dims old_data nrows ncols in
+        let dims_ref, heap''' = heap_alloc (S.DataObj (S.IntVec dims, attrs_empty)) heap'' in
+
+        (* Add dim and dimnames to the new vector's attrs *)
+        (* TODO: want to mutably access data attributes without reallocating the object *)
+        let new_data, data_attrs = match S.MemRef_Map.find data_ref' heap''' with
+        | S.DataObj(d, a) -> (d, a)
+        | _ -> failwith "invalid attributes in do_matrix"
+        in
+        let _ = S.attrs_add "dim" dims_ref data_attrs in
+        let _ = S.attrs_add "dimnames" dimnames_ref' data_attrs in
+        (* Rearrange the new vector according to dims *)
+        let _ = rearrange_vec new_data byrow dims in
+        (* return the copied vector and the heap with dims allocated *)
+        (data_ref', heap''')
+    | _ -> failwith "bad call to do_matrix" (* wrong number of arguments *)
+*)
 
 (* (* removes unnecessary dimensions from the rvector *)
 (* TODO: should be (memref list/array) -> heap -> (memref * heap) *)

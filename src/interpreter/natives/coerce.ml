@@ -23,5 +23,5 @@ let dereference_rvector: S.memref -> S.heap -> S.rvector =
 (* TODO: catch a dereference error somehow? *)
 let dereference: S.memref list -> S.heap -> S.heapobj list =
     fun mems heap ->
-    List.map (fun mem -> S.MemRefMap.find mem heap.mem_map) mems
+    List.map (fun mem -> S.MemRefMap.find mem heap.S.mem_map) mems
 

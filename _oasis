@@ -33,8 +33,8 @@ Executable "absyn_generator"
 
 Library "natives"
   Path: src/interpreter/natives
-  Modules: Coerce, Subscript
-  BuildDepends: language
+  Modules: Coerce, Subscript, Vector
+  BuildDepends: language, interpreter
 
 Library "loader"
   Path: src/preprocess

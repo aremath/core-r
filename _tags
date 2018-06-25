@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 241533c723c9840cc5e2262fb3d64a4a)
+# DO NOT EDIT (digest: b78513cd9b56a33a6e13596ce8ac51d8)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -25,6 +25,7 @@
 <src/parser/*.ml{,i}>: use_parser
 # Library natives
 "src/interpreter/natives/natives.cmxs": use_natives
+<src/interpreter/natives/*.ml{,i}>: use_interpreter
 <src/interpreter/natives/*.ml{,i}>: use_language
 # Library loader
 "src/preprocess/loader.cmxs": use_loader
