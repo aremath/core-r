@@ -4,7 +4,7 @@ open Language
 *)
 module R = Rast
 module S = Syntax
-module T = Support
+open Support
 open List
 open Langutils
 open Rast_to_language
@@ -13,14 +13,11 @@ module F = Filename
 open Sys
 
 type memref = S.memref
-type env = T.env
-type heapobj = T.heapobj
-type heap = T.heap
-type expr = T.expr
-type ident = T.ident
 type rastexpr = unit R.expr
 
 module StringSet = Set.Make(String)
+
+module StringMap = Map.Make(String)
 
 type ('a, 'b) either =
   | OptA of 'a
@@ -96,14 +93,14 @@ let dump_file_linearization : string -> string -> unit =
 
 let inj_binds_to_env_heap : (ident * expr) list -> memref -> heap -> heap =
   fun binds env_mem heap ->
-    match T.heap_find env_mem heap with
-    | Some (T.DataObj (T.EnvVal env, attrs)) ->
+    match heap_find env_mem heap with
+    | Some (DataObj (EnvVal env, attrs)) ->
         let ids = map (fun (i, _) -> i) binds in
-        let proms = map (fun (_, e) -> T.PromiseObj (e, env_mem)) binds in
-        let (mems, heap2) = T.heap_alloc_list proms heap in
+        let proms = map (fun (_, e) -> PromiseObj (e, env_mem)) binds in
+        let (mems, heap2) = heap_alloc_list proms heap in
         let env_binds = combine ids mems in
-        let env2 = T.env_add_list env_binds env in
-          T.heap_add env_mem (T.DataObj (T.EnvVal env2, attrs)) heap2
+        let env2 = env_add_list env_binds env in
+          heap_add env_mem (DataObj (EnvVal env2, attrs)) heap2
     | _ -> failwith ("inj_binds_to_heap_global: did not find env at " ^
                      string_of_memref env_mem)
 
@@ -112,8 +109,8 @@ let rec inj_heap_list : (memref * heapobj) list -> heap -> heap =
     match binds with
     | [] -> heap
     | ((mem, hobj) :: binds_tl) ->
-        match T.heap_find mem heap with
-        | None -> inj_heap_list binds_tl (T.heap_add mem hobj heap)
+        match heap_find mem heap with
+        | None -> inj_heap_list binds_tl (heap_add mem hobj heap)
         | Some _ -> failwith ("inj_heap_list: binding exists at: " ^
                                string_of_memref mem)
 
@@ -124,28 +121,59 @@ let alloc_file_envs :
     if length files = 0 then
       ([], heap)
     else
-      let envs = map (fun f -> T.DataObj (T.EnvVal T.env_empty,
-                                          T.attrs_empty)) files in
-      let (mems, heap2) = T.heap_alloc_list envs heap in
+      let envs = map (fun f -> DataObj (EnvVal env_empty,
+                                          attrs_empty)) files in
+      let (mems, heap2) = heap_alloc_list envs heap in
       let pred_mems = sup_env_mem :: mems in
       let pairs = combine mems (rev (tl (rev pred_mems))) in
-      let heap3 = fold_left (fun h (e, s) -> match T.heap_find e h with
+      let heap3 = fold_left (fun h (e, s) -> match heap_find e h with
                             | Some (DataObj (EnvVal env, attrs)) ->
                                 let env2 = { env with pred_mem = s } in
-                                  T.heap_add e (DataObj (EnvVal env2, attrs)) h
+                                  heap_add e (DataObj (EnvVal env2, attrs)) h
                             | _ -> failwith ("alloc_file_envs: " ^
                                                 string_of_memref e)
                           ) heap2 pairs in
         (combine files (rev mems), heap3)
 
+let stringmap_of_list : (string * 'a) list -> 'a StringMap.t =
+  fun lst ->
+    fold_left (fun m (k, v) -> StringMap.add k v m) StringMap.empty lst
+
+let frames_of_binds :
+  (string * expr) list -> (string * memref) list -> frame list =
+  fun exprs envs ->
+    let env_map = stringmap_of_list envs in
+      try
+        map (fun (f, e) ->
+                { frame_default with
+                    slot = EvalSlot e;
+                    env_mem = StringMap.find f env_map }) exprs
+      with
+        Not_found ->
+          failwith ("stringmap_of_list: failed to initialize env map properly")
+
+let raw_inits_of_file : string -> string -> stack * heap * memref =
+  fun dir file ->
+    let heap1 = heap_empty_offset 1 in
+    let null_env_mem = mem_null in
+    let (files, file_expr_binds) = linearize_source dir file in
+    let (file_env_binds, heap2) = alloc_file_envs files null_env_mem heap1 in
+    let frames = frames_of_binds file_expr_binds file_env_binds in
+      match file_env_binds with
+      | ((_, mem) :: _) -> (stack_push_list frames stack_empty, heap2, mem)
+      | [] -> failwith "raw_inits_of_file: somehow failed to initialize envs"
+
+let raw_init_state : string -> string -> state =
+  fun dir file ->
+    let (stack, heap, glbl_env_mem) = raw_inits_of_file dir file in
+      { state_default with
+          stack = stack;
+          heap = heap;
+          global_env_mem = glbl_env_mem }
+
+let load_file : string -> string -> state =
+  fun dir file ->
+    raw_init_state dir file
 
 
-(* Inject heap1 into heap2 *)
-let merge_heap : heap -> heap -> heap =
-  fun heap1 heap2 ->
-    inj_heap_list (T.binds_of_heap heap1) heap2
-
-
-let load_file : string -> string -> env * heap =
-  fun dir file -> (T.env_empty, T.heap_empty)
 

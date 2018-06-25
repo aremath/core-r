@@ -255,6 +255,10 @@ let heap_empty : heap =
   { mem_map = MemRefMap.empty;
     next_mem = mem_incr mem_null }
 
+let heap_empty_offset : int -> heap =
+  fun offset ->
+    { heap_empty with next_mem = mem_of_int offset }
+
 let binds_of_heap : heap -> (memref * heapobj) list =
   fun heap ->
     MemRefMap.bindings heap.mem_map
@@ -432,4 +436,11 @@ let env_nest : memref -> env =
   fun env_mem ->
     { env_empty with pred_mem = env_mem }
 
+
+(* Execution state *)
+let state_default : state =
+  { stack = stack_empty;
+    heap = heap_empty;
+    global_env_mem = mem_null;
+    fresh_count = 1 }
 
