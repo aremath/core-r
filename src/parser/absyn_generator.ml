@@ -2,7 +2,7 @@
 let parseFile filename =
   print_endline ("attempting to open: " ^ filename);
   let channel = open_in filename in
-  let lexbuf = Lexing.from_channel channel   in
+  let lexbuf = Lexing.from_channel channel in
   let absyn =
      try
        Parser.prog (Lexer.tokenize (ref [])) lexbuf
@@ -18,8 +18,9 @@ let parseFile filename =
               print_endline ".";
               failwith "Syntax error"
             end in
-  let _ = close_in channel  in
-  absyn
+  let _ = close_in channel in
+  print_endline ("successfully parsed " ^ filename);
+  absyn;;
 
 let dumpTokens : string -> unit =
   fun filename ->
@@ -32,7 +33,7 @@ let dumpTokens : string -> unit =
           flush stdout
       done
     
-
+(*
 let main () =
   let args = Array.to_list Sys.argv in
   let in_filename = match args with
@@ -45,4 +46,5 @@ let main () =
     ;;
 
 main ()
+*)
 
