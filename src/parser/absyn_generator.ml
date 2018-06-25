@@ -1,6 +1,7 @@
 
 let parseFile filename =
-  let channel = open_in filename  in
+  print_endline ("attempting to open: " ^ filename);
+  let channel = open_in filename in
   let lexbuf = Lexing.from_channel channel   in
   let absyn =
      try
@@ -14,9 +15,9 @@ let parseFile filename =
               print_string " column ";
               print_string (string_of_int (pos.Lexing.pos_cnum -
                                            pos.Lexing.pos_bol ) );
-              print_string ".\n\n";
+              print_endline ".";
               failwith "Syntax error"
-            end  in
+            end in
   let _ = close_in channel  in
   absyn
 

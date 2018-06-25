@@ -12,11 +12,13 @@ open Absyn_generator
 module F = Filename
 open Sys
 
+let base_loc : string =
+  "/home/celery/foo/harvard/core-r/base/R/custom.R"
+
 type memref = S.memref
 type rastexpr = unit R.expr
 
 module StringSet = Set.Make(String)
-
 module StringMap = Map.Make(String)
 
 type ('a, 'b) either =
@@ -27,8 +29,17 @@ type exectree =
   | ExprLeaf of string * expr
   | ExprNode of string * exectree list
 
+let unwrap_raw_string_const : string -> string =
+  fun raw ->
+    let len = String.length raw in
+    if len > 0 && String.get raw 0 = '"' && String.get raw (len - 1) = '"' then
+      String.sub raw 1 (len - 2)
+    else
+      raw
+
 let canon_of_R_file : string -> string -> string =
   fun dir file ->
+    (* print_string ("dir: " ^ dir ^ " | src: " ^ file); *)
     if F.is_relative file then
       dir ^ "/" ^ file
     else
@@ -42,7 +53,8 @@ let cat_of_expr : expr -> (string, expr) either =
   fun expr ->
     match expr with
     | S.LambdaApp (S.Ident ({ S.name = Some "source" }),
-                  [S.Arg (S.Const (S.Str (Some src)))]) -> OptA src
+                  [S.Arg (S.Const (S.Str (Some src)))]) ->
+                    OptA (unwrap_raw_string_const src)
     | _ -> OptB expr
 
 let cats_of_file : string -> string * ((string, expr) either) list =
