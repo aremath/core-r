@@ -101,60 +101,60 @@ quit.R #* I would also like to quit R
 range.R #* Matrix range it seems like
 rank.R #* Matrix stuff
 raw.R #* Can totes do this, bro
-replace.R
-replicate.R
-rep.R
-rev.R
-rle.R
-rm.R
-RNG.R
-rowsum.R
-sample.R
-sapply.R
-scale.R
-scan.R
-Scripts.R
-seq.R
-serialize.R
-sets.R
-sink.R
-solve.R
-sort.R
-source.R
-split.R
-srcfile.R
-stop.R
-structure.R
-strwrap.R
-summary.R
-svd.R
-sweep.R
-sys.R
-table.R
-tabulate.R
-TAOCP.R
-tapply.R
-taskCallback.R
-temp.R
-time.R
-toString.R
-traceback.R
-unix
-unlist.R
-unname.R
-userhooks.R
-utilities.R
-utils.R
-vector.R
-version.R
-warnings.R
-which.R
-windows
-withVisible.R
-write.R
-xor.R
-zapsmall.R
-zdatetime.R
-zdynvars.R
-zzz.R
+replace.R #* I guess?
+replicate.R #* Sure
+rep.R #* Replication function
+rev.R #* Having a reverse function definitely helps
+# rle.R # I guess it can help to do run length encoding? Also does weird calls though
+rm.R #* I guess this is doable
+RNG.R #* RNG functions
+rowsum.R #* Sure
+sample.R #* Sampling stuff
+sapply.R #* More apply function shit
+scale.R #* Scaling shit, I guess
+# scan.R # Fuck file IO
+# Scripts.R # Naaaah
+seq.R #* Sequence generation
+# serialize.R # We don't need this shit
+sets.R #* Set stuff would be helpful
+# sink.R # What the fuck is sink even doing??
+solve.R #* Some matrix solving code
+sort.R #* Definitely need sorting stuff
+# source.R # Implicitly have already implemented these as preprocessing
+# split.R # Uses factor shit
+# srcfile.R # File IO
+# stop.R # Nah
+# structure.R # Data frame black magic
+# strwrap.R # Really don't feel like dealing with this right now
+summary.R #* Summarizes stuff, but we want to black out things.
+svd.R #* Of course
+sweep.R #* I guess people may use htis
+# sys.R # System calls, no
+# table.R # Let's not?
+# tabulate.R # :(
+TAOCP.R #* Knuth RNG
+tapply.R #* Might as well 
+# taskCallback.R # Fuck call backs
+# temp.R # Don't want
+# time.R # Timing functions involve system calls
+toString.R #* I guess some parts of this are actually important
+# traceback.R # Used for debugging
+# unix # Is a directory
+unlist.R #* List flattening
+unname.R #* Remove name attributes
+# userhooks.R # What the fuck
+utilities.R #* So simple????
+# utils.R # Looks like system call stuff
+vector.R #* Why, of course
+# version.R # Really a separate file just for this?!
+# warnings.R # No
+# which.R # Pastes shit
+# windows # a directory
+# withVisible.R # What the hell this do???
+# write.R # Looks like can be abused for file IO
+xor.R #* Just an XOR function
+zapsmall.R #* Rounding stuff?
+# zdatetime.R # No date times
+# zdynvars.R # 
+# zzz.R # Seems to be a bunch of loading things? Maybe actually important?
 
