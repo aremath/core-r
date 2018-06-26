@@ -28,8 +28,9 @@
             else str
 
     let string_of_token : Parser.token -> string =
-      function
-        | END_OF_INPUT -> raise (Failure "END_OF_INPUT")
+        function
+        | TOP -> "TOP"
+        | END_OF_INPUT -> "END_OF_INPUT"
         | WHILE -> "WHILE"
         | USER_OP s -> "USER_OP (" ^ s ^ ")"
         | TRUE -> "TRUE"
@@ -76,6 +77,7 @@
         | INFINITY -> "INFINITY"
         | IN -> "IN"
         | IF -> "IF"
+        | CONTEXT_IF -> "CONTEXT_IF"
         | GT -> "GT"
         | GE -> "GE"
         | FUNCTION -> "FUNCTION"
@@ -99,117 +101,120 @@
 
     let nl_ignore : Parser.token -> bool =
         function
-            | WHILE             -> true
-            | USER_OP _         -> true
-            | TRUE              -> false (* a value *)
-            | TILDE             -> true
-            | SYMBOL _          -> false (* a value *)
-            | STRING_CONST _    -> false (* a value *)
-            | SEMI              -> false (* TODO ? *)
-            | RSUPER_ASSIGN     -> true
-            | RPAREN            -> true
-            | REPEAT            -> true
-            | RBRACK            -> true
-            | RBRAX             -> true
-            | RBRACE            -> false (* braces is a block of newline-separated exprs*)
-            | RASSIGN           -> true
-            | QUESTION          -> true
-            | PLUS              -> true
-            | OUTER_PROD        -> true
-            | OR2               -> true
-            | OR                -> true
-            | NULL              -> false (* a value *)
-            | NS_GET_INT        -> false (* not sure why *)
-            | NS_GET            -> false (* ^ *)
-            | NEXT              -> false (* nothing expected after next *)
-            | NEWLINE           -> true
-            | NE                -> true
-            | NAN               -> false (* a value *)
-            | NA                -> false (* a value *)
-            | MULT              -> true
-            | MOD               -> true
-            | MINUS             -> true
-            | MATRIX_MULT       -> true
-            | MATCH             -> true
-            | LT                -> true
-            | LSUPER_ASSIGN     -> true
-            | LPAREN            -> true
-            | LE                -> true
-            | LBRACK            -> true
-            | LBRAX             -> true
-            | LBRACE            -> false (* nothing expected after lbrace *)
-            | LASSIGN           -> true
-            | KRON_PROD         -> true
-            | INT_DIV           -> true
-            | INT_CONST _       -> false (* a value *)
-            | INFINITY          -> false (* a value *)
-            | IN                -> true  (* for expects expr after in *)
-            | IF                -> true  (* expect (cond) *)
-            | GT                -> true
-            | GE                -> true
-            | FUNCTION          -> true (* expect (args) expr *)
-            | FOR               -> true (* expect (var in expr) expr *)
-            | FLOAT_CONST _     -> false (* a value *)
-            | FALSE             -> false (* a value *)
-            | EQ_ASSIGN         -> true
-            | EQ                -> true
-            | END_OF_INPUT      -> false
-            | ELSE              -> true (* expect expr *)
-            | DOLLAR            -> true
-            | DIV               -> true
-            | COMPLEX_CONST _   -> false (* a value *)
-            | COMMA             -> false (* doesn't matter *)
-            | COLON             -> true
-            | CARAT             -> true
-            | BREAK             -> false
-            | BANG              -> true
-            | AT                -> true (* TODO ? *)
-            | AND2              -> true
-            | AND               -> true
+        | TOP               -> false
+        | WHILE             -> true
+        | USER_OP _         -> true
+        | TRUE              -> false (* a value *)
+        | TILDE             -> true
+        | SYMBOL _          -> false (* a value *)
+        | STRING_CONST _    -> false (* a value *)
+        | SEMI              -> false (* TODO ? *)
+        | RSUPER_ASSIGN     -> true
+        | RPAREN            -> true
+        | REPEAT            -> true
+        | RBRACK            -> true
+        | RBRAX             -> true
+        | RBRACE            -> false (* braces is a block of newline-separated exprs*)
+        | RASSIGN           -> true
+        | QUESTION          -> true
+        | PLUS              -> true
+        | OUTER_PROD        -> true
+        | OR2               -> true
+        | OR                -> true
+        | NULL              -> false (* a value *)
+        | NS_GET_INT        -> false (* not sure why *)
+        | NS_GET            -> false (* ^ *)
+        | NEXT              -> false (* nothing expected after next *)
+        | NEWLINE           -> true
+        | NE                -> true
+        | NAN               -> false (* a value *)
+        | NA                -> false (* a value *)
+        | MULT              -> true
+        | MOD               -> true
+        | MINUS             -> true
+        | MATRIX_MULT       -> true
+        | MATCH             -> true
+        | LT                -> true
+        | LSUPER_ASSIGN     -> true
+        | LPAREN            -> true
+        | LE                -> true
+        | LBRACK            -> true
+        | LBRAX             -> true
+        | LBRACE            -> false (* nothing expected after lbrace *)
+        | LASSIGN           -> true
+        | KRON_PROD         -> true
+        | INT_DIV           -> true
+        | INT_CONST _       -> false (* a value *)
+        | INFINITY          -> false (* a value *)
+        | IN                -> true  (* for expects expr after in *)
+        | IF                -> true  (* expect (cond) expr *)
+        | CONTEXT_IF        -> failwith "context_if in context"
+        | GT                -> true
+        | GE                -> true
+        | FUNCTION          -> true (* expect (args) expr *)
+        | FOR               -> true (* expect (var in expr) expr *)
+        | FLOAT_CONST _     -> false (* a value *)
+        | FALSE             -> false (* a value *)
+        | EQ_ASSIGN         -> true
+        | EQ                -> true
+        | END_OF_INPUT      -> false
+        | ELSE              -> true (* expect expr *)
+        | DOLLAR            -> true
+        | DIV               -> true
+        | COMPLEX_CONST _   -> false (* a value *)
+        | COMMA             -> false (* doesn't matter *)
+        | COLON             -> true
+        | CARAT             -> true
+        | BREAK             -> false
+        | BANG              -> true
+        | AT                -> true (* TODO ? *)
+        | AND2              -> true
+        | AND               -> true
 
     (* What tokens affect the context - many tokens do not affect the context and are
     pushed zero times. Binops affect the context once. Something like an if (where both the
     condition and the expression can be placed with newlines) will be pushed twice *)
     let to_push: Parser.token -> Parser.token list =
         function
-            | WHILE             -> [WHILE; WHILE] (* expect (cond) expr *)
-            | TRUE              -> []
-            | SYMBOL _          -> []
-            | STRING_CONST _    -> []
-            | SEMI              -> []
-            | RPAREN            -> [] (* ends LPAREN, not pushed *)
-            | REPEAT            -> [REPEAT] (* expect expr *)
-            | RBRACK            -> [] (* ends LBRACK *)
-            | RBRAX             -> [] (* ends LBRAX, not pushed *)
-            | RBRACE            -> [] (* ends LBRACE, but not pushed *)
-            | NULL              -> []
-            | NS_GET_INT        -> []
-            | NS_GET            -> []
-            | NEXT              -> []
-            | NEWLINE           -> [NEWLINE]
-            | NAN               -> []
-            | NA                -> []
-            | LPAREN            -> [LPAREN] (* expect expr *)
-            | LBRACE            -> [LBRACE] (* don't expect *)
-            | INT_CONST _       -> []
-            | INFINITY          -> []
-            | IN                -> [] (* expect expr, but it doesn't matter *)
-            | IF                -> [IF; IF] (* expect (cond) body (else body2?) *)
-            | FUNCTION          -> [FUNCTION; FUNCTION] (* expect (args) expr *)
-            | FOR               -> [FOR; FOR] (* expect (var in expr) expr *)
-            | FLOAT_CONST _     -> []
-            | FALSE             -> []
-            | END_OF_INPUT      -> []
-            | ELSE              -> [ELSE] (* expect expr *)
-            | COMPLEX_CONST _   -> []
-            | COMMA             -> []
-            | BREAK             -> []
-            | x                 -> [x] (* Binops *)
+        | WHILE             -> [WHILE; WHILE] (* expect (cond) expr *)
+        | TRUE              -> []
+        | SYMBOL _          -> []
+        | STRING_CONST _    -> []
+        | SEMI              -> []
+        | RPAREN            -> [] (* ends LPAREN, not pushed *)
+        | REPEAT            -> [REPEAT] (* expect expr *)
+        | RBRACK            -> [] (* ends LBRACK *)
+        | RBRAX             -> [] (* ends LBRAX, not pushed *)
+        | RBRACE            -> [] (* ends LBRACE, but not pushed *)
+        | NULL              -> []
+        | NS_GET_INT        -> []
+        | NS_GET            -> []
+        | NEXT              -> []
+        | NEWLINE           -> [NEWLINE]
+        | NAN               -> []
+        | NA                -> []
+        | LPAREN            -> [LPAREN] (* expect expr *)
+        | LBRACE            -> [LBRACE] (* don't expect *)
+        | INT_CONST _       -> []
+        | INFINITY          -> []
+        | IN                -> [] (* expect expr, but it doesn't matter *)
+        | IF                -> [IF; IF] (* expect (cond) body (else body2?) *)
+        | CONTEXT_IF        -> failwith "context_if in context"
+        | FUNCTION          -> [FUNCTION; FUNCTION] (* expect (args) expr *)
+        | FOR               -> [FOR; FOR] (* expect (var in expr) expr *)
+        | FLOAT_CONST _     -> []
+        | FALSE             -> []
+        | END_OF_INPUT      -> []
+        | ELSE              -> [ELSE] (* expect expr *)
+        | COMPLEX_CONST _   -> []
+        | COMMA             -> []
+        | BREAK             -> []
+        | x                 -> [x] (* Binops *)
 
     (* which tokens match which other tokens *)
     let token_match: Parser.token -> Parser.token -> bool = 
         fun t1 t2 ->
-        begin
+            begin
             match t1 with
             | WHILE             -> true (* things that expect expr, which can begin with any token *)
             | USER_OP _         -> true
@@ -259,7 +264,8 @@
             | LASSIGN           -> true
             | KRON_PROD         -> true
             | INT_DIV           -> true
-            | IF                -> true  (*  *)
+            | IF                -> true (*  *)
+            | CONTEXT_IF        -> failwith "context if in context"
             | GT                -> true
             | GE                -> true
             | FUNCTION          -> true (* expect (args) expr *)
@@ -276,13 +282,24 @@
             | AND2              -> true
             | AND               -> true
             | _                 -> false
-        end
+            end
 
-let get_top : Parser.token list ref -> Parser.token =
+
+let get_top: Parser.token list ref -> Parser.token =
     fun context_ref ->
         match !context_ref with
         | hd::tl -> hd
-        | []     -> LBRACE (* TODO *)
+        | []     -> TOP
+
+let rec if_context: Parser.token list -> Parser.token =
+    fun context ->
+    match context with
+    | LPAREN::tl -> CONTEXT_IF 
+    | LBRACK::tl -> CONTEXT_IF
+    | LBRAX::tl  -> CONTEXT_IF
+    | LBRACE::tl -> CONTEXT_IF
+    | IF::tl     -> if_context tl
+    | _          -> IF
 
 let string_of_context: Parser.token list ref -> string =
     fun context_ref ->
@@ -296,13 +313,14 @@ Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
-            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
-            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in *)
-            (* if the top token of the context matches the current token, pop the top*)
+            let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
+            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in
+            (* If the top token of the context matches the current token, remove it:
+                it has found its match. *)
             let _ = if (token_match top tok) then
                 context_ref := (List.tl !context_ref)
                 else () in
-            (* push tok onto the stack *)
+            (* Push context alterations from token onto the stack *)
             let x = to_push tok in
             context_ref := x @ !context_ref
 
@@ -438,7 +456,7 @@ rule tokenize context = parse
 
   (* Keywords *)
   | "function"  { step FUNCTION context; FUNCTION }
-  | "if"        { step IF context; IF }
+  | "if"        { step IF context; if_context !context }
   | "else"      { step ELSE context; ELSE }
   | "for"       { step FOR context; FOR }
   | "in"        { step IN context; IN }
@@ -475,11 +493,12 @@ rule tokenize context = parse
   | comment     { tokenize context lexbuf }
   | whitespace  { tokenize context lexbuf }
 
+  (* Only output newlines if the top token of the context allows them *)
   | newline     { incr_line_count lexbuf; if nl_ignore (get_top context) then 
                                             tokenize context lexbuf else NEWLINE }
   | ','         { step COMMA context; COMMA }
 
-  (* Everybody's favorite thing that's technically not a char some times *)
+  (* Everybody's favorite thing that's technically not a char sometimes *)
   | eof         { END_OF_INPUT }
 
 

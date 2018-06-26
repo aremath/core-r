@@ -2,6 +2,8 @@
   module A = Rast
   open A
 %}
+(* useless tokens for lexer *)
+%token         TOP CONTEXT_IF
 
 %token         END_OF_INPUT
 %token<string> STRING_CONST SYMBOL
@@ -41,7 +43,7 @@
   %left     LOW
   %left     WHILE FOR REPEAT
 *)
-%right    IF
+%right    IF CONTEXT_IF
 %left     ELSE
 %right    LASSIGN LSUPER_ASSIGN
 (*
@@ -78,6 +80,10 @@ prog:
   | expr_or_assign NEWLINE prog { $1 :: $3 }
   | expr_or_assign SEMI prog    { $1 :: $3 }
   ;
+
+newlines:
+    NEWLINE             {}
+  | newlines NEWLINE    {}
 
 expr_or_assign:
     expr         { $1 }
@@ -163,7 +169,10 @@ expr:
   | REPEAT expr_or_assign     { A.Repeat $2 }
   | IF cond expr_or_assign    { A.If ($2, $3) }
   | IF cond expr_or_assign ELSE expr_or_assign
-                              { A.IfElse ($2, $3, $5) } 
+                              { A.IfElse ($2, $3, $5) }
+  | CONTEXT_IF cond expr_or_assign    { A.If ($2, $3) }
+  | CONTEXT_IF cond expr_or_assign newlines ELSE expr_or_assign
+                              { A.IfElse ($2, $3, $6) }
   (*
     | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign %prec FOR
   *)
