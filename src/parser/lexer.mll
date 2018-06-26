@@ -77,7 +77,6 @@
         | INFINITY -> "INFINITY"
         | IN -> "IN"
         | IF -> "IF"
-        | CONTEXT_IF -> "CONTEXT_IF"
         | GT -> "GT"
         | GE -> "GE"
         | FUNCTION -> "FUNCTION"
@@ -148,7 +147,6 @@
         | INFINITY          -> false (* a value *)
         | IN                -> true  (* for expects expr after in *)
         | IF                -> true  (* expect (cond) expr *)
-        | CONTEXT_IF        -> failwith "context_if in context"
         | GT                -> true
         | GE                -> true
         | FUNCTION          -> true (* expect (args) expr *)
@@ -199,7 +197,6 @@
         | INFINITY          -> []
         | IN                -> [] (* expect expr, but it doesn't matter *)
         | IF                -> [IF; IF] (* expect (cond) body (else body2?) *)
-        | CONTEXT_IF        -> failwith "context_if in context"
         | FUNCTION          -> [FUNCTION; FUNCTION] (* expect (args) expr *)
         | FOR               -> [FOR; FOR] (* expect (var in expr) expr *)
         | FLOAT_CONST _     -> []
@@ -265,7 +262,6 @@
             | KRON_PROD         -> true
             | INT_DIV           -> true
             | IF                -> true (*  *)
-            | CONTEXT_IF        -> failwith "context if in context"
             | GT                -> true
             | GE                -> true
             | FUNCTION          -> true (* expect (args) expr *)
@@ -291,15 +287,20 @@ let get_top: Parser.token list ref -> Parser.token =
         | hd::tl -> hd
         | []     -> TOP
 
-let rec if_context: Parser.token list -> Parser.token =
+(* Does the closest context clue below IFs tell us to ignore newlines before an else or not? *)
+let rec is_if_context: Parser.token list -> bool =
     fun context ->
     match context with
-    | LPAREN::tl -> CONTEXT_IF 
-    | LBRACK::tl -> CONTEXT_IF
-    | LBRAX::tl  -> CONTEXT_IF
-    | LBRACE::tl -> CONTEXT_IF
-    | IF::tl     -> if_context tl
-    | _          -> IF
+    | LPAREN::tl -> true
+    | LBRACK::tl -> true
+    | LBRAX::tl  -> true
+    | LBRACE::tl -> true
+    | IF::tl     -> is_if_context tl
+    | _          -> false
+
+let update_line_count =
+    fun lexeme lexbuf ->
+    String.iter (fun c -> if c = '\n' then incr_line_count lexbuf else ()) lexeme
 
 let string_of_context: Parser.token list ref -> string =
     fun context_ref ->
@@ -313,8 +314,8 @@ Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
-            let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
-            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in
+            (*let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
+            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in *)
             (* If the top token of the context matches the current token, remove it:
                 it has found its match. *)
             let _ = if (token_match top tok) then
@@ -363,7 +364,7 @@ let uni_esc =
   | '\\' 'u' '{' hex hex hex hex '}'
 
 let esc =
-    '\\' ['a' 'b' 't' 'n' 'f' 'r' 'v' '\\']
+    '\\' ['a' 'b' 't' 'n' 'f' 'r' 'v' '\\' '"']
   | oct_esc
   | hex_esc
   | uni_esc
@@ -395,9 +396,18 @@ let comment =
 let whitespace =
   [' ' '\t']
 
+(* Peeking *)
+(* changes is_else_ref to whether or not the next token (excluding newlines) will be an ELSE,
+ then returns the lexer to pos *)
+rule peek_else pos is_else_ref = parse
+    | "else"        { lexbuf.Lexing.lex_curr_p=pos; is_else_ref:=true }
+    | comment       { peek_else pos is_else_ref lexbuf }
+    | whitespace    { peek_else pos is_else_ref lexbuf }
+    | newline       { peek_else pos is_else_ref lexbuf }
+    | _             { lexbuf.Lexing.lex_curr_p=pos; is_else_ref:=false }
 
 (* Parsing *)
-rule tokenize context = parse
+and tokenize context = parse
   (* Delimiters *)
   | "("         { step LPAREN context; LPAREN }
   | ")"         { step RPAREN context; RPAREN }
@@ -405,8 +415,8 @@ rule tokenize context = parse
   | "["         { step LBRACK context; LBRACK }
   | "]"         { step RBRACK context; RBRACK }
 
-  | "[["        { step LBRAX context; LBRAX }
-  | "]]"        { step RBRAX context; RBRAX }
+  | "[["        { step LBRACK context; step LBRACK context; LBRAX }
+  (* | "]]"        { step RBRAX context; RBRAX } *)
 
   | "{"         { step LBRACE context; LBRACE }
   | "}"         { step RBRACE context; RBRACE }
@@ -456,7 +466,7 @@ rule tokenize context = parse
 
   (* Keywords *)
   | "function"  { step FUNCTION context; FUNCTION }
-  | "if"        { step IF context; if_context !context }
+  | "if"        { step IF context; IF }
   | "else"      { step ELSE context; ELSE }
   | "for"       { step FOR context; FOR }
   | "in"        { step IN context; IN }

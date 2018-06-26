@@ -33,7 +33,6 @@ let dumpTokens : string -> unit =
           flush stdout
       done
     
-(*
 let main () =
   let args = Array.to_list Sys.argv in
   let in_filename = match args with
@@ -41,10 +40,9 @@ let main () =
                   | _     -> failwith "exactly one filename expected"  in
   (* Parsing *)
   (* let _ = dumpTokens in_filename in *)
-  let absyn = parseFile in_filename in
-    print_endline (Rast.string_of_program absyn);
+  let absyn = parseFile in_filename in ()
+    (* print_endline (Rast.string_of_program absyn); *)
     ;;
 
 main ()
-*)
 

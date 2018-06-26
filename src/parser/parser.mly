@@ -3,7 +3,7 @@
   open A
 %}
 (* useless tokens for lexer *)
-%token         TOP CONTEXT_IF
+%token         TOP
 
 %token         END_OF_INPUT
 %token<string> STRING_CONST SYMBOL
@@ -37,13 +37,12 @@
 %token         RSUPER_ASSIGN LSUPER_ASSIGN
 %token         TRUE FALSE
 
-/* This is the precedence table, low to high */
+(* This is the precedence table, low to high *)
 %left     QUESTION
 (* 
   %left     LOW
   %left     WHILE FOR REPEAT
 *)
-%right    IF CONTEXT_IF
 %left     ELSE
 %right    LASSIGN LSUPER_ASSIGN
 (*
@@ -170,9 +169,6 @@ expr:
   | IF cond expr_or_assign    { A.If ($2, $3) }
   | IF cond expr_or_assign ELSE expr_or_assign
                               { A.IfElse ($2, $3, $5) }
-  | CONTEXT_IF cond expr_or_assign    { A.If ($2, $3) }
-  | CONTEXT_IF cond expr_or_assign newlines ELSE expr_or_assign
-                              { A.IfElse ($2, $3, $6) }
   (*
     | FOR LPAREN SYMBOL IN expr RPAREN expr_or_assign %prec FOR
   *)
@@ -183,7 +179,7 @@ expr:
   | LBRACE exprlist RBRACE     { A.Block $2 }
 
   (* List access *)
-  | expr LBRAX sublist RBRAX
+  | expr LBRAX sublist RBRACK RBRACK
                                { A.ListProj ($1, $3) }
   | expr LBRACK sublist RBRACK { A.ListSub ($1, $3) }
 
