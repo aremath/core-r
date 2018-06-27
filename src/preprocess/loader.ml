@@ -32,7 +32,7 @@ type exectree =
 let unwrap_raw_string_const : string -> string =
   fun raw ->
     let len = String.length raw in
-    if len > 0 && String.get raw 0 = '"' && String.get raw (len - 1) = '"' then
+    if len > 0 && raw.[0] = '"' && raw.[len - 1] = '"' then
       String.sub raw 1 (len - 2)
     else
       raw
@@ -183,9 +183,17 @@ let raw_init_state : string -> string -> state =
           heap = heap;
           global_env_mem = glbl_env_mem }
 
+let guess_entry_info : string -> string * string =
+  fun path -> (F.dirname path, F.basename path)
+
 let load_file : string -> string -> state =
   fun dir file ->
     raw_init_state dir file
+
+let load_file_guess : string -> state =
+  fun path ->
+    let (dir, file) = guess_entry_info path in
+      load_file dir file
 
 
 
