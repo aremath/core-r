@@ -3,10 +3,10 @@ open Langutils
 open String
 open List
 
-let indent2 = "  "
-let indent4 = indent2 ^ indent2
-let indent6 = indent4 ^ indent2
-let indent8 = indent4 ^ indent4
+let tab2 = "  "
+let tab4 = tab2 ^ tab2
+let tab6 = tab4 ^ tab2
+let tab8 = tab4 ^ tab4
 
 let string_of_pair : ('a * 'b) -> (('a -> string) * ('b -> string)) -> string =
   fun (a, b) (fa, fb) ->
@@ -114,7 +114,7 @@ let string_of_heap: heap -> string =
     let binds = MemRefMap.bindings heap.mem_map in
     let strs = map (fun (k, v) ->
           string_of_pair (k, v) (string_of_memref, string_of_heapobj)) binds in
-    let mod_strs = map (fun s -> indent4 ^ s) strs in
+    let mod_strs = map (fun s -> tab4 ^ s) strs in
       "Heap (next : " ^ string_of_memref heap.next_mem ^ ")\n" ^
                         string_of_list_newline mod_strs
 
@@ -153,12 +153,13 @@ let string_of_frame: frame -> string =
   fun frame ->
     let slot_str = string_of_slot frame.slot in
     let env_mem_str = string_of_memref frame.env_mem in
-      "Frame (env : " ^ env_mem_str ^ ") (" ^ slot_str ^ ")"
+      "Frame (env : " ^ env_mem_str ^ ")\n" ^
+              tab8 ^ tab2 ^ "" ^ slot_str ^ ""
 
 let string_of_stack: stack -> string =
   fun s ->
     let frame_strs = List.map string_of_frame s.frame_list in
-    let mod_strs = map (fun s -> indent4 ^ s) frame_strs in
+    let mod_strs = map (fun s -> tab4 ^ s) frame_strs in
       "Stack\n" ^ string_of_list_newline mod_strs
 
 let string_of_state: state -> string =
@@ -169,7 +170,7 @@ let string_of_state: state -> string =
     (* let count = string_of_int state.fresh_count in *)
       "State (" ^ string_of_int state.unique ^ ") (pred : " ^
                   string_of_int state.pred_unique ^ ")\n" ^
-      indent2 ^ stack_str ^ "\n" ^
-      indent2 ^ heap_str ^ "\n" ^
-      indent2 ^ "GlobalEnv (" ^ env_str ^ ")"
+      tab2 ^ stack_str ^ "\n" ^
+      tab2 ^ heap_str ^ "\n" ^
+      tab2 ^ "GlobalEnv (" ^ env_str ^ ")"
 
