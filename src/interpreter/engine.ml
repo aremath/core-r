@@ -29,9 +29,12 @@ let is_state_complete : state -> bool =
 let is_state_not_complete : state -> bool
   fun state -> not (is_state_complete state)
 
-let run_pass : (list rule * state) list -> (list rule * state) list *
-                                           (list rule * state) list *
-                                           (list rule * state) list
+type passresult =
+  (list rule * state) list *
+  (list rule * state) list *
+  (list rule * state) list
+
+let run_pass : (list rule * state) list -> passresult
   fun states ->
     let comps = filter is_state_complete states in
     let incomps = filter is_state_not_complete states in
@@ -57,6 +60,15 @@ let run_pass : (list rule * state) list -> (list rule * state) list *
                                    expanded in
                 let ncsts = filter (fun (r, s) -> is_state_not_complete s)
                                     expanded in
-                  (csts @ c, e, ncsts @ i)
+                  (csts @ c, e, ncsts @ i))
+          ([], [], []) states
+
+let run_n : n -> passresult -> passresult =
+  fun n (comps, errs, incomps) ->
+    if n <= 0 then
+      (comps, errs, incomps)
+    else
+      let (comps2, errs2, incomps2) = run_pass incomps in
+        run_n (n - 1) (comps2 @ comps, errs2 @ errs, incomps @ incomps2)
 
 
