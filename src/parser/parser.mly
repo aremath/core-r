@@ -3,7 +3,7 @@
   open A
 %}
 (* useless tokens for lexer *)
-%token         TOP
+%token         TOP IFSTAR
 
 %token         END_OF_INPUT
 %token<string> STRING_CONST SYMBOL
@@ -204,12 +204,6 @@ expr:
 cond:
     LPAREN expr RPAREN { $2 }
   ;
-
-(*
-  ifcond:
-        LPAREN expr RPAREN { $2 } (* { $$ = xxifcond($2); } *)
-    ;
-*)
 
 exprlist:
                                     { [] }
