@@ -111,10 +111,21 @@ type state =
   { stack : stack;
     heap : heap;
     global_env_mem : memref;
-    fresh_count : int }
+    fresh_count : int;
+    pred_unique : int;
+    unique : int }
 
 
 (* Utility functions *)
+let state_unique : int ref = ref 32
+
+let tag_state_unique : int -> state -> state =
+  fun pred state ->
+    let state2 = { state with pred_unique = pred;
+                              unique = !state_unique } in
+      incr state_unique;
+      state2;;
+
 
 (* Memory references *)
 let mem_of_int : int -> memref =
@@ -442,5 +453,8 @@ let state_default : state =
   { stack = stack_empty;
     heap = heap_empty;
     global_env_mem = mem_null;
-    fresh_count = 1 }
+    fresh_count = 1;
+    pred_unique = 0;
+    unique = 1 }
+
 
