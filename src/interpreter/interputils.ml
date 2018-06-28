@@ -1,12 +1,28 @@
 open Support
 open Langutils
+open Rules
+open Engine
+
 open String
 open List
 
-let tab2 = "  "
+let rec repeat : string -> int -> string =
+  fun str n ->
+    if n <= 0 then
+      ""
+    else if n == 1 then
+      str
+    else
+      str ^ repeat str (n - 1)
+
+let tab2 = repeat " " 2
 let tab4 = tab2 ^ tab2
-let tab6 = tab4 ^ tab2
 let tab8 = tab4 ^ tab4
+let bar20 = repeat "----" 5
+let bar40 = let b = bar20 in b ^ b
+let bar60 = bar20 ^ bar40
+let bar80 = let b = bar40 in b ^ b
+
 
 let string_of_pair : ('a * 'b) -> (('a -> string) * ('b -> string)) -> string =
   fun (a, b) (fa, fb) ->
@@ -168,9 +184,65 @@ let string_of_state: state -> string =
     let heap_str = string_of_heap state.heap in
     let env_str = string_of_memref state.global_env_mem in
     (* let count = string_of_int state.fresh_count in *)
-      "State (" ^ string_of_int state.unique ^ ") (pred : " ^
-                  string_of_int state.pred_unique ^ ")\n" ^
-      tab2 ^ stack_str ^ "\n" ^
-      tab2 ^ heap_str ^ "\n" ^
-      tab2 ^ "GlobalEnv (" ^ env_str ^ ")"
+      "State " ^ "(global: " ^ env_str ^ ") " ^
+                 "(" ^ string_of_int state.unique ^ ") "^
+                 "(pred : " ^ string_of_int state.pred_unique ^ ")" ^
+                 "\n" ^
+      "\n" ^  tab2 ^ stack_str ^ "\n" ^
+      "\n" ^ tab2 ^ heap_str ^ ""
 
+let string_of_state_list : state list -> string =
+  fun states ->
+    string_of_list_newline (map string_of_state states)
+
+let string_of_rule : rule -> string =
+  fun rule -> match rule with
+    | RuleForceP -> "ForceP"
+    | RuleForceF -> "ForceF"
+    | RuleGetF -> "GetF"
+    | RuleInvF -> "InvF"
+    | RuleNativeInvF -> "NativeInvF"
+
+    | RuleConst -> "Const"
+    | RuleFun -> "Fun"
+    | RuleFind -> "Find"
+    | RuleGetP -> "GetP"
+
+    | RuleUpdate -> "Update"
+    | RuleAssId -> "AssId"
+    | RuleDAss -> "DAss"
+    | RuleAssStr -> "AssStr"
+    | RuleDAssStr -> "DAssStr"
+
+    | RuleIfEval -> "IfEval"
+    | RuleIfRet -> "IfRet"
+    | RuleWhileEval -> "WhileEval"
+    | RuleWhileCondTrue -> "WhileCondTrue"
+    | RuleWhileCondFalse -> "WhileCondFalse"
+    | RuleWhileBodyDone -> "WhileBodyDone"
+    | RuleBreak -> "Break"
+    | RuleNext -> "Next"
+
+    | RuleSeq -> "Seq"
+
+    | _ -> "Unknown"
+
+let string_of_rule_list : rule list -> string =
+  fun rules ->
+    "[" ^ string_of_list_comma (map string_of_rule rules) ^ "]"
+
+let string_of_hist : (rule list * state) -> string =
+  fun (rules, state) ->
+    bar60 ^ "\n" ^
+    string_of_rule_list rules ^ "\n" ^
+    string_of_state state ^ "\n" ^
+    bar60 ^ ""
+
+let string_of_passresult : passresult -> string =
+  fun (comps, errs, incomps) ->
+    "Complete" ^ "\n" ^
+    string_of_list_newline (map string_of_hist comps) ^ "\n" ^
+    "Errors" ^ "\n" ^
+    string_of_list_newline (map string_of_hist errs) ^ "\n" ^
+    "Incmplete" ^ "\n" ^
+    string_of_list_newline (map string_of_hist incomps) ^ "\n"
