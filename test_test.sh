@@ -1,9 +1,9 @@
 #!/bin/sh
 fails=0
 tries=0
-for f in $(ls base/R/)
+for f in $(ls src/parser/tests/)
 do
-    path=base/R/$f
+    path=src/parser/tests/$f
     # try to parse $f only if it's a file
     if [ -f $path ]; then
         echo $f
@@ -17,4 +17,4 @@ do
         fi
     fi
 done
-echo "FAILED " $fails "/" $tries
+echo "FAILED: " $fails "/" $tries

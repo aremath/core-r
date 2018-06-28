@@ -30,7 +30,7 @@
     let string_of_token : Parser.token -> string =
         function
         | TOP -> "TOP"
-        | END_OF_INPUT -> "END_OF_INPUT"
+        | END_OF_INPUT -> failwith "eof" (* "END_OF_INPUT" *)
         | WHILE -> "WHILE"
         | USER_OP s -> "USER_OP (" ^ s ^ ")"
         | TRUE -> "TRUE"
@@ -346,13 +346,16 @@ Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
-            let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
+            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in *)
             let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in
             (* If the top token of the context matches the current token, remove it:
                 it has found its match. *)
             (* special case for removing ifs when we see certain tokens *)
             let _ = match tok with
-            | ELSE   -> replace_top context_ref ELSE
+            | ELSE   -> begin match get_top context_ref with 
+                | IFSTAR -> replace_top context_ref ELSE
+                | _      -> ()
+                end
             | RPAREN -> remove_top_ifs context_ref 
             | RBRACK -> remove_top_ifs context_ref
             | RBRACE -> remove_top_ifs context_ref
@@ -446,11 +449,16 @@ let whitespace =
 (* changes is_else_ref to whether or not the next token (excluding newlines) will be an ELSE,
  then returns the lexer to pos *)
 rule peek_else is_else_ref = parse
-    | "else"        { is_else_ref:=true }
     | comment       { peek_else is_else_ref lexbuf }
     | whitespace    { peek_else is_else_ref lexbuf }
     | newline       { peek_else is_else_ref lexbuf }
-    | _             { is_else_ref:=false }
+    | eof           { Printf.printf "%s\n" lexbuf.Lexing.lex_buffer;
+        lexbuf.Lexing.refill_buff lexbuf;
+        is_else_ref:=false } (* for some reason this fixes things *)
+    | "else"        { is_else_ref:=true }
+    | _             { Printf.printf "%s\n" (Lexing.lexeme lexbuf);
+        lexbuf.Lexing.refill_buff lexbuf;
+        is_else_ref:=false }
 
 (* Parsing *)
 and tokenize context = parse
@@ -552,7 +560,7 @@ and tokenize context = parse
   (* Only output newlines if the top token of the context allows them *)
   | newline     { let lexbuf_copy = lexer_copy lexbuf in
         let next_is_else = ref false in peek_else (next_is_else) lexbuf_copy;
-        (* Printf.printf "next - %b\n" !next_is_else; *)
+        Printf.printf "next - %b\n" !next_is_else;
         begin match get_top context with
         | IFSTAR -> if !next_is_else then replace_top context ELSE else ()
         | _ -> () end;
@@ -562,5 +570,4 @@ and tokenize context = parse
 
   (* Everybody's favorite thing that's technically not a char sometimes *)
   | eof         { END_OF_INPUT }
-
 
