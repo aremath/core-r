@@ -244,5 +244,14 @@ let string_of_passresult : passresult -> string =
     string_of_list_newline (map string_of_hist comps) ^ "\n" ^
     "Errors" ^ "\n" ^
     string_of_list_newline (map string_of_hist errs) ^ "\n" ^
-    "Incmplete" ^ "\n" ^
-    string_of_list_newline (map string_of_hist incomps) ^ "\n"
+    "Incomplete" ^ "\n" ^
+    string_of_list_newline (map string_of_hist incomps) ^ ""
+
+let string_of_passresult_list : passresult list -> string =
+  fun passes ->
+    let strs = (map string_of_passresult passes) in
+    let mods = map (fun s -> repeat "****" 10 ^
+                             "\n" ^ s ^ "\n" ^
+                             repeat "****" 10) strs in
+      string_of_list_newline (mods)
+

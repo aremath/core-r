@@ -36,8 +36,9 @@ let dumpTokens : string -> unit =
 let main () =
   let args = Array.to_list Sys.argv in
   let in_filename = match args with
-                  | [_; arg] -> arg
-                  | _     -> failwith "exactly one filename expected"  in
+                  | [] -> failwith "exactly one filename expected"
+                  | (_ :: arg :: _) -> arg
+                  | _ -> failwith "exactly one filename expected" in
   (* Parsing *)
   (* let _ = dumpTokens in_filename in *)
   let absyn = parseFile in_filename in ()

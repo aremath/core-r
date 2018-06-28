@@ -21,7 +21,8 @@ let step_rule : state -> redresult =
         | toomuch -> MultipleRulesMatch toomuch
 
 let is_state_complete : state -> bool =
-  fun state -> match (stack_pop state.stack, stack_pop_v2 state.stack) with
+  fun state -> match (stack_pop state.stack,
+                      stack_pop_v2 state.stack) with
     | (Some _, None) -> true
     | _ -> false
 
@@ -75,5 +76,13 @@ let rec run_n : int -> passresult -> passresult =
       let (comps2, errs2, incomps2) = run_pass incomps in
         run_n (n - 1) (comps2 @ comps, errs2 @ errs, incomps @ incomps2)
 
+let rec run_n_hist :
+  int -> passresult list -> (rule list * state) list -> passresult list =
+  fun n hist todos ->
+    if n <= 0 then
+      hist @ [([], [], todos)]
+    else
+      let (comps2, errs2, incomps2) = run_pass todos in
+        run_n_hist (n - 1) (hist @ [(comps2, errs2, incomps2)]) incomps2
 
 
