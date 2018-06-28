@@ -77,7 +77,6 @@
         | INFINITY -> "INFINITY"
         | IN -> "IN"
         | IF -> "IF"
-        | IFSTAR -> "IFSTAR"
         | GT -> "GT"
         | GE -> "GE"
         | FUNCTION -> "FUNCTION"
@@ -148,7 +147,6 @@
         | INFINITY          -> false (* a value *)
         | IN                -> true  (* for expects expr after in *)
         | IF                -> true  (* expect (cond) expr *)
-        | IFSTAR            -> false (* special case *)
         | GT                -> true
         | GE                -> true
         | FUNCTION          -> true (* expect (args) expr *)
@@ -264,7 +262,6 @@
             | KRON_PROD         -> true
             | INT_DIV           -> true
             | IF                -> true (*  *)
-            | IFSTAR            -> false (* special case *)
             | GT                -> true
             | GE                -> true
             | FUNCTION          -> true (* expect (args) expr *)
@@ -306,33 +303,30 @@ let rec is_if_context: Parser.token list -> bool =
     | IF::tl     -> is_if_context tl
     | _          -> false
 
-let rec remove_top_ifs: Parser.token list ref -> unit =
-    fun context_ref ->
-    match !context_ref with
-    | IFSTAR :: tl -> context_ref := tl;
-        remove_top_ifs context_ref
-    | _            -> ()
+(* When the lexer matches a lexeme that contains newlines, its position and column reporting
+ gets messed up. In errors, it reports a column number that matches the total length of the lexeme
+ and a line number which effectively ignores the newlines in the matched lexeme. This function 
+ updates the lexer position to the correct information *)
+let update_position =
+    fun lexeme lexbuf ->
+    for i = 0 to (String.length lexeme) - 1 do
+        (* If we're at a newline, then call new_line to reset the column number and
+        increment the line number *)
+        if lexeme.[i] = '\n' then (*TODO what about \r\n newlines? *)
+            (* Lexing.new_line lexbuf *)
+            incr_line_count lexbuf
+        (* Otherwise, increment the column number since this is a character *)
+        (* The column number does not need to change? Lexer calculates column based on
+        the cnum (global to the file) and the bol? *)
+        else () (* lexbuf.Lexing.lex_curr_p.pos_cnum <- lexbuf.Lexing.lex_curr_p.pos_cnum + 1 *)
+    done
 
-(* copy the current lexer state *)
-let lexer_copy: Lexing.lexbuf -> Lexing.lexbuf =
-    fun lexbuf ->
-    let lex_copy = String.copy lexbuf.Lexing.lex_buffer in
-    { Lexing.refill_buff = lexbuf.Lexing.refill_buff;
-    Lexing.lex_buffer = lex_copy;
-    Lexing.lex_buffer_len = lexbuf.Lexing.lex_buffer_len;
-    Lexing.lex_abs_pos = lexbuf.Lexing.lex_abs_pos;
-    Lexing.lex_start_pos = lexbuf.Lexing.lex_start_pos;
-    Lexing.lex_curr_pos = lexbuf.Lexing.lex_curr_pos;
-    Lexing.lex_last_pos = lexbuf.Lexing.lex_last_pos;
-    Lexing.lex_last_action = lexbuf.Lexing.lex_last_action;
-    Lexing.lex_eof_reached = lexbuf.Lexing.lex_eof_reached;
-    Lexing.lex_mem = lexbuf.Lexing.lex_mem;
-    Lexing.lex_start_p = lexbuf.Lexing.lex_start_p;
-    Lexing.lex_curr_p = lexbuf.Lexing.lex_curr_p}
-
+(*
 let update_line_count =
     fun lexeme lexbuf ->
-    String.iter (fun c -> if c = '\n' then incr_line_count lexbuf else ()) lexeme
+    String.iter (fun c -> if c = '\n' then (* incr_line_count lexbuf else ()) lexeme *)
+        Lexing.new_line lexbuf else ())
+*)
 
 let string_of_context: Parser.token list ref -> string =
     fun context_ref ->
@@ -346,33 +340,16 @@ Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
-            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in *)
-            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in
+            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
+            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in *)
             (* If the top token of the context matches the current token, remove it:
                 it has found its match. *)
-            (* special case for removing ifs when we see certain tokens *)
-            let _ = match tok with
-            | ELSE   -> begin match get_top context_ref with 
-                | IFSTAR -> replace_top context_ref ELSE
-                | _      -> ()
-                end
-            | RPAREN -> remove_top_ifs context_ref 
-            | RBRACK -> remove_top_ifs context_ref
-            | RBRACE -> remove_top_ifs context_ref
-            | IF     -> () (* if's do not trigger if removal *)
-            | _ -> remove_top_ifs context_ref (* does any token really trigger it? *)
-            in
             let _ = if (token_match top tok) then
                 context_ref := (List.tl !context_ref)
                 else () in
             (* Push context alterations from token onto the stack *)
             let x = to_push tok in
-            match tok with
-            (* special case, ifs also push an ifstar in certain contexts *)
-            | IF -> if is_if_context !context_ref
-                then context_ref := x @ [IFSTAR] @ !context_ref
-                else context_ref := x @ !context_ref
-            | _ -> context_ref := x @ !context_ref
+            context_ref := x @ !context_ref
 
 }
 
@@ -445,23 +422,17 @@ let comment =
 let whitespace =
   [' ' '\t']
 
-(* Peeking *)
-(* changes is_else_ref to whether or not the next token (excluding newlines) will be an ELSE,
- then returns the lexer to pos *)
-rule peek_else is_else_ref = parse
-    | comment       { peek_else is_else_ref lexbuf }
-    | whitespace    { peek_else is_else_ref lexbuf }
-    | newline       { peek_else is_else_ref lexbuf }
-    | eof           { Printf.printf "%s\n" lexbuf.Lexing.lex_buffer;
-        lexbuf.Lexing.refill_buff lexbuf;
-        is_else_ref:=false } (* for some reason this fixes things *)
-    | "else"        { is_else_ref:=true }
-    | _             { Printf.printf "%s\n" (Lexing.lexeme lexbuf);
-        lexbuf.Lexing.refill_buff lexbuf;
-        is_else_ref:=false }
+(* TODO: too permissive - see tests/good_if6.R *)
+(* for matching elses that occur after an if inside an if-context *)
+let nlelse = newline whitespace* "else"
+(* any number of lines with no semantic meaning *)
+let nothing = (whitespace* comment? newline)*
+let ifelse = nothing nlelse
 
 (* Parsing *)
-and tokenize context = parse
+rule tokenize context = parse
+
+
   (* Delimiters *)
   | "("         { step LPAREN context; LPAREN }
   | ")"         { step RPAREN context; RPAREN }
@@ -518,6 +489,17 @@ and tokenize context = parse
   | ":="        { step EQ_ASSIGN context; EQ_ASSIGN }
   | "..."       { step (SYMBOL "") context; SYMBOL (Lexing.lexeme lexbuf) }
 
+  (* Dumb Special Cases *)
+  | ifelse      { update_position (Lexing.lexeme lexbuf) lexbuf; (* Fix the lexer's position *)
+        (* if we're in an if context, then ifelse is treated exactly like a normal ELSE *)
+        if is_if_context !context then
+            let _ = step ELSE context in
+            ELSE
+        (* if we're not in an if context, fail since elses cannot follow NLs *)
+        else
+            let _ = Printf.printf "%s" "Bad NELSE" in
+            failwith "Bad else!" }
+
   (* Keywords *)
   | "function"  { step FUNCTION context; FUNCTION }
   | "if"        { step IF context; IF }
@@ -537,6 +519,10 @@ and tokenize context = parse
   | "TRUE"      { step TRUE context; TRUE }
   | "FALSE"     { step FALSE context; FALSE }
 
+  (* To be skipped *)
+  | comment     { tokenize context lexbuf }
+  | whitespace  { tokenize context lexbuf }
+
   (* Valued tokens *)
   | ident       { step (SYMBOL (Lexing.lexeme lexbuf)) context;
                     SYMBOL (Lexing.lexeme lexbuf) }
@@ -553,18 +539,8 @@ and tokenize context = parse
   | complex     { step (COMPLEX_CONST 0.) context;
                     COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
 
-  (* To be skipped, maybe *)
-  | comment     { tokenize context lexbuf }
-  | whitespace  { tokenize context lexbuf }
-
   (* Only output newlines if the top token of the context allows them *)
-  | newline     { let lexbuf_copy = lexer_copy lexbuf in
-        let next_is_else = ref false in peek_else (next_is_else) lexbuf_copy;
-        Printf.printf "next - %b\n" !next_is_else;
-        begin match get_top context with
-        | IFSTAR -> if !next_is_else then replace_top context ELSE else ()
-        | _ -> () end;
-        incr_line_count lexbuf;
+  | newline     { incr_line_count lexbuf;
         if nl_ignore (get_top context) then tokenize context lexbuf else NEWLINE }
   | ','         { step COMMA context; COMMA }
 

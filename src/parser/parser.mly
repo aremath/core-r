@@ -3,7 +3,7 @@
   open A
 %}
 (* useless tokens for lexer *)
-%token         TOP IFSTAR
+%token         TOP
 
 %token         END_OF_INPUT
 %token<string> STRING_CONST SYMBOL
@@ -79,10 +79,6 @@ prog:
   | expr_or_assign NEWLINE prog { $1 :: $3 }
   | expr_or_assign SEMI prog    { $1 :: $3 }
   ;
-
-newlines:
-    NEWLINE             {}
-  | newlines NEWLINE    {}
 
 expr_or_assign:
     expr         { $1 }
