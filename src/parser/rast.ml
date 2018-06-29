@@ -241,8 +241,8 @@ and string_of_arg : 'a arg -> string =
   function
     | EmptyArg            -> "Empty_Arg"
     | ExprArg e           -> string_of_expr e
-    | IdentAssignEmpty i  -> "i="
-    | IdentAssign (i, e)  -> "i=" ^ (string_of_expr e)
+    | IdentAssignEmpty i  -> (string_of_ident i) ^ "="
+    | IdentAssign (i, e)  -> (string_of_ident i) ^ "=" ^ (string_of_expr e)
     | StringAssignEmpty s -> s ^ "="
     | StringAssign (s, e) -> s ^ "=" ^ (string_of_expr e)
     | NullAssignEmpty     -> "Null="

@@ -43,6 +43,7 @@
   %left     LOW
   %left     WHILE FOR REPEAT
 *)
+%right    IF
 %left     ELSE
 %right    LASSIGN LSUPER_ASSIGN
 (*
@@ -65,7 +66,7 @@
   %left     NS_GET NS_GET_INT
   %nonassoc LBRACE
 *)
-%nonassoc LPAREN LBRACK
+%nonassoc LPAREN LBRACK LBRAX
 
 %start prog
 %type <unit Rast.program> prog
@@ -79,10 +80,6 @@ prog:
   | expr_or_assign NEWLINE prog { $1 :: $3 }
   | expr_or_assign SEMI prog    { $1 :: $3 }
   ;
-
-newlines:
-    NEWLINE             {}
-  | newlines NEWLINE    {}
 
 expr_or_assign:
     expr         { $1 }
@@ -204,12 +201,6 @@ expr:
 cond:
     LPAREN expr RPAREN { $2 }
   ;
-
-(*
-  ifcond:
-        LPAREN expr RPAREN { $2 } (* { $$ = xxifcond($2); } *)
-    ;
-*)
 
 exprlist:
                                     { [] }
