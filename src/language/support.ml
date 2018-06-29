@@ -80,14 +80,21 @@ type attributes =
 
 (* Stack *)
 type slot =
-    ReturnSlot of memref
-  | UpdateSlot of memref
-  | EvalSlot of expr
+    EvalSlot of expr
+  | ReturnSlot of memref
   | SeqSlot of expr list
+  | BranchSlot of expr * expr
+  | LoopSlot of expr * expr * memref option (* body's return value *)
+
+  (* Used for eager stuff *)
+  | AssignSlot of ident
+  | SupAssignSlot of ident
+  | FunCallSlot of memref option * memref list * arg list
+
+  (* Used for lazy evaluation *)
+  | UpdateSlot of memref
   | ArgsSlot of arg list
   | AttrSlot of memref option * expr option
-  | LoopSlot of expr * expr * memref option (* body's return value *)
-  | BranchSlot of expr * expr
 
 type frame =
   { env_mem : memref;
