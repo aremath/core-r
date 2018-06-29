@@ -341,8 +341,8 @@ Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
-            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in
-            let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in *)
+            (* let _ = Printf.printf "CONTEXT: %s\n" (string_of_context context_ref) in *)
+            (* let _ = Printf.printf "TOKEN: %s\n" (string_of_token tok) in *)
             (* If the top token of the context matches the current token, remove it:
                 it has found its match. *)
             let _ = if (token_match top tok) then
@@ -415,9 +415,10 @@ let ident =
 let nsident =
   '`' (esc | [^ '\\' '`'])+ '`'
 
-(* Missing the %in% matring operator *)
+(* Technically % [^ '\n']+ %, but that's ambiguous:
+ ex. how to lex (x % (y + 1) % 3) ? *)
 let user_op =
-  '%' [^ '/' '*' 'o' 'x']+ '%'
+  '%' ident '%'
 
 let newline =
     '\n'

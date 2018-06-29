@@ -43,6 +43,7 @@
   %left     LOW
   %left     WHILE FOR REPEAT
 *)
+%right    IF
 %left     ELSE
 %right    LASSIGN LSUPER_ASSIGN
 (*
@@ -65,7 +66,7 @@
   %left     NS_GET NS_GET_INT
   %nonassoc LBRACE
 *)
-%nonassoc LPAREN LBRACK
+%nonassoc LPAREN LBRACK LBRAX
 
 %start prog
 %type <unit Rast.program> prog
@@ -76,17 +77,17 @@
 prog:
     END_OF_INPUT                { [] }
   | NEWLINE prog                { $2 }
-  | expr_or_assign NEWLINE prog { $1 :: $3 }
+  | expr_or_assign NEWLINE prog { print_endline "PROG"; $1 :: $3 }
   | expr_or_assign SEMI prog    { $1 :: $3 }
   ;
 
 expr_or_assign:
-    expr         { $1 }
-  | equal_assign { $1 }
+    expr         { print_endline "EXPR"; $1 }
+  | equal_assign { print_endline "EXPR_ASSIGN"; $1 }
   ;
 
 equal_assign:
-    expr EQ_ASSIGN expr_or_assign { A.Bop(A.Assign, $1, $3) }
+    expr EQ_ASSIGN expr_or_assign { print_endline "EQ_ASSIGN"; A.Bop(A.Assign, $1, $3) }
   ;
 
 expr:
@@ -150,7 +151,7 @@ expr:
   | LPAREN expr_or_assign RPAREN { $2 }
 
   (* Functions *)
-  | expr LPAREN sublist RPAREN { A.FuncCall ($1, $3)}
+  | expr LPAREN sublist RPAREN { print_endline "FUNCCALL"; A.FuncCall ($1, $3)}
   (* 
     | FUNCTION LPAREN formlist RPAREN expr_or_assign %prec LOW
   *)
@@ -211,13 +212,13 @@ exprlist:
   ;
 
 sublist :
-  | sub               { [$1] }
+  | sub               { print_endline "SUBLIST"; [$1] }
   | sublist COMMA sub { $1 @ [$3] }
   ;
 
 sub :                           { A.EmptyArg } 
   | expr                        { A.ExprArg $1 }
-  | SYMBOL EQ_ASSIGN            { A.IdentAssignEmpty {A.default_ident with name=$1} }
+  | SYMBOL EQ_ASSIGN            { print_endline "SUB"; A.IdentAssignEmpty {A.default_ident with name=$1} }
   | SYMBOL EQ_ASSIGN expr       { A.IdentAssign ({A.default_ident with name=$1}, $3) }
   | STRING_CONST EQ_ASSIGN      { A.StringAssignEmpty $1 }
   | STRING_CONST EQ_ASSIGN expr { A.StringAssign ($1, $3) }
