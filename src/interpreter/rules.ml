@@ -312,14 +312,16 @@ let rule_AssignRet : state -> state list =
     | Some (ReturnSlot mem, _,
             AssignSlot id, c_env_mem,
             c_stack2) ->
-      let heap2 = env_mem_add id mem c_env_mem in
-      let c_frame = { frame_default with
-                        env_mem = c_env_mem;
-                        slot = ReturnSlot mem } in
-        [{ state with
-             heap = heap2;
-             stack = stack_push c_frame c_stack2 }]
 
+      (match env_mem_add id mem c_env_mem state.heap with
+      | Some heap2 ->
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem } in
+          [{ state with
+               heap = heap2;
+               stack = stack_push c_frame c_stack2 }]
+      | _ -> [])
     | _ -> []
 
 (* If *)
