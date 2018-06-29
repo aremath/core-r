@@ -89,7 +89,7 @@ type slot =
   (* Used for eager stuff *)
   | AssignSlot of ident
   | SupAssignSlot of ident
-  | FunCallSlot of memref option * memref list * arg list
+  | LambdaSlot of memref option * (arg * memref) list * arg option * arg list
 
   (* Used for lazy evaluation *)
   | UpdateSlot of memref

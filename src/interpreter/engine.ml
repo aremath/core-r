@@ -36,10 +36,8 @@ type passresult =
 
 let run_pass : (rule list * state) list -> passresult =
   fun states ->
-    let comps = filter is_state_complete
-                       (map (fun (a, b) -> b) states) in
-    let incomps = filter is_state_not_complete
-                         (map (fun (a, b) -> b) states) in
+    let comps = filter (fun (a, b) -> is_state_complete b) states in
+    let incomps = filter (fun (a, b) -> is_state_not_complete b) states in
       fold_left
           (fun (c, e, i) (hist, st) ->
             match step_rule st with
@@ -66,7 +64,7 @@ let run_pass : (rule list * state) list -> passresult =
                 let ncsts = filter (fun (r, s) -> is_state_not_complete s)
                                     expanded in
                   (csts @ c, e, ncsts @ i))
-          ([], [], []) states
+          (comps, [], []) incomps
 
 let rec run_n : int -> passresult -> passresult =
   fun n (comps, errs, incomps) ->

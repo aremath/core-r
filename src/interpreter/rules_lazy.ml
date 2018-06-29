@@ -13,7 +13,7 @@ type rule =
   | RuleNativeInvF
 
   | RuleConst
-  | RuleFun
+  | RuleFunc
   | RuleFind
   | RuleGetP
 
@@ -287,7 +287,7 @@ let rule_Const : state -> state list =
     | _ -> []
 
 (* Function Definition *)
-let rule_Fun : state -> state list =
+let rule_Func : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
@@ -573,7 +573,7 @@ let rule_table : (rule * (state -> state list)) list =
     (RuleNativeInvF, rule_NativeInvF);
 
     (RuleConst, rule_Const);
-    (RuleFun, rule_Fun);
+    (RuleFunc, rule_Func);
     (RuleFind, rule_Find);
     (RuleGetP, rule_GetP);
 

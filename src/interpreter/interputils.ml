@@ -165,6 +165,25 @@ let string_of_slot: slot -> string =
         let e2str = string_of_expr e2 in
         "Branch (" ^ e1str ^ "," ^ e2str ^ ")"
 
+    | AssignSlot id ->
+        "AssignSlot (" ^ string_of_ident id ^ ")"
+    | SupAssignSlot id ->
+        "SupAssignSlot (" ^ string_of_ident id ^ ")"
+    | LambdaSlot (f_mem_opt, da_mems, a_opt, args) ->
+        let f_str = match f_mem_opt with
+                    | Some mem -> string_of_memref mem
+                    | None -> "None" in
+        let a_str = match a_opt with
+                    | Some arg -> string_of_arg arg
+                    | None -> "None" in
+          "LambdaSlot (" ^ f_str ^ "," ^
+                      "[" ^ string_of_list_comma
+                            (map (fun p -> string_of_pair p
+                                           (string_of_arg, string_of_memref))
+                                 da_mems) ^ "]," ^
+                      a_str ^ "," ^
+                            string_of_list_comma (map string_of_arg args)
+
 let string_of_frame: frame -> string =
   fun frame ->
     let slot_str = string_of_slot frame.slot in
@@ -197,35 +216,31 @@ let string_of_state_list : state list -> string =
 
 let string_of_rule : rule -> string =
   fun rule -> match rule with
-    | RuleForceP -> "ForceP"
-    | RuleForceF -> "ForceF"
-    | RuleGetF -> "GetF"
-    | RuleInvF -> "InvF"
-    | RuleNativeInvF -> "NativeInvF"
+    | ERuleIdent -> "Ident"
+    | ERuleMemRef -> "MemRef"
+    | ERuleConst -> "Const"
+    | ERuleSeq -> "Seq"
+    | ERuleLambdaAbs -> "LambdaAbs"
+    | ERuleLambdaAppEval -> "LambdaAppEval"
+    | ERuleLambdaAppFuncRet -> "LambdaAppFuncRet"
+    | ERuleLambdaAppArgsEval -> "LambdaAppArgsEval"
+    | ERuleLambdaAppArgsRet -> "LambdaAppArgsRet"
+    | ERuleLambdaAppEnter -> "LambdaAppEnter"
+    | ERuleNativeLambdaApp -> "NativeLambdaApp"
+    | ERuleAssignIdEval -> "AssignIdEval"
+    | ERuleAssignStrEval -> "AssignStrEval"
+    | ERuleAssignRet -> "AssignRet"
+    | ERuleIfEval -> "IfEval"
+    | ERuleIfRet -> "IfRet"
+    | ERuleWhileEval -> "WhileEval"
+    | ERuleWhileCondTrue -> "WhileCondTrue"
+    | ERuleWhileCondFalse -> "WhileCondFalse"
+    | ERuleWhileBodyDone -> "WhileBodyDone"
+    | ERuleBreak -> "Break"
+    | ERuleNext -> "Next"
+    | ERuleBlank -> "Blank"
 
-    | RuleConst -> "Const"
-    | RuleFun -> "Fun"
-    | RuleFind -> "Find"
-    | RuleGetP -> "GetP"
 
-    | RuleUpdate -> "Update"
-    | RuleAssId -> "AssId"
-    | RuleDAss -> "DAss"
-    | RuleAssStr -> "AssStr"
-    | RuleDAssStr -> "DAssStr"
-
-    | RuleIfEval -> "IfEval"
-    | RuleIfRet -> "IfRet"
-    | RuleWhileEval -> "WhileEval"
-    | RuleWhileCondTrue -> "WhileCondTrue"
-    | RuleWhileCondFalse -> "WhileCondFalse"
-    | RuleWhileBodyDone -> "WhileBodyDone"
-    | RuleBreak -> "Break"
-    | RuleNext -> "Next"
-
-    | RuleSeq -> "Seq"
-
-    | _ -> "Unknown"
 
 let string_of_rule_list : rule list -> string =
   fun rules ->
