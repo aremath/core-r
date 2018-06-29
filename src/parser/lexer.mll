@@ -183,6 +183,7 @@
         | REPEAT            -> [REPEAT] (* expect expr *)
         | RBRACK            -> [] (* ends LBRACK *)
         | RBRAX             -> [] (* ends LBRAX, not pushed *)
+        | LBRAX             -> [LBRACK; LBRACK] (* because there's no RBRAX *)
         | RBRACE            -> [] (* ends LBRACE, but not pushed *)
         | NULL              -> []
         | NS_GET_INT        -> []
@@ -390,15 +391,17 @@ let uni_esc =
   | '\\' 'u' '{' hex hex hex hex '}'
 
 let esc =
-    '\\' ['a' 'b' 't' 'n' 'f' 'r' 'v' '\\' '"']
+    '\\' ['a' 'b' 't' 'n' 'f' 'r' 'v' '\\' '"' '\'' '`']
   | oct_esc
   | hex_esc
   | uni_esc
 
+(* escaped characters, or any character which is not
+ an escape or end string delimiter,
+ all enclosed within the delimiters *)
 let string =
-    '"' (esc | [^ '"'])* '"'
-  | '\'' (esc | [^ '\''])* '\''
-  | '`' (esc | [^ '`'])* '`'
+    '"' (esc | [^ '\\' '"'])* '"'
+  | '\'' (esc | [^ '\\' '\''])* '\''
 
 let alpha =
     ['a'-'z' 'A'-'Z']
@@ -406,6 +409,11 @@ let alpha =
 let ident =
     '.' (alpha | '_' | '.') (alpha | digit | '_' | '.')*
   | alpha (alpha | digit | '_' | '.')*
+  | '.' (* I guess *)
+
+(* non-syntactic variable names *)
+let nsident =
+  '`' (esc | [^ '\\' '`'])+ '`'
 
 (* Missing the %in% matring operator *)
 let user_op =
@@ -419,14 +427,17 @@ let newline =
 let comment =
   '#' ([^ '\n']*)
 
+(* spaces, tabs, form feeds *)
+(* TODO: others? *)
 let whitespace =
-  [' ' '\t']
+  [' ' '\t' '\x0c' ]
 
-(* TODO: too permissive - see tests/good_if6.R *)
-(* for matching elses that occur after an if inside an if-context *)
-let nlelse = newline whitespace* "else"
-(* any number of lines with no semantic meaning *)
-let nothing = (whitespace* comment? newline)*
+(* For matching elses that occur after an if inside an if-context *)
+let nlelse = whitespace* "else"
+(* Any number of lines with no semantic meaning. 
+ Require at least one, since we're interested in handling else's that 
+ can be on another line inside an if-context. *)
+let nothing = (whitespace* comment? newline)+
 let ifelse = nothing nlelse
 
 (* Parsing *)
@@ -497,7 +508,6 @@ rule tokenize context = parse
             ELSE
         (* if we're not in an if context, fail since elses cannot follow NLs *)
         else
-            let _ = Printf.printf "%s" "Bad NELSE" in
             failwith "Bad else!" }
 
   (* Keywords *)
@@ -526,6 +536,11 @@ rule tokenize context = parse
   (* Valued tokens *)
   | ident       { step (SYMBOL (Lexing.lexeme lexbuf)) context;
                     SYMBOL (Lexing.lexeme lexbuf) }
+  (* For non-syntactic idents, the `s should be removed *)
+  | nsident     { let lexstr = Lexing.lexeme lexbuf in
+                    let str = String.sub lexstr 1 (String.length lexstr - 2) in
+                    step (SYMBOL str) context;
+                    SYMBOL str }
   | user_op     { step (USER_OP (Lexing.lexeme lexbuf)) context;
                     USER_OP (Lexing.lexeme lexbuf) }
   | string      { step (STRING_CONST (Lexing.lexeme lexbuf)) context;
@@ -535,7 +550,7 @@ rule tokenize context = parse
   | int         { step (INT_CONST 0) context;
                     INT_CONST (int_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
   | float       { step (FLOAT_CONST 0.) context;
-                    FLOAT_CONST (float_of_string (Lexing.lexeme lexbuf)) }
+                    FLOAT_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
   | complex     { step (COMPLEX_CONST 0.) context;
                     COMPLEX_CONST (float_of_string (filter_numeric (Lexing.lexeme lexbuf))) }
 

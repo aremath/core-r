@@ -15,7 +15,7 @@ Executable "main"
 
 Library "interpreter"
   Path: src/interpreter
-  Modules: Constants, Natives, Rules, Copy, Interputils
+  Modules: Constants, Natives, Rules, Copy, Interputils, Engine
   BuildDepends: language
 
 Library "language"
