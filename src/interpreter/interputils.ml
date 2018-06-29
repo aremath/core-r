@@ -238,6 +238,7 @@ let string_of_rule : rule -> string =
     | ERuleWhileBodyDone -> "WhileBodyDone"
     | ERuleBreak -> "Break"
     | ERuleNext -> "Next"
+    | ERuleDiscard -> "Discard"
     | ERuleBlank -> "Blank"
 
 

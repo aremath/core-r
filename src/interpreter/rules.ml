@@ -28,6 +28,7 @@ type rule =
   | ERuleWhileBodyDone
   | ERuleBreak
   | ERuleNext
+  | ERuleDiscard
   | ERuleBlank
 
 
@@ -428,7 +429,6 @@ let rule_AssignRet : state -> state list =
     | Some (ReturnSlot mem, _,
             AssignSlot id, c_env_mem,
             c_stack2) ->
-
       (match env_mem_add id mem c_env_mem state.heap with
       | Some heap2 ->
         let c_frame = { frame_default with
@@ -567,6 +567,22 @@ let rule_Next : state -> state list =
       | _ -> [])
     | _ -> []
 
+let rule_Discard : state -> state list =
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (ReturnSlot _, _, c_stack2) ->
+      let pop_okay = match stack_pop_v c_stack2 with
+                     | Some (EvalSlot _, _ , _) -> true
+                     | Some (ReturnSlot _, _, _) -> true
+                     | Some (SeqSlot _, _, _) -> true
+                     | _ -> false in
+        if pop_okay then
+          [{ state with stack = c_stack2 }]
+        else
+          []
+    | _ -> []
+
+
 
 let rule_Blank : state -> state list =
   fun state -> []
@@ -597,6 +613,7 @@ let rule_table : (rule * (state -> state list)) list =
     (ERuleWhileBodyDone, rule_WhileBodyDone);
     (ERuleBreak, rule_Break);
     (ERuleNext, rule_Next);
+    (ERuleDiscard, rule_Discard);
     (ERuleBlank, rule_Blank) ]
 
 

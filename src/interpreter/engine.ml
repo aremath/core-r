@@ -21,9 +21,9 @@ let step_rule : state -> redresult =
         | toomuch -> MultipleRulesMatch toomuch
 
 let is_state_complete : state -> bool =
-  fun state -> match (stack_pop state.stack,
+  fun state -> match (stack_pop_v state.stack,
                       stack_pop_v2 state.stack) with
-    | (Some _, None) -> true
+    | (Some (ReturnSlot _, _, _), None) -> true
     | _ -> false
 
 let is_state_not_complete : state -> bool =
