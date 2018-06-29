@@ -7,7 +7,7 @@ let string_of_list : ('a -> string) -> 'a list -> string =
     "[" ^ String.concat "," (List.map f xs) ^ "]"
 
 (*
-let rec string_of_source : source -> string =
+let string_of_source : source -> string =
   fun src ->
     "source {file:" ^ src.file ^ ";" ^
             "line:" ^ string_of_int src.line ^ ";" ^
@@ -19,17 +19,17 @@ let string_of_rstring : rstring -> string =
      | None -> "NA_character_"
      | Some str -> str
 
-let rec string_of_ident : ident -> string =
+let string_of_ident : ident -> string =
   fun id -> match id.pkg with
     | None -> "ident {pkg:" ^ "_" ^ ";name:" ^ string_of_rstring id.name ^ "}"
     | Some p -> "ident {pkg:" ^ string_of_rstring p ^
                 ";name:" ^ string_of_rstring id.name ^ "}"
 
-and string_of_memref : memref -> string =
+let string_of_memref : memref -> string =
   fun mem ->
     "addr: " ^ string_of_int mem.addr
 
-and string_of_numeric : numeric -> string =
+let string_of_numeric : numeric -> string =
   fun num -> match num with
     | Int (Some i)      -> "Int (" ^ string_of_int i ^ ")"
     | Int None          -> "Int (Na)"
@@ -39,7 +39,7 @@ and string_of_numeric : numeric -> string =
                                  string_of_float (c.Complex.im) ^ ")"
     | Complex None      -> "Complex (Na)"
     
-and string_of_const : const -> string =
+let string_of_const : const -> string =
   fun const -> match const with
     | Num n         -> "Num (" ^ string_of_numeric n ^ ")"
     | Str (Some s)  -> "Str (" ^ s ^ ")"
@@ -48,7 +48,7 @@ and string_of_const : const -> string =
     | Bool None     -> "Bool (Na)"
     | Nil           -> "Nil"
 
-and string_of_param : param -> string =
+let rec string_of_param : param -> string =
   fun param -> match param with
     | VarParam -> "..."
     | Param i -> "Param (" ^ string_of_ident i ^ ")"

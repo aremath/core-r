@@ -165,6 +165,25 @@ let string_of_slot: slot -> string =
         let e2str = string_of_expr e2 in
         "Branch (" ^ e1str ^ "," ^ e2str ^ ")"
 
+    | AssignSlot id ->
+        "AssignSlot (" ^ string_of_ident id ^ ")"
+    | SupAssignSlot id ->
+        "SupAssignSlot (" ^ string_of_ident id ^ ")"
+    | LambdaSlot (f_mem_opt, da_mems, a_opt, args) ->
+        let f_str = match f_mem_opt with
+                    | Some mem -> string_of_memref mem
+                    | None -> "None" in
+        let a_str = match a_opt with
+                    | Some arg -> string_of_arg arg
+                    | None -> "None" in
+          "LambdaSlot (" ^ f_str ^ "," ^
+                      "[" ^ string_of_list_comma
+                            (map (fun p -> string_of_pair p
+                                           (string_of_arg, string_of_memref))
+                                 da_mems) ^ "]," ^
+                      a_str ^ "," ^
+                            string_of_list_comma (map string_of_arg args)
+
 let string_of_frame: frame -> string =
   fun frame ->
     let slot_str = string_of_slot frame.slot in
@@ -204,7 +223,7 @@ let string_of_rule : rule -> string =
     | RuleNativeInvF -> "NativeInvF"
 
     | RuleConst -> "Const"
-    | RuleFun -> "Fun"
+    | RuleFunc -> "Func"
     | RuleFind -> "Find"
     | RuleGetP -> "GetP"
 

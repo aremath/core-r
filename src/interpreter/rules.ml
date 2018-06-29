@@ -13,7 +13,7 @@ type rule =
   | RuleNativeInvF
 
   | RuleConst
-  | RuleFun
+  | RuleFunc
   | RuleFind
   | RuleGetP
 
@@ -59,22 +59,11 @@ let rec split_eithers : (('a , 'b) either) list -> ('a list) * ('b list) =
         let (oas, obs) = split_eithers e_tl in
           (oas, b :: obs)
 
-let rec pull_args :
-  arg list -> env -> heap -> ((expr, (ident * expr)) either) list =
-  fun args env heap ->
-    match args with
-    | [] -> []
-    | (Arg expr :: a_tl) -> OptA expr :: pull_args a_tl env heap
-    | (Named (id, expr) :: a_tl) -> OptB (id, expr) :: pull_args a_tl env heap
-    | (VarArg :: a_tl) ->
-      match env_find id_variadic env heap with
-      | None -> []
-      | Some mem ->
-        match heap_find mem heap with
-        | Some (DataObj (RefArray v_mems, _)) ->
-            let mem_args = map (fun m -> OptA (MemRef m)) v_mems in
-              mem_args @ pull_args a_tl env heap
-        | _ -> [] (* WRONG STUFF HERE *)
+let expr_of_arg : arg -> expr =
+  fun arg -> match arg with
+    | Arg expr -> expr
+    | Named (_, expr) -> expr
+    | VarArg -> Ident id_variadic
 
 let rec ids_contains_id : ident list -> ident -> bool =
   fun ids id ->
@@ -82,6 +71,33 @@ let rec ids_contains_id : ident list -> ident -> bool =
     | [] -> false
     | (hd :: ids_tl) -> hd.name = id.name || ids_contains_id ids_tl id
 
+let rec get_default_params : param list -> (ident * const) list =
+  fun params ->
+    match params with
+    | [] -> []
+    | (Param _ :: params_tl) -> get_default_params params_tl
+    | (VarParam :: params_tl) -> get_default_params params_tl
+    | ((Default (id, Const const)) :: params_tl) ->
+        (id, const) :: get_default_params params_tl
+    (* This should not have happened in good param cases *)
+    | ((Default _) :: params_tl) -> get_default_params params_tl
+
+let rec pull_args :
+  (arg * memref) list -> heap -> ((memref, (ident * memref)) either) list =
+  fun args heap ->
+    match args with
+    | [] -> []
+    | ((Arg _, mem) :: args_tl) ->
+        OptA mem :: pull_args args_tl heap
+    | ((Named (id, _), mem) :: args_tl) ->
+        OptB (id, mem) :: pull_args args_tl heap
+    | ((VarArg, mem) :: args_tl) ->
+        match heap_find mem heap with
+        | Some (DataObj (RefArray v_mems, _)) ->
+          (map (fun m -> OptA m) v_mems) @ pull_args args_tl heap
+        (*Something very wrong here, can't find variadic in heap!! *)
+        | _ -> pull_args args_tl heap
+          
 let rec remove_used_params : param list -> ident list -> param list =
   fun params args ->
     match params with
@@ -96,39 +112,40 @@ let rec remove_used_params : param list -> ident list -> param list =
           else Default (id, expr) :: remove_used_params tail args
     | (VarParam :: tail) -> VarParam :: remove_used_params tail args
 
-let rec get_default_params : param list -> (ident * expr) list =
-  fun params ->
-    match params with
-    | [] -> []
-    | (Param _ :: tail) -> get_default_params tail
-    | (VarParam :: tail) -> get_default_params tail
-    | (Default (id, expr) :: tail) -> (id, expr) :: get_default_params tail
-
-let rec match_expr_args :
-  param list -> expr list -> (ident * expr) list * (expr list) =
-  fun params args ->
-    match (params, args) with
-    | ([], _) -> ([], []) (* OH NO?? *)
-    | (_, []) -> (get_default_params params, [])
-    | (VarParam :: tail, _) -> (get_default_params tail, args)
-    | (Param id :: p_tail, arg :: a_tail) ->
-        let (binds, vars) = match_expr_args p_tail a_tail in
-          ((id, arg) :: binds, vars)
-    | (Default (id, _) :: p_tail, arg :: a_tail) ->
-        let (binds, vars) = match_expr_args p_tail a_tail in
-          ((id, arg) :: binds, vars)
-
+let rec match_mems :
+  param list -> memref list ->
+    (ident * ((memref, const) either)) list * (memref list) =
+  fun params mems ->
+    match (params, mems) with
+    | ([], _) -> ([], []) (* OH NO??? *)
+    | (_, []) ->
+      let defs = get_default_params params in
+      let mods = map (fun (i, c) -> (i, OptB c)) defs in
+        (mods, [])
+    | (VarParam :: params_tl, _) ->
+      let defs = get_default_params params_tl in
+      let mods = map (fun (i, c) -> (i, OptB c)) defs in
+        (mods, mems)
+    | (Param id :: params_tl, mem :: mems_tl) ->
+        let (binds, vars) = match_mems params_tl mems_tl in
+          ((id, OptA mem) :: binds, vars)
+    | (Default (id, _) :: params_tl, mem :: mems_tl) ->
+        let (binds, vars) = match_mems params_tl mems_tl in
+          ((id, OptA mem) :: binds, vars)
 
 (* Oh god I really hope this function works, I've spent too much time here *)
 let match_lambda_app :
-  param list -> arg list -> env -> heap -> (ident * expr) list * expr list =
+  param list -> (arg * memref) list -> env -> heap ->
+    (ident * ((memref, const) either)) list * memref list =
   fun params args env heap ->
-    let (expr_args, nameds) = split_eithers (pull_args args env heap) in
-    let un_params = remove_used_params params (map pair_first nameds) in
-    let (positionals, variadics) = match_expr_args un_params expr_args in
-      (nameds @ positionals, variadics)
+    let (regs, nameds) = split_eithers (pull_args args heap) in
+    let nameds2 = map (fun (i, m) -> (i, OptA m)) nameds in
+    let unuseds = remove_used_params params (map pair_first nameds) in
+    let (posits, vards) = match_mems unuseds regs in
+      (nameds2 @ posits, vards)
 
-let lift_var_bind :
+
+(*
   expr list -> memref -> memref -> heap -> (memref * heap) option =
   fun exprs expr_env_mem inj_env_mem heap ->
     let proms = map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
@@ -153,6 +170,7 @@ let lift_binds :
       match env_mem_add_list pairs2 inj_env_mem heap2 with
         | None -> None
         | Some heap3 -> Some (pairs2, heap3)
+*)
 
 let is_mem_true : memref -> heap -> bool =
   fun mem heap -> true
@@ -268,9 +286,72 @@ let rule_LambdaAbs : state -> state list =
     | _ -> []
 
 (* LambdaApp *)
-let rule_LambdaApp : state -> state list =
+let rule_LambdaAppEval : state -> state list =
   fun state ->
-    []
+    match stack_pop_v state.stack with
+    | Some (EvalSlot (LambdaApp (func, args)), c_env_mem, c_stack2) ->
+      let f_frame = { frame_default with
+                        env_mem = c_env_mem;
+                        slot = EvalSlot func } in
+      let c_frame = { frame_default with
+                        env_mem = c_env_mem;
+                        slot = LambdaSlot (None, [], None, args) } in
+        [{ state with
+             stack = stack_push_list [f_frame; c_frame] c_stack2 }]
+    | _ -> []
+
+let rule_LambdaAppFuncRet : state -> state list =
+  fun state ->
+    match stack_pop_v2 state.stack with
+    | Some (ReturnSlot f_mem, _,
+            LambdaSlot (None, [], None, args), c_env_mem,
+            c_stack2) ->
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = LambdaSlot (Some f_mem, [], None, args) } in
+          [{ state with
+               stack = stack_push c_frame c_stack2 }]
+    | _ -> []
+
+let rule_LambdaAppArgsEval : state -> state list =
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (LambdaSlot (Some f_mem, da_mems, None, arg :: args_tl),
+            c_env_mem, c_stack2) ->
+      let a_frame = { frame_default with
+                        env_mem = c_env_mem;
+                        slot = EvalSlot (expr_of_arg arg) } in
+      let c_frame = { frame_default with
+                        env_mem = c_env_mem;
+                        slot = LambdaSlot (Some f_mem, da_mems,
+                                           Some arg, args_tl) } in
+        [{ state with
+             stack = stack_push_list [a_frame; c_frame] c_stack2 }]
+    | _ -> []
+
+let rule_LambdaAppArgsRet : state -> state list =
+  fun state ->
+    match stack_pop_v2 state.stack with
+    | Some (ReturnSlot a_mem, _,
+            LambdaSlot (Some f_mem, da_mem, Some arg, args), c_env_mem,
+            c_stack2) ->
+      let da_mems2 = (arg, a_mem) :: da_mem in
+      let c_frame = { frame_default with
+                  env_mem = c_env_mem;
+                  slot = LambdaSlot (Some f_mem, da_mems2, None, args) } in
+        [{ state with
+             stack = stack_push c_frame c_stack2 }]
+
+    | _ -> []
+
+let rule_LambdaAppEnter : state -> state list =
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (LambdaSlot (Some f_mem, da_mems, None, []),
+            c_env_mem, c_stack2) ->
+      (match heap_find f_mem state.heap with
+      | _ -> [])
+    | _ -> []
 
 
 (* NativeLambdaApp *)
@@ -451,6 +532,9 @@ let rule_Next : state -> state list =
       | _ -> [])
     | _ -> []
 
+
+let rule_Blank : state -> state list =
+  fun state -> []
 
 (***********************)
 
