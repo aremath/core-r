@@ -216,35 +216,31 @@ let string_of_state_list : state list -> string =
 
 let string_of_rule : rule -> string =
   fun rule -> match rule with
-    | RuleForceP -> "ForceP"
-    | RuleForceF -> "ForceF"
-    | RuleGetF -> "GetF"
-    | RuleInvF -> "InvF"
-    | RuleNativeInvF -> "NativeInvF"
+    | ERuleIdent -> "Ident"
+    | ERuleMemRef -> "MemRef"
+    | ERuleConst -> "Const"
+    | ERuleSeq -> "Seq"
+    | ERuleLambdaAbs -> "LambdaAbs"
+    | ERuleLambdaAppEval -> "LambdaAppEval"
+    | ERuleLambdaAppFuncRet -> "LambdaAppFuncRet"
+    | ERuleLambdaAppArgsEval -> "LambdaAppArgsEval"
+    | ERuleLambdaAppArgsRet -> "LambdaAppArgsRet"
+    | ERuleLambdaAppEnter -> "LambdaAppEnter"
+    | ERuleNativeLambdaApp -> "NativeLambdaApp"
+    | ERuleAssignIdEval -> "AssignIdEval"
+    | ERuleAssignStrEval -> "AssignStrEval"
+    | ERuleAssignRet -> "AssignRet"
+    | ERuleIfEval -> "IfEval"
+    | ERuleIfRet -> "IfRet"
+    | ERuleWhileEval -> "WhileEval"
+    | ERuleWhileCondTrue -> "WhileCondTrue"
+    | ERuleWhileCondFalse -> "WhileCondFalse"
+    | ERuleWhileBodyDone -> "WhileBodyDone"
+    | ERuleBreak -> "Break"
+    | ERuleNext -> "Next"
+    | ERuleBlank -> "Blank"
 
-    | RuleConst -> "Const"
-    | RuleFunc -> "Func"
-    | RuleFind -> "Find"
-    | RuleGetP -> "GetP"
 
-    | RuleUpdate -> "Update"
-    | RuleAssId -> "AssId"
-    | RuleDAss -> "DAss"
-    | RuleAssStr -> "AssStr"
-    | RuleDAssStr -> "DAssStr"
-
-    | RuleIfEval -> "IfEval"
-    | RuleIfRet -> "IfRet"
-    | RuleWhileEval -> "WhileEval"
-    | RuleWhileCondTrue -> "WhileCondTrue"
-    | RuleWhileCondFalse -> "WhileCondFalse"
-    | RuleWhileBodyDone -> "WhileBodyDone"
-    | RuleBreak -> "Break"
-    | RuleNext -> "Next"
-
-    | RuleSeq -> "Seq"
-
-    | _ -> "Unknown"
 
 let string_of_rule_list : rule list -> string =
   fun rules ->

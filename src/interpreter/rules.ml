@@ -6,36 +6,29 @@ open Natives
 open Copy
 
 type rule =
-  | RuleForceP
-  | RuleForceF
-  | RuleGetF
-  | RuleInvF
-  | RuleNativeInvF
-
-  | RuleConst
-  | RuleFunc
-  | RuleFind
-  | RuleGetP
-
-  | RuleUpdate
-  | RuleAssId
-  | RuleDAss
-  | RuleAssStr
-  | RuleDAssStr
-
-  | RuleIfEval
-  | RuleIfRet
-  | RuleWhileEval
-  | RuleWhileCondTrue
-  | RuleWhileCondFalse
-  | RuleWhileBodyDone
-  | RuleBreak
-  | RuleNext
-
-  | RuleSeq
-  | RuleObjAttrEval
-  | RuleObjAttrObjRet
-  | RuleObjAttrObjGet
+  | ERuleIdent
+  | ERuleMemRef
+  | ERuleConst
+  | ERuleSeq
+  | ERuleLambdaAbs
+  | ERuleLambdaAppEval
+  | ERuleLambdaAppFuncRet
+  | ERuleLambdaAppArgsEval
+  | ERuleLambdaAppArgsRet
+  | ERuleLambdaAppEnter
+  | ERuleNativeLambdaApp
+  | ERuleAssignIdEval
+  | ERuleAssignStrEval
+  | ERuleAssignRet
+  | ERuleIfEval
+  | ERuleIfRet
+  | ERuleWhileEval
+  | ERuleWhileCondTrue
+  | ERuleWhileCondFalse
+  | ERuleWhileBodyDone
+  | ERuleBreak
+  | ERuleNext
+  | ERuleBlank
 
 
 let id_variadic : ident =
@@ -582,5 +575,28 @@ let rule_Blank : state -> state list =
 
 
 let rule_table : (rule * (state -> state list)) list =
-  []
+  [ (ERuleIdent, rule_Ident);
+    (ERuleMemRef, rule_MemRef);
+    (ERuleConst, rule_Const);
+    (ERuleSeq, rule_Seq);
+    (ERuleLambdaAbs, rule_LambdaAbs);
+    (ERuleLambdaAppEval, rule_LambdaAppEval);
+    (ERuleLambdaAppFuncRet, rule_LambdaAppFuncRet);
+    (ERuleLambdaAppArgsEval, rule_LambdaAppArgsEval);
+    (ERuleLambdaAppArgsRet, rule_LambdaAppArgsRet);
+    (ERuleLambdaAppEnter, rule_LambdaAppEnter);
+    (ERuleNativeLambdaApp, rule_NativeLambdaApp);
+    (ERuleAssignIdEval, rule_AssignIdEval);
+    (ERuleAssignStrEval, rule_AssignStrEval);
+    (ERuleAssignRet, rule_AssignRet);
+    (ERuleIfEval, rule_IfEval);
+    (ERuleIfRet, rule_IfRet);
+    (ERuleWhileEval, rule_WhileEval);
+    (ERuleWhileCondTrue, rule_WhileCondTrue);
+    (ERuleWhileCondFalse, rule_WhileCondFalse);
+    (ERuleWhileBodyDone, rule_WhileBodyDone);
+    (ERuleBreak, rule_Break);
+    (ERuleNext, rule_Next);
+    (ERuleBlank, rule_Blank) ]
+
 
