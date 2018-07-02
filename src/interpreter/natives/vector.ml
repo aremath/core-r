@@ -11,7 +11,7 @@ let rvec_length: S.rvector -> int =
     | S.StrVec s -> Array.length s
 
 (* TODO: does not return a memref (?) *)
-let set_dims_mem: S.memref -> S.memref -> S.heap -> S.heap =
+let set_dims_mem: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     fun data_ref dim_ref heap ->
     (* first, copy the reference to the dimension vector, since data will keep it *)
     let dim_ref',heap' = Copy.deep_copy dim_ref heap in
@@ -23,7 +23,7 @@ let set_dims_mem: S.memref -> S.memref -> S.heap -> S.heap =
         match S.heap_find data_ref heap' with
         | Some (S.DataObj(_, attrs)) ->
             let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
-            heap'
+            (dim_ref', heap')
         | _ -> failwith "Data missing in set_dims"
     else
         failwith "Dimension not compatible with vector length" (* TODO: sprintf to show what the size was *)
