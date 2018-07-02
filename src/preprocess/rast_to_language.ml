@@ -104,6 +104,9 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 let c_e2 = convert_expr e2 in
                                 L.LambdaApp (L.Ident b_ident,
                                 [L.Arg c_e1; L.Arg c_e2])
+    | R.FuncCall (Ident { name = "c" }, args) ->
+                                LambdaApp (L.Ident native_array_make_id,
+                                           map convert_arg args)
     | R.FuncCall (e, args)  -> let c_args = map convert_arg args in
                                 let c_e = convert_expr e in
                                 L.LambdaApp(c_e, c_args)
@@ -117,7 +120,8 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 | []        -> convert_expr R.Null (* TODO: is this really what R does? *)
                                 end
     | R.ListProj (e, args)  -> LambdaApp (Ident (native_array_sub_id), Arg (convert_expr e) :: (map convert_arg args))
-    | R.ListSub (e, args)   -> failwith "TODO: translate ListSub"
+    | R.ListSub (e, args)  -> LambdaApp (Ident (native_array_sub_id), Arg (convert_expr e) :: (map convert_arg args))
+    (* | R.ListSub (e, args)   -> failwith "TODO: translate ListSub" *)
                               (* L.ArraySub (convert_expr e, map convert_arg args) *)
     | R.If (e1, e2)         -> L.If (convert_expr e1, convert_expr e2, convert_expr R.Null) (* TODO ^ *)
     | R.IfElse (e1, e2, e3) -> L.If (convert_expr e1, convert_expr e2, convert_expr e3)
