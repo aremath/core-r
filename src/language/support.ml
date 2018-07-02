@@ -3,6 +3,8 @@ module R = Syntax
 module A = Annotations
 
 (* Type aliases *)
+type complex = Complex.t
+
 type tag = A.tag
 type annot = A.annot
 type tick = A.annot R.tick
@@ -153,25 +155,40 @@ let rint_of_int : int -> rint =
 
 let na_rint : rint = None
 
+let int_of_rint : rint -> int option =
+  fun ri -> ri
+
 let rfloat_of_float : float -> rfloat =
   fun f -> Some f
 
 let na_rfloat : rfloat = None
 
-let rcomplex_of_complex : Complex.t -> rcomplex =
+let float_of_rfloat : rfloat -> float option =
+  fun rf -> rf
+
+let rcomplex_of_complex : complex -> rcomplex =
   fun c -> Some c
 
 let na_rcomplex : rcomplex = None
+
+let complex_of_rcomples : rcomplex -> complex option =
+  fun rc -> rc
 
 let rbool_of_bool : int -> rbool =
   fun b -> Some b
 
 let na_rbool : rbool = None
 
+let bool_of_rbool : rbool -> int option =
+  fun rb -> rb
+
 let rstring_of_string : string -> rstring =
   fun s -> Some s
 
 let na_rstring : rstring = None
+
+let string_of_rstring : rstring -> string option =
+  fun rs -> rs
 
 (* Fresh identifier *)
 let id_default : ident =

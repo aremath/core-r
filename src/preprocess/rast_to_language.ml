@@ -16,10 +16,14 @@ let fresh_lident _: 'a L.ident =
     {L.pkg = None; L.name = Some ("t$syn_" ^ string_of_int next); L.tag = None}
 
 let uop_to_ident: R.unop -> 'a L.ident =
-    fun u -> {L.pkg = None; L.name = Some (R.string_of_unop u); L.tag = None}
+    fun u -> {L.pkg = Some (Some "$native");
+              L.name = Some (R.string_of_unop u);
+              L.tag = None}
 
 let bop_to_ident: R.binop -> 'a L.ident =
-    fun b -> {L.pkg = None; L.name = Some (R.string_of_binop b); L.tag = None}
+    fun b -> {L.pkg = Some (Some "$native");
+              L.name = Some (R.string_of_binop b);
+              L.tag = None}
 
 let convert_ident: 'a R.ident -> 'a L.ident =
     fun i -> match i.R.pkg with
