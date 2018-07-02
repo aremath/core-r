@@ -16,12 +16,12 @@ let fresh_lident _: 'a L.ident =
     {L.pkg = None; L.name = Some ("t$syn_" ^ string_of_int next); L.tag = None}
 
 let uop_to_ident: R.unop -> 'a L.ident =
-    fun u -> {L.pkg = Some (Some "$native");
+    fun u -> {L.pkg = Some T.native_rstring;
               L.name = Some (R.string_of_unop u);
               L.tag = None}
 
 let bop_to_ident: R.binop -> 'a L.ident =
-    fun b -> {L.pkg = Some (Some "$native");
+    fun b -> {L.pkg = Some T.native_rstring;
               L.name = Some (R.string_of_binop b);
               L.tag = None}
 

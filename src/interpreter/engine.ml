@@ -2,7 +2,7 @@
 open Syntax
 open Support
 open Rules
-open Natives
+open Native_calls
 open List
 
 type redresult =

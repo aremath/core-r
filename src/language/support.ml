@@ -126,6 +126,7 @@ type state =
 
 
 (* Utility functions *)
+
 let state_unique : int ref = ref 32
 
 let tag_state_unique : int -> state -> state =
@@ -200,6 +201,10 @@ let id_of_rstring : rstring -> ident =
   fun name ->
     { id_default with R.name = name }
 
+let id_of_string : string -> ident =
+  fun name ->
+    id_of_rstring (rstring_of_string name)
+
 let id_fresh : state -> ident * state =
   fun state ->
     let count2 = state.fresh_count + 1 in
@@ -214,6 +219,19 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
       let (id, state2) = id_fresh state in
       let (ids_tl, state3) = id_fresh_list (n - 1) state2 in
         (id :: ids_tl, state3)
+
+let id_variadic : ident =
+  id_of_string "..."
+
+let native_rstring : rstring =
+  rstring_of_string "$native"
+
+let native_id_of_rstring : rstring -> ident =
+  fun name -> { (id_of_rstring name) with pkg = Some native_rstring }
+
+let native_id_of_string : string -> ident =
+  fun name ->
+    native_id_of_rstring (rstring_of_string name)
 
 
 (* Attributes *)
@@ -423,6 +441,21 @@ let env_mem_add : ident -> memref -> memref -> heap -> heap option =
         let env2 = env_add id mem env in
           Some (heap_add env_mem (DataObj (EnvVal env2, attrs)) heap)
     | _ -> None
+
+let env_mem_bind : ident -> heapobj -> memref -> heap -> heap option =
+  fun id hobj env_mem heap ->
+    let (mem, heap2) = heap_alloc hobj heap in
+      env_mem_add id mem env_mem heap2
+
+let rec env_mem_bind_list :
+  (ident * heapobj) list -> memref -> heap -> heap option =
+  fun binds env_mem heap ->
+    match binds with
+    | [] -> Some heap
+    | ((id, hobj) :: binds_tl) ->
+      match env_mem_bind id hobj env_mem heap with
+      | None -> None
+      | Some heap2 -> env_mem_bind_list binds_tl env_mem heap2
 
 let env_mem_add_list :
   (ident * memref) list -> memref -> heap -> heap option =

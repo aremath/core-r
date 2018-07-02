@@ -11,7 +11,7 @@ Plugins: META (0.4), DevFiles (0.4)
 Executable "main"
   Path: src
   MainIs: main.ml
-  BuildDepends: language, interpreter, loader, natives
+  BuildDepends: language, interpreter, loader, native_calls
 
 Library "interpreter"
   Path: src/interpreter
@@ -20,7 +20,7 @@ Library "interpreter"
 
 Library "language"
   Path: src/language
-  Modules: Syntax, Support, Annotations, Langutils
+  Modules: Syntax, Support, Annotations, Natives, Langutils
 
 Library "parser"
   Path: src/parser
@@ -33,11 +33,11 @@ Executable "absyn_generator"
 
 Library "natives"
   Path: src/interpreter/natives
-  Modules: Constants, Copy, Vector, Coerce, Subscript, Natives
+  Modules: Constants, Copy, Vector, Coerce, Subscript, Native_calls
   BuildDepends: language
 
 Library "loader"
   Path: src/preprocess
-  Modules: Loader, Rast_to_language
+  Modules: Loader, Rast_to_language, Injections
   BuildDepends: language, support, absyn_generator, parser
 

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0132baa183b27ef507d04cbb5fdaa50b)
+# DO NOT EDIT (digest: 569ce7420392c48be560e5c0dff57fd1)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -36,6 +36,7 @@ true: annot, bin_annot
 <src/preprocess/*.ml{,i,y}>: use_parser
 # Executable main
 "src/main.byte": pkg_absyn_generator
+"src/main.byte": pkg_native_calls
 "src/main.byte": pkg_support
 "src/main.byte": use_interpreter
 "src/main.byte": use_language
@@ -43,6 +44,7 @@ true: annot, bin_annot
 "src/main.byte": use_natives
 "src/main.byte": use_parser
 <src/*.ml{,i,y}>: pkg_absyn_generator
+<src/*.ml{,i,y}>: pkg_native_calls
 <src/*.ml{,i,y}>: pkg_support
 <src/*.ml{,i,y}>: use_interpreter
 <src/*.ml{,i,y}>: use_language

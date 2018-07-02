@@ -2,7 +2,7 @@
 open List
 open Syntax
 open Support
-open Natives
+open Native_calls
 open Copy
 
 type rule =
@@ -31,9 +31,6 @@ type rule =
   | ERuleDiscard
   | ERuleBlank
 
-
-let id_variadic : ident =
-  id_of_rstring (rstring_of_string "...")
 
 let pair_first : 'a * 'b -> 'a =
   fun (a, b) -> a

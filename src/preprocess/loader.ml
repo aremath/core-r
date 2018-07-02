@@ -5,11 +5,13 @@ open Language
 module R = Rast
 module S = Syntax
 open Support
-open List
 open Langutils
 open Rast_to_language
 open Absyn_generator
+open Injections
+
 module F = Filename
+open List
 open Sys
 
 let base_loc : string =
@@ -175,13 +177,24 @@ let raw_inits_of_file : string -> string -> stack * heap * memref =
       | ((_, mem) :: _) -> (stack_push_list frames stack_empty, heap2, mem)
       | [] -> failwith "raw_inits_of_file: somehow failed to initialize envs"
 
+let make_native_binds : memref -> (ident * heapobj) list =
+  fun glbl_env_mem ->
+    map (fun (id, (params, body)) ->
+          (id, DataObj (FuncVal (params, body, glbl_env_mem), attrs_empty)))
+        native_injection_pairs
+
 let raw_init_state : string -> string -> state =
   fun dir file ->
     let (stack, heap, glbl_env_mem) = raw_inits_of_file dir file in
-      { state_default with
-          stack = stack;
-          heap = heap;
-          global_env_mem = glbl_env_mem }
+    let native_binds = make_native_binds glbl_env_mem in
+      match env_mem_bind_list native_binds glbl_env_mem heap with
+      | Some heap2 ->
+          { state_default with
+              stack = stack;
+              heap = heap2;
+              global_env_mem = glbl_env_mem }
+      | None ->
+          failwith "raw_init_state: could not inject native binds"
 
 let guess_entry_info : string -> string * string =
   fun path -> (F.dirname path, F.basename path)
