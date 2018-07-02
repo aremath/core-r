@@ -40,3 +40,16 @@ let dereference: S.memref list -> S.heap -> S.heapobj list =
     fun mems heap ->
     List.map (fun mem -> S.MemRefMap.find mem heap.S.mem_map) mems
 
+(* Get a number from a memref. Fails if the memref does not point to an int vector
+ Warns if the vector has length greater than 1. *)
+let get_single_rint: S.memref -> S.heap -> S.rint =
+    fun mem heap ->
+    let vec = dereference_rvector mem heap in
+    let a = rvector_to_int_array vec in
+    let _ = if (Array.length a) > 1 then Printf.printf
+        "Warning: only the first element used of expression with %d elements" (Array.length a)
+    else
+        () in
+    a.(0)
+
+    

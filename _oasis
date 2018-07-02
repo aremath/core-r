@@ -39,5 +39,6 @@ Library "natives"
 Library "loader"
   Path: src/preprocess
   Modules: Loader, Rast_to_language, Injections
-  BuildDepends: language, support, absyn_generator, parser
+  Modules: Loader, Rast_to_language
+  BuildDepends: language, parser
 

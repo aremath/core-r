@@ -2,6 +2,8 @@ module R = Rast
 module L = Syntax
 module T = Support
 open Complex
+open Natives
+open List
 
 let ident_count = ref 32
 
@@ -102,21 +104,21 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 let c_e2 = convert_expr e2 in
                                 L.LambdaApp (L.Ident b_ident,
                                 [L.Arg c_e1; L.Arg c_e2])
-    | R.FuncCall (e, args)  -> let c_args = List.map convert_arg args in
+    | R.FuncCall (e, args)  -> let c_args = map convert_arg args in
                                 let c_e = convert_expr e in
                                 L.LambdaApp(c_e, c_args)
-    | R.FuncDec (params, e) -> let c_params = List.map convert_param params in
+    | R.FuncDec (params, e) -> let c_params = map convert_param params in
                                 let c_e = convert_expr e in
                                 L.LambdaAbs (c_params, c_e)
     | R.Block []            -> convert_expr R.Null
     | R.Block es            -> begin match es with
                                 | [hd]      -> convert_expr hd
-                                | hd :: tl  -> L.Seq (List.map convert_expr es)
+                                | hd :: tl  -> L.Seq (map convert_expr es)
                                 | []        -> convert_expr R.Null (* TODO: is this really what R does? *)
                                 end
-    | R.ListProj (e, args)  -> failwith "ListProj not a part of Core R!"
+    | R.ListProj (e, args)  -> LambdaApp (Ident (native_array_sub_id), Arg (convert_expr e) :: (map convert_arg args))
     | R.ListSub (e, args)   -> failwith "TODO: translate ListSub"
-                              (* L.ArraySub (convert_expr e, List.map convert_arg args) *)
+                              (* L.ArraySub (convert_expr e, map convert_arg args) *)
     | R.If (e1, e2)         -> L.If (convert_expr e1, convert_expr e2, convert_expr R.Null) (* TODO ^ *)
     | R.IfElse (e1, e2, e3) -> L.If (convert_expr e1, convert_expr e2, convert_expr e3)
     (* | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2) *)
@@ -159,7 +161,7 @@ and convert_param: 'a R.param -> ('a, 'b) L.param =
 
 and assign_special_body: string -> 'a R.arg list -> 'a R.expr -> 'a R.expr option -> ('a, 'b) L.expr =
     fun s args e1 oe2 ->
-    let c_args = List.map convert_arg args in
+    let c_args = map convert_arg args in
     let c_i = L.Ident {L.pkg=None; L.name=Some (s^"<-"); L.tag=None} in
     let c_e1 = convert_arg (R.ExprArg e1) in
     let c_args2 = match oe2 with

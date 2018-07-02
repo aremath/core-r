@@ -10,7 +10,10 @@ let rvec_length: S.rvector -> int =
     | S.ComplexVec c -> Array.length c
     | S.StrVec s -> Array.length s
 
-(* TODO: does not return a memref (?) *)
+(* Returns a memref because of ex.
+    y = (dim(x) <- c(1,5))  # y = [1, 5]
+    TODO: do we need to copy dim_ref' again so that y here doesn't point directly to x's dims?
+*)
 let set_dims_mem: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     fun data_ref dim_ref heap ->
     (* first, copy the reference to the dimension vector, since data will keep it *)
@@ -28,22 +31,78 @@ let set_dims_mem: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     else
         failwith "Dimension not compatible with vector length" (* TODO: sprintf to show what the size was *)
 
-(*
+let mk_empty_intvec: unit -> S.rvector = fun _ -> S.IntVec (Array.make 0 (Some 0))
+let mk_empty_floatvec: unit -> S.rvector = fun _ -> S.FloatVec (Array.make 0 (Some 0.0))
+let mk_empty_complexvec: unit -> S.rvector = fun _ -> S.ComplexVec (Array.make 0 (Some Complex.zero))
+let mk_empty_strvec: unit -> S.rvector = fun _ -> S.StrVec (Array.make 0 (Some ""))
+let mk_empty_boolvec: unit -> S.rvector = fun _ -> S.BoolVec (Array.make 0 (Some 0))
+
+(* Concatenate two vectors - For now does not do type coercion *)
 let concat_rvectors: S.rvector -> S.rvector -> S.rvector =
     fun v1 v2 ->
     match (v1, v2) with
-    | ()
-    | ()
-    | ()
-    | ()
+    | (S.IntVec i1, S.IntVec i2) -> S.IntVec (Array.concat [i1;i2])
+    | (S.FloatVec f1, S.FloatVec f2) -> S.FloatVec (Array.concat [f1;f2])
+    | (S.ComplexVec c1, S.ComplexVec c2) -> S.ComplexVec (Array.concat [c1;c2])
+    | (S.StrVec s1, S.StrVec s2) -> S.StrVec (Array.concat [s1;s2])
+    | (S.BoolVec b1, S.BoolVec b2) -> S.BoolVec (Array.concat [b1;b2])
+    | _ -> failwith "Can't concatenate incompatible vectors"
 
+let fold_rvectors: S.rvector list -> S.rvector =
+    fun vlist ->
+    match vlist with
+    | [] -> failwith "Cannot fold empty rvectors list - no type known"
+    (* Determine the type based on the head. 
+    concat_rvectors will throw an error if the types do not reconcile. *)
+    | hd::tl -> begin match hd with
+        | S.IntVec _ -> List.fold_left concat_rvectors (mk_empty_intvec ()) vlist
+        | S.FloatVec _ -> List.fold_left concat_rvectors (mk_empty_floatvec ()) vlist
+        | S.ComplexVec _ -> List.fold_left concat_rvectors (mk_empty_complexvec ()) vlist
+        | S.StrVec _ -> List.fold_left concat_rvectors (mk_empty_strvec ()) vlist
+        | S.BoolVec _ -> List.fold_left concat_rvectors (mk_empty_boolvec ()) vlist
+        end
 
+(* Vector creation - R's "c" function *)
+(* Does not support ex. c(a=c(1,2)) *)
+let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
+    fun vec_mems heap ->
+    (* First, deep copy the arguments so they're not captured *)
+    let vec_mems', heap' = Copy.copy_ref_array vec_mems heap in
+    (* Dereference the copies *)
+    let vecs = List.map (fun m -> C.dereference_rvector m heap') vec_mems' in
+    match vecs with
+    | [] -> (S.mem_null, heap) (* Empty arrays are null *)
+    (* TODO: this might cause bugs if you try to assign to an empty array's dims or something
+    since there's no actual object. On the other hand, just Array.makeing a 0-length vector
+    also doesn't have the right behavior *)
+    (* Fold them with concat *)
+    | _ -> let new_vec = fold_rvectors vecs in
+        (* Allocate the new vector and return a reference to it *)
+        S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty)) heap'
+
+(* Handles 1:5 and 5:-5. TODO: 1.3:2.6 *)
+let range_int_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun start_index_ref end_index_ref heap ->
+    let start_index = match C.get_single_rint start_index_ref heap with
+    | Some i -> i
+    | None -> failwith "NA in range" in
+    let end_index = match C.get_single_rint end_index_ref heap with
+    | Some i -> i
+    | None -> failwith "NA in range" in
+    (* How many elements the array will have *)
+    let n = abs (end_index - start_index) + 1 in
+    let step = if start_index < end_index then 1 else -1 in
+    let range_array = Array.init n (fun i -> start_index + (i * step)) in
+    let rint_range = C.unresolve_vec range_array in
+    S.heap_alloc (S.DataObj (S.Vec (S.IntVec rint_range), S.attrs_empty)) heap
+
+(*
 (* Given n, make a1, a2, ..., an *)
 let make_index_names: S.rstring -> int -> S.rstring array =
     fun str n ->
     Array.init n (fun i -> str ^ (string_of_int (i+1)))
 
-(* From ("a", c(2,2)) to ("a1", "a2"), (2,2). Does not allocate the new rvectors *)
+(* From ("a", c(2,2)) to ("a1", "a2"), (2,2). Does not allocate the rvectors *)
 let make_vector_help: (S.rstring * S.memref) -> S.heap -> (S.rvector * S.rvector) =
     fun (str, mem) -> let mem_vec = dereference_rvector mem heap in
     let indices = make_index_names (rvec_length mem_vec) in
@@ -54,10 +113,10 @@ let make_vector: (S.ident option * S.memref) list -> heap -> (S.rvector * S.rvec
     fun l heap ->
     List.map
 
-
 (*let make_vector_mems: S.memref list -> heap -> (memref * heap)*)
 
 *)
+
 
 (*
 (* assumes defaults have been taken care of *)
