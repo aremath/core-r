@@ -388,8 +388,9 @@ let rule_NativeLambdaApp : state -> state list =
       | Some (DataObj (EnvVal env, _)) ->
         (match pull_all_ids arg_ids env state.heap with
         | Some mems ->
-          (match native_call f_id mems env { state with stack = c_stack2 } with
-          | Some state2 -> [state2]
+          let state2 = { state with stack = c_stack2 } in
+          (match native_call f_id mems c_env_mem state2 with
+          | Some state3 -> [state3]
           | _ -> [])
         | _ -> [])
       | _ -> [])
