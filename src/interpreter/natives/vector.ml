@@ -80,6 +80,23 @@ let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
         (* Allocate the new vector and return a reference to it *)
         S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty)) heap'
 
+(* Heavy lifting for range - creates a range of integers from start to end as an array *)
+let int_range: int -> int -> int array =
+    fun start_index end_index ->
+    (* How many elements the array will have *)
+    let n = (abs (end_index - start_index)) + 1 in
+    (* Increasing or decreasing? *)
+    let step = if start_index < end_index then 1 else -1 in
+    Array.init n (fun i -> start_index + (i * step))
+
+(* Same as ^ but for floats *)
+let float_range: float -> float -> float array =
+    fun startf endf ->
+    (* How many elements the array will have *)
+    let n = int_of_float (floor (abs_float (startf -. endf))) + 1 in
+    let step = if startf < endf then 1.0 else -1.0 in
+    Array.init n (fun i -> startf +. ((float_of_int i) *. step))
+
 (* Handles 1:5 and 5:-5. TODO: 1.3:2.6 *)
 let range_int_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     fun start_index_ref end_index_ref heap ->
@@ -89,12 +106,17 @@ let range_int_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     let end_index = match C.get_single_rint end_index_ref heap with
     | Some i -> i
     | None -> failwith "NA in range" in
-    (* How many elements the array will have *)
-    let n = abs (end_index - start_index) + 1 in
-    let step = if start_index < end_index then 1 else -1 in
-    let range_array = Array.init n (fun i -> start_index + (i * step)) in
-    let rint_range = C.unresolve_vec range_array in
-    S.heap_alloc (S.DataObj (S.Vec (S.IntVec rint_range), S.attrs_empty)) heap
+    (* Dereference the vectors down to rvectors *)
+    let start_rvec = C.dereference_rvector start_index_ref heap in
+    let end_rvec = C.dereference_rvector end_index_ref heap in
+    (* Match to determine output vector type *)
+    let out_rvec = match start_rvec, end_rvec with
+    | (S.IntVec [|Some si|], S.IntVec [|Some ei|]) -> let irange = int_range si ei in
+        S.IntVec (C.unresolve_vec irange)
+    | (S.FloatVec [|Some sf|], S.FloatVec [|Some ef|]) -> let frange = float_range sf ef in
+        S.FloatVec (C.unresolve_vec frange)
+    | _ -> failwith "Bad range call" in (* TODO: better error messaging *)
+    S.heap_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty)) heap
 
 (*
 (* Given n, make a1, a2, ..., an *)
