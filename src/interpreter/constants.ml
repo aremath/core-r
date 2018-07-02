@@ -92,7 +92,8 @@ let exception_divide x y =
     if y != 0 then
       x / y
     else
-      raise (Numeric_Binop_Exception (Int (Some x), Int (Some y), msg_div_by_zero)) (* Changes the error slightly TODO*)
+      (* Changes the error slightly TODO*)
+      raise (Numeric_Binop_Exception (Int (Some x), Int (Some y), msg_div_by_zero))
 
 let exception_float_divide x y = 
     if y != 0.0 then

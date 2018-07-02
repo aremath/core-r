@@ -154,3 +154,4 @@ let drop_dims: (rvector * attributes) -> (rvector * attributes) =
     | None -> (vec, attrs) (* no change to attrs is needed *)
     | Some dim_ref -> (* dereference! *)
 *)
+

@@ -7,7 +7,8 @@ module V = Vector
  affects the linear index. For example, if x is a 5x2 vector it is stored in memory
  as a length-10 vector. The value x[[3,0]] is physically directly before the value
  x[[4,0]], but the value x[[0,0]] is stored 5 places before x[[0,1]] *)
-let make_offset dims =
+let make_offset : int array -> int array =
+  fun dims -> 
     let n = Array.length dims in
     let out = Array.make n 1 in
     let _ = for i = 1 to n-1 do
@@ -18,19 +19,22 @@ let make_offset dims =
 (* Finds a list of indices given a list of bounds and the number of iteration we are on.
  Each index is on a loop number equal to the number of total loops that come below it,
  calculated as n/div, modulo the iterator for that loop. *)
-let find_indices n bounds =
+let find_indices : int -> int array -> int array =
+  fun n bounds
     Array.mapi (fun i v -> 
         let bounds_before = Array.sub bounds 0 i in
         let div = Array.fold_left (fun x y -> x * y) 1 bounds_before in
         (n / div) mod v
     ) bounds
 
-let index_sub sub index =
+let index_sub : int array -> int -> int =
+  fun sub index -> 
     sub.(index mod (Array.length sub))
 
 (* calculate the actual linear index in the array, based on indices into
  the list of subs *)
-let index_subs indices subs offset n_dims =
+let index_subs : int array -> int array -> int array -> int -> int =
+  fun indices subs offset n_dims ->
     (* get an array from 0 to n_dims *)
     let dim_array = Array.init n_dims (fun x -> x) in
     let iis = Array.map (fun n -> 
@@ -123,7 +127,8 @@ let subset_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
     | _ -> failwith "Bad call to subset"
 
 (* find the index of x in a - used to index a vector by its names attribute *)
-let rec find a x n =
+let rec find : 'a array -> 'a -> int -> int =
+  fun a x n -> 
     if a.(n) = x then n else
     find a x (n+1)
 

@@ -242,32 +242,41 @@ let string_of_rule : rule -> string =
     | ERuleBlank -> "Blank"
 
 
-
 let string_of_rule_list : rule list -> string =
   fun rules ->
     "[" ^ string_of_list_comma (map string_of_rule rules) ^ "]"
 
 let string_of_hist : (rule list * state) -> string =
   fun (rules, state) ->
-    bar60 ^ "\n" ^
     string_of_rule_list rules ^ "\n" ^
-    string_of_state state ^ "\n" ^
-    bar60 ^ ""
+    string_of_state state ^ ""
 
 let string_of_passresult : passresult -> string =
   fun (comps, errs, incomps) ->
-    "Complete" ^ "\n" ^
-    string_of_list_newline (map string_of_hist comps) ^ "\n" ^
-    "Errors" ^ "\n" ^
-    string_of_list_newline (map string_of_hist errs) ^ "\n" ^
-    "Incomplete" ^ "\n" ^
-    string_of_list_newline (map string_of_hist incomps) ^ ""
+    string_of_list_newline
+      (map (fun c ->
+            bar60 ^ "\n" ^
+            "{Complete}:\n" ^ string_of_hist c ^ "\n" ^
+            bar60) comps) ^ "\n" ^
+
+    string_of_list_newline
+      (map (fun c ->
+            bar60 ^ "\n" ^
+            "{Error}:\n" ^ string_of_hist c ^ "\n" ^
+            bar60 ^ "") errs) ^ "\n" ^
+
+    string_of_list_newline
+      (map (fun c ->
+            bar60 ^ "\n" ^
+            "{Incomplete}:\n" ^ string_of_hist c ^ "\n" ^
+            bar60 ^ "") incomps) ^ ""
 
 let string_of_passresult_list : passresult list -> string =
   fun passes ->
     let strs = (map string_of_passresult passes) in
-    let mods = map (fun s -> repeat "****" 10 ^
+    let mods = map (fun s -> repeat "####" 10 ^
                              "\n" ^ s ^ "\n" ^
-                             repeat "****" 10) strs in
-      string_of_list_newline (mods)
+                             repeat "^^^^" 10) strs in
+      string_of_list_newline mods
+
 
