@@ -415,10 +415,9 @@ let ident =
 let nsident =
   '`' (esc | [^ '\\' '`'])+ '`'
 
-(* Technically % [^ '\n']+ %, but that's ambiguous:
- ex. how to lex (x % (y + 1) % 3) ? *)
+(* Technically % [^ '\n']+ % *)
 let user_op =
-  '%' ident '%'
+  '%' [^ '%' '\n'] '%'
 
 let newline =
     '\n'
