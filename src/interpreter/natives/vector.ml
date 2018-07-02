@@ -11,24 +11,22 @@ let rvec_length: S.rvector -> int =
     | S.StrVec s -> Array.length s
 
 (* TODO: does not return a memref (?) *)
-let set_dims_mem: S.memref list -> S.heap -> S.heap =
-    fun mems heap ->
-    match mems with
+let set_dims_mem: S.memref -> S.memref -> S.heap -> S.heap =
+    fun data_ref dim_ref heap ->
     (* first, copy the reference to the dimension vector, since data will keep it *)
-    | [data_ref;dim_ref] -> let dim_ref',heap' = Copy.deep_copy dim_ref heap in
+    let dim_ref',heap' = Copy.deep_copy dim_ref heap in
     (* check if dims is compatible with data (product of dims == length of data) *)
-        let dim_vec = C.resolve_vec (C.rvector_to_int_array (C.dereference_rvector dim_ref' heap')) in
-        let data_len = rvec_length (C.dereference_rvector data_ref heap) in
-        let dim_size = Array.fold_left (fun x y -> x * y) 1 dim_vec in
-        if dim_size = data_len then
-            match S.heap_find data_ref heap' with
-            | Some (S.DataObj(_, attrs)) ->
-                let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
-                heap'
-            | _ -> failwith "data missing in set_dims"
-        else
-            failwith "Dimension not compatible with vector length" (* TODO: sprintf to show what the size was *)
-    | _ -> failwith "Bad call to set_dims"
+    let dim_vec = C.resolve_vec (C.rvector_to_int_array (C.dereference_rvector dim_ref' heap')) in
+    let data_len = rvec_length (C.dereference_rvector data_ref heap) in
+    let dim_size = Array.fold_left (fun x y -> x * y) 1 dim_vec in
+    if dim_size = data_len then
+        match S.heap_find data_ref heap' with
+        | Some (S.DataObj(_, attrs)) ->
+            let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
+            heap'
+        | _ -> failwith "Data missing in set_dims"
+    else
+        failwith "Dimension not compatible with vector length" (* TODO: sprintf to show what the size was *)
 
 (*
 let concat_rvectors: S.rvector -> S.rvector -> S.rvector =
