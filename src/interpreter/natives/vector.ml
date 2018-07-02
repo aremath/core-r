@@ -64,7 +64,7 @@ let fold_rvectors: S.rvector list -> S.rvector =
 
 (* Vector creation - R's "c" function *)
 (* Does not support ex. c(a=c(1,2)) *)
-let make_vector_simple: S.memref list -> S.heap -> (S.memref * S.heap) =
+let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
     fun vec_mems heap ->
     (* First, deep copy the arguments so they're not captured *)
     let vec_mems', heap' = Copy.copy_ref_array vec_mems heap in
@@ -79,6 +79,22 @@ let make_vector_simple: S.memref list -> S.heap -> (S.memref * S.heap) =
     | _ -> let new_vec = fold_rvectors vecs in
         (* Allocate the new vector and return a reference to it *)
         S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty)) heap'
+
+(* Handles 1:5 and 5:-5. TODO: 1.3:2.6 *)
+let range_int_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun start_index_ref end_index_ref heap ->
+    let start_index = match C.get_single_rint start_index_ref heap with
+    | Some i -> i
+    | None -> failwith "NA in range" in
+    let end_index = match C.get_single_rint end_index_ref heap with
+    | Some i -> i
+    | None -> failwith "NA in range" in
+    (* How many elements the array will have *)
+    let n = abs (end_index - start_index) + 1 in
+    let step = if start_index < end_index then 1 else -1 in
+    let range_array = Array.init n (fun i -> start_index + (i * step)) in
+    let rint_range = C.unresolve_vec range_array in
+    S.heap_alloc (S.DataObj (S.Vec (S.IntVec rint_range), S.attrs_empty)) heap
 
 (*
 (* Given n, make a1, a2, ..., an *)
