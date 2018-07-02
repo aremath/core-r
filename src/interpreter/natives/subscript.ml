@@ -20,7 +20,7 @@ let make_offset : int array -> int array =
  Each index is on a loop number equal to the number of total loops that come below it,
  calculated as n/div, modulo the iterator for that loop. *)
 let find_indices : int -> int array -> int array =
-  fun n bounds
+  fun n bounds ->
     Array.mapi (fun i v -> 
         let bounds_before = Array.sub bounds 0 i in
         let div = Array.fold_left (fun x y -> x * y) 1 bounds_before in
@@ -33,7 +33,7 @@ let index_sub : int array -> int -> int =
 
 (* calculate the actual linear index in the array, based on indices into
  the list of subs *)
-let index_subs : int array -> int array -> int array -> int -> int =
+let index_subs : int array -> (int array) list -> int array -> int -> int =
   fun indices subs offset n_dims ->
     (* get an array from 0 to n_dims *)
     let dim_array = Array.init n_dims (fun x -> x) in
