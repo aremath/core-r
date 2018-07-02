@@ -90,7 +90,7 @@ let subset_mems: S.memref -> S.memref list -> S.heap -> (S.memref * S.heap) =
     (* TODO: implicit defaults and negative indices *)
     let subs = List.map (fun m ->
         let rvec = C.dereference_rvector m heap in
-        C.resolve_vec (C.rvector_to_int_array rvec)) tl in
+        C.resolve_vec (C.rvector_to_int_array rvec)) sub_refs in
     match S.heap_find data_ref heap with
     | Some (S.DataObj (data_val, data_attributes)) ->
         (* find the dims as a reference *)
