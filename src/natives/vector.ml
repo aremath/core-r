@@ -118,6 +118,62 @@ let range_int_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     | _ -> failwith "Bad range call" in (* TODO: better error messaging *)
     S.heap_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty)) heap
 
+(* Need to do this pattern matching because of how rvector is defined *)
+let rvector_length: S.rvector -> int =
+    fun vec ->
+    match vec with
+    | S.IntVec i -> Array.length i
+    | S.FloatVec f -> Array.length f
+    | S.ComplexVec c -> Array.length c
+    | S.StrVec s -> Array.length s
+    | S.BoolVec b -> Array.length b
+
+(* makes an array which is a copied n times *)
+let rec array_wrap: 'a array -> int -> 'a array =
+    fun a n ->
+    (* Wrap once just means copy *)
+    if n = 1 then Array.copy a
+    (* Wrap more than once means append a copy of a onto the rest of the wrap *)
+    else (Array.concat ( (Array.copy a)::[(array_wrap a (n-1))]))
+
+(* Wraps an rvector n times *)
+let rvector_wrap: S.rvector -> int -> S.rvector =
+    fun v n ->
+    match v with
+    | S.IntVec i -> S.IntVec (array_wrap i n)
+    | S.FloatVec f -> S.FloatVec (array_wrap f n)
+    | S.ComplexVec c -> S.ComplexVec (array_wrap c n)
+    | S.StrVec s -> S.StrVec (array_wrap s n)
+    | S.BoolVec b -> S.BoolVec (array_wrap b n)
+
+(* Vector binary operations - suitable functions to pass found in arithmetic.ml *)
+(* TODO: does this function need to copy the arguments? *)
+let vector_bop_mems: (S.rvector -> S.rvector -> S.rvector) ->
+                     S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun binop lhs_ref rhs_ref heap ->
+    let lhs = C.dereference_rvector lhs_ref heap in
+    let rhs = C.dereference_rvector rhs_ref heap in
+    (* Multiply out the shorter rvector, if appropriate *)
+    let (true_rhs, true_lhs) = let l_length = rvector_length lhs in
+        let r_length = rvector_length rhs in
+        (* If their lengths match, then no extension is necessary *)
+        if l_length = r_length then (lhs, rhs)
+        (* Otherwise, check that their lengths are compatible
+        (one is a multiple of the other) *)
+        else if (l_length < r_length) && (r_length mod l_length = 0) then
+            let n = r_length / l_length in
+            (rvector_wrap lhs n, rhs)
+        else if (l_length > r_length) && (l_length mod r_length = 0) then
+            let n = l_length / r_length in
+            (lhs, rvector_wrap rhs n)
+        else failwith "Can't add vectors with incompatible lengths"
+    in
+    (* Do the operation on the (possibly wrapped) vectors *)
+    let new_vec = binop true_rhs true_lhs in
+    (* Allocate the result! *)
+    (* TODO: is attrs_empty appropriate? *)
+    S.heap_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty)) heap
+
 (*
 (* Given n, make a1, a2, ..., an *)
 let make_index_names: S.rstring -> int -> S.rstring array =
