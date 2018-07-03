@@ -41,7 +41,6 @@ let unwrap_raw_string_const : string -> string =
 
 let canon_of_R_file : string -> string -> string =
   fun dir file ->
-    (* print_string ("dir: " ^ dir ^ " | src: " ^ file); *)
     if F.is_relative file then
       dir ^ "/" ^ file
     else

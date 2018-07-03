@@ -33,6 +33,7 @@ let dumpTokens : string -> unit =
           flush stdout
       done
     
+(*
 let main () =
   let args = Array.to_list Sys.argv in
   let in_filename = match args with
@@ -44,6 +45,6 @@ let main () =
   let absyn = parseFile in_filename in
     print_endline (Rast.string_of_program absyn);
     ;;
-
 main ()
+*)
 
