@@ -29,17 +29,14 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     (* Vector subsetting *)
     if id = native_array_sub_id then
       (match arg_mems with
-      | (arr_mem :: var_mem :: []) ->
-        (match heap_find var_mem state.heap with
-        | Some (DataObj (RefArray refs, _)) ->
-          let (mem2, heap2) = subset_mems arr_mem refs state.heap in
-          let c_frame = { frame_default with
-                            env_mem = c_env_mem;
-                            slot = ReturnSlot mem2 } in
-            Some { state with
-                     heap = heap2;
-                     stack = stack_push c_frame state.stack }
-        | _ -> None)
+      | (arr_mem :: sub_mem :: []) ->
+        let (mem2, heap2) = subscript_mems arr_mem sub_mem state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     (* Vector creation *)

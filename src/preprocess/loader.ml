@@ -8,7 +8,7 @@ open Support
 open Langutils
 open Rast_to_language
 open Absyn_generator
-open Injections
+open Natives
 
 module F = Filename
 open List
