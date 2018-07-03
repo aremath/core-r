@@ -223,15 +223,6 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
 let id_variadic : ident =
   id_of_string "..."
 
-let native_rstring : rstring =
-  rstring_of_string "$native"
-
-let native_id_of_rstring : rstring -> ident =
-  fun name -> { (id_of_rstring name) with pkg = Some native_rstring }
-
-let native_id_of_string : string -> ident =
-  fun name ->
-    native_id_of_rstring (rstring_of_string name)
 
 
 (* Attributes *)

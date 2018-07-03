@@ -338,7 +338,7 @@ let rule_LambdaAppArgsRet : state -> state list =
     | Some (ReturnSlot a_mem, _,
             LambdaSlot (Some f_mem, da_mem, Some arg, args), c_env_mem,
             c_stack2) ->
-      let da_mems2 = (arg, a_mem) :: da_mem in
+      let da_mems2 = da_mem @ [(arg, a_mem)] in
       let c_frame = { frame_default with
                   env_mem = c_env_mem;
                   slot = LambdaSlot (Some f_mem, da_mems2, None, args) } in

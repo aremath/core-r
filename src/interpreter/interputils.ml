@@ -182,7 +182,9 @@ let string_of_slot: slot -> string =
                                            (string_of_arg, string_of_memref))
                                  da_mems) ^ "]," ^
                       a_str ^ "," ^
-                            string_of_list_comma (map string_of_arg args)
+                      "[[" ^
+                        string_of_list_comma (map string_of_arg args) ^
+                        "]]"
 
 let string_of_frame: frame -> string =
   fun frame ->
