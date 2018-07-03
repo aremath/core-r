@@ -27,7 +27,7 @@ let bop_to_ident : R.binop -> 'a L.ident =
   fun b ->
     match b with
     | Plus -> native_vector_add_id
-    | Mult -> native_vector_mult_id
+    | Mult -> native_vector_mul_id
     | _ -> native_id_of_string (R.string_of_binop b)
 
 let convert_ident: 'a R.ident -> 'a L.ident =

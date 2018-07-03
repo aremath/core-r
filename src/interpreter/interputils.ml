@@ -10,7 +10,7 @@ let rec repeat : string -> int -> string =
   fun str n ->
     if n <= 0 then
       ""
-    else if n == 1 then
+    else if n = 1 then
       str
     else
       str ^ repeat str (n - 1)
@@ -74,7 +74,7 @@ let string_of_rcomplex: rcomplex -> string =
 
 let string_of_rbool: rbool -> string =
     function
-    | Some b -> if b == 1 then "True" else "False"
+    | Some b -> if b = 1 then "True" else "False"
     | None -> "NaBool"
 
 let string_of_rvector: rvector -> string =

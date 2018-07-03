@@ -1,10 +1,15 @@
 
+open Syntax
 open Support
 open Subscript
+module U = Langutils
 open Natives
 open Vector
+open Arithmetic
 
 open List
+
+type ident = Support.ident
 
 let binop_names : string list =
   ["+"; "-"; "*"; "/"; "^";
@@ -19,7 +24,7 @@ let extract_native_name : ident -> string option =
     match id.pkg with
     | None -> None
     | Some pkg ->
-      if pkg == native_rstring then
+      if pkg = native_rstring then
         string_of_rstring id.name
       else
         None
@@ -70,6 +75,32 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                        stack = stack_push c_frame state.stack }
           | _ -> None)
       | _ -> None)
+
+    (* Vector binary operations *)
+    else if id = native_vector_add_id then
+      (match arg_mems with
+      | (v1 :: v2 :: []) ->
+          let (mem2, heap2) = vector_bop_mems rvector_add v1 v2 state.heap in
+          let c_frame = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot mem2 } in
+            Some { state with
+                     heap = heap2;
+                     stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_vector_mul_id then
+      (match arg_mems with
+      | (v1 :: v2 :: []) ->
+          let (mem2, heap2) = vector_bop_mems rvector_mul v1 v2 state.heap in
+          let c_frame = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot mem2 } in
+            Some { state with
+                     heap = heap2;
+                     stack = stack_push c_frame state.stack }
+      | _ -> None)
+    (* Oh no! *)
     else
       None
 

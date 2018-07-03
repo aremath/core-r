@@ -46,8 +46,8 @@ let rvector_add = bop_rvectors
     add_rint
     add_rfloat
     add_rcomplex
-    (failwith "Non-numeric addition")
-    (failwith "Non-numeric addition")
+    (fun _ _ -> failwith "Non-numeric addition")
+    (fun _ _ -> failwith "Non-numeric addition")
 
 let mul_rint: S.rint -> S.rint -> S.rint = opt_bop ( * )
 let mul_rfloat: S.rfloat -> S.rfloat -> S.rfloat = opt_bop ( *. )
@@ -57,8 +57,8 @@ let rvector_mul = bop_rvectors
     mul_rint
     mul_rfloat
     mul_rcomplex
-    (failwith "Non-numeric addition")
-    (failwith "Non-numeric addition")
+    (fun _ _ -> failwith "Non-numeric addition")
+    (fun _ _ -> failwith "Non-numeric addition")
 
 (* The old way:
 (* Combine two rvectors of the same length through addition *)

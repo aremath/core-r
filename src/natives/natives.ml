@@ -47,12 +47,12 @@ let nw_fun_vec_add : (param list) * expr =
      (native_vector_add_id,
       [id_of_string "vector1"; id_of_string "vector2"]))
 
-let native_vector_mult_id: ident = native_id_of_string "vector.mult"
+let native_vector_mul_id: ident = native_id_of_string "vector.mul"
 
-let nw_fun_vec_mult : (param list) * expr =
+let nw_fun_vec_mul : (param list) * expr =
   ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
    NativeLambdaApp
-     (native_vector_mult_id,
+     (native_vector_mul_id,
       [id_of_string "vector1"; id_of_string "vector2"]))
 
 
@@ -63,6 +63,6 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_subset_id, nw_fun_vec_subset);
     (native_vector_make_id, nw_fun_vec_make);
     (native_vector_add_id, nw_fun_vec_add);
-    (native_vector_mult_id, nw_fun_vec_mult);
+    (native_vector_mul_id, nw_fun_vec_mul);
   ]
 
