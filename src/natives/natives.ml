@@ -1,7 +1,6 @@
 open Syntax
 open Support
 
-
 let native_rstring : rstring =
   rstring_of_string "$native"
 
@@ -13,7 +12,36 @@ let native_id_of_string : string -> ident =
     native_id_of_rstring (rstring_of_string name)
 
 
-let native_array_sub_id: ident = native_id_of_string "array.sub"
+(* Array subsetting *)
+let native_vector_subscript_id: ident = native_id_of_string "vector.subscript"
 
-let native_array_make_id : ident = native_id_of_string "array.make"
+let nw_fun_vec_subscript : (param list) * expr =
+  ([Param (id_of_string "vector"); Param (id_of_string "sub")],
+   NativeLambdaApp
+     (native_vector_subscript_id,
+      [id_of_string "vector"; id_of_string "sub"]))
+
+let native_vector_subset_id : ident = native_id_of_string "vector.subset"
+
+let nw_fun_vec_subset : (param list) * expr =
+  ([Param (id_of_string "vector"); VarParam],
+   NativeLambdaApp
+     (native_vector_subset_id,
+      [id_of_string "vector"; id_variadic]))
+
+(* Array making *)
+let native_vector_make_id : ident = native_id_of_string "vector.make"
+
+let nw_fun_vec_make : (param list) * expr =
+  ([VarParam],
+   NativeLambdaApp
+    (native_vector_make_id,
+     [id_variadic]))
+
+let native_injection_pairs : (ident * (param list * expr)) list =
+  [
+    (native_vector_subscript_id, nw_fun_vec_subscript);
+    (native_vector_subset_id, nw_fun_vec_subset);
+    (native_vector_make_id, nw_fun_vec_make);
+  ]
 
