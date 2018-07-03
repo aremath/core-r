@@ -174,6 +174,35 @@ let vector_bop_mems: (S.rvector -> S.rvector -> S.rvector) ->
     (* TODO: is attrs_empty appropriate? *)
     S.heap_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty)) heap
 
+(* Inefficient, but works *)
+let array_filter: ('a -> bool) -> 'a array -> 'a array =
+    fun pred a ->
+    let l = List.filter pred (Array.to_list a) in
+    Array.of_list l
+
+let drop_dims_mems: S.memref -> S.heap -> (S.memref * S.heap) =
+    fun vec_ref heap ->
+    (* First, copy the argument *)
+    let vec_ref', heap' = Copy.deep_copy vec_ref heap in
+    match S.heap_find vec_ref heap with
+    | Some (S.DataObj (S.Vec v, attrs)) ->
+        begin match S.attrs_find (Some "dim") attrs with
+        | Some dim_ref -> let dim_vec = C.dereference_rvector dim_ref heap in
+            let dim_array = C.rvector_to_int_array dim_vec in
+            let new_dim_array = array_filter (fun i -> i = Some 1) dim_array in
+            (* Allocate the new dims *)
+            let (dim_ref', heap'') = S.heap_alloc
+                (S.DataObj (S.Vec (S.IntVec new_dim_array), S.attrs_empty)) heap' in
+            (* Replace attrs' dim mapping *)
+            let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
+            (* TODO: what is this supposed to return? *)
+            (dim_ref', heap'')
+        (* No dims means nothing to drop *)
+        | None -> (vec_ref', heap')
+        end
+    | Some _ -> failwith "DropDims: Data not a vector!"
+    | None -> failwith "DropDims: Data vector not found!"
+
 (*
 (* Given n, make a1, a2, ..., an *)
 let make_index_names: S.rstring -> int -> S.rstring array =
