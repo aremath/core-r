@@ -150,6 +150,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
 and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     function
     | R.EmptyArg            -> L.Arg (L.Const L.Nil)
+    | R.ExprArg (Ident { name = "..." }) -> L.VarArg
     | R.ExprArg e           -> let c_expr = convert_expr e in
                                 L.Arg c_expr
     | R.IdentAssignEmpty i  -> failwith "Empty Assign not part of Core R!" (* TODO: what the heck *)
@@ -162,7 +163,10 @@ and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
 
 and convert_param: 'a R.param -> ('a, 'b) L.param =
     function
-    | R.Param i             -> L.Param (convert_ident i)
+    | R.Param i             -> if i.R.name = "..." then
+                                 L.VarParam
+                               else
+                                 L.Param (convert_ident i)
     | R.DefaultParam (i, e) -> L.Default (convert_ident i, convert_expr e)
     | R.ParamDots           -> L.VarParam
 
