@@ -13,24 +13,35 @@ let native_id_of_string : string -> ident =
 
 
 (* Array subsetting *)
-let native_array_sub_id: ident = native_id_of_string "array.sub"
+let native_vector_subscript_id: ident = native_id_of_string "vector.subscript"
 
-let nw_fun_arr_sub : (param list) * expr =
-  ([Param (id_of_string "array"); Param (id_of_string "sub")],
+let nw_fun_vec_subscript : (param list) * expr =
+  ([Param (id_of_string "vector"); Param (id_of_string "sub")],
    NativeLambdaApp
-     (native_array_sub_id,
-      [id_of_string "array"; id_of_string "sub"]))
+     (native_vector_subscript_id,
+      [id_of_string "vector"; id_of_string "sub"]))
+
+let native_vector_subset_id : ident = native_id_of_string "vector.subset"
+
+let nw_fun_vec_subset : (param list) * expr =
+  ([Param (id_of_string "vector"); VarParam],
+   NativeLambdaApp
+     (native_vector_subset_id,
+      [id_of_string "vector"; id_variadic]))
 
 (* Array making *)
-let native_array_make_id : ident = native_id_of_string "array.make"
+let native_vector_make_id : ident = native_id_of_string "vector.make"
 
-let nw_fun_arr_make : (param list) * expr =
+let nw_fun_vec_make : (param list) * expr =
   ([VarParam],
    NativeLambdaApp
-    (native_array_make_id,
+    (native_vector_make_id,
      [id_variadic]))
 
 let native_injection_pairs : (ident * (param list * expr)) list =
-  [ (native_array_sub_id, nw_fun_arr_sub);
-    (native_array_make_id, nw_fun_arr_make) ]
+  [
+    (native_vector_subscript_id, nw_fun_vec_subscript);
+    (native_vector_subset_id, nw_fun_vec_subset);
+    (native_vector_make_id, nw_fun_vec_make);
+  ]
 
