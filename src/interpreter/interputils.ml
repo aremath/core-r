@@ -282,3 +282,9 @@ let string_of_passresult_list : passresult list -> string =
       string_of_list_newline mods
 
 
+let string_of_passresult_list_first_complete : passresult list -> string =
+  fun passes ->
+    match filter (fun (c, e, i) -> length c > 0) passes with
+    | [] -> "No completes yet"
+    | (p :: _) -> string_of_passresult p
+
