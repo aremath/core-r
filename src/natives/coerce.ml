@@ -53,6 +53,8 @@ let get_single_rint: S.memref -> S.heap -> S.rint =
         () in
     a.(0)
 
+(* Type conversion *)
+
 (* For using ex. float_of_int to convert float option to int option *)
 let convert_opt: ('a -> 'b) -> 'a option -> 'b option =
     fun f ao ->

@@ -203,6 +203,18 @@ let drop_dims_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     | Some _ -> failwith "DropDims: Data not a vector!"
     | None -> failwith "DropDims: Data vector not found!"
 
+(* For use with ex. C.rvector_as_integer. Assumes that the conversion function
+ will correctly copy the vector (?) *)
+let convert_vector_mems: (S.rvector -> S.rvector) -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun convert_fun vec_ref heap ->
+    (* Dereference it *)
+    let rvec = C.dereference_rvector vec_ref heap in
+    (* Convert it *)
+    let convert = convert_fun rvec in
+    (* Allocate it *)
+    (* TODO: when does type conversion keep attributes? *)
+    S.heap_alloc (S.DataObj (S.Vec (convert), S.attrs_empty)) heap
+
 (*
 (* Given n, make a1, a2, ..., an *)
 let make_index_names: S.rstring -> int -> S.rstring array =

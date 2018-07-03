@@ -38,6 +38,7 @@ let bop_rvectors: (S.rint -> S.rint -> S.rint) ->
     | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (array_map2 fb l r)
     | _ -> failwith "Can't bop vectors with incompatible types"
 
+(* Addition *)
 let add_rint: S.rint -> S.rint -> S.rint = opt_bop (+)
 let add_rfloat: S.rfloat -> S.rfloat -> S.rfloat = opt_bop (+.)
 let add_rcomplex: S.rcomplex -> S.rcomplex -> S.rcomplex = opt_bop Complex.add
@@ -49,16 +50,70 @@ let rvector_add = bop_rvectors
     (fun _ _ -> failwith "Non-numeric addition")
     (fun _ _ -> failwith "Non-numeric addition")
 
-let mul_rint: S.rint -> S.rint -> S.rint = opt_bop ( * )
-let mul_rfloat: S.rfloat -> S.rfloat -> S.rfloat = opt_bop ( *. )
-let mul_rcomplex: S.rcomplex -> S.rcomplex -> S.rcomplex = opt_bop Complex.mul
+(* Multiplication *)
+let mul_rint = opt_bop ( * )
+let mul_rfloat = opt_bop ( *. )
+let mul_rcomplex = opt_bop Complex.mul
 
 let rvector_mul = bop_rvectors
     mul_rint
     mul_rfloat
     mul_rcomplex
-    (fun _ _ -> failwith "Non-numeric addition")
-    (fun _ _ -> failwith "Non-numeric addition")
+    (fun _ _ -> failwith "Non-numeric multiplication")
+    (fun _ _ -> failwith "Non-numeric multiplication")
+
+(* Division *)
+let div_rint = opt_bop ( / )
+let div_rfloat = opt_bop (/.)
+let div_rcomplex = opt_bop Complex.div
+
+let rvector_div = bop_rvectors
+    div_rint
+    div_rfloat
+    div_rcomplex
+    (fun _ _ -> failwith "Non-numeric division")
+    (fun _ _ -> failwith "Non-numeric division")
+
+(* Subtraction *)
+let sub_rint = opt_bop ( - )
+let sub_rfloat = opt_bop ( -. )
+let sub_rcomplex = opt_bop Complex.sub
+
+let rvector_sub = bop_rvectors
+    sub_rint
+    sub_rfloat
+    sub_rcomplex
+    (fun _ _ -> failwith "Non-numeric subtraction")
+    (fun _ _ -> failwith "Non-numeric subtraction")
+
+(* Modulus *)
+let mod_rint = opt_bop ( mod )
+let mod_rfloat = opt_bop ( mod_float )
+
+let rvector_mod = bop_rvectors
+    mod_rint
+    mod_rfloat
+    (fun _ _ -> failwith "No complex modulus")
+    (fun _ _ -> failwith "Non-numeric modulus")
+    (fun _ _ -> failwith "Non-numeric modulus")
+
+(* Exponentiation *)
+(* ocaml has no int exponentiation. This works, but is prone to overflow and
+ rounding errors *)
+let exp_rint = opt_bop (fun i1 i2 -> let f1 = float_of_int i1 in
+    let f2 = float_of_int i2 in
+    int_of_float (f1 ** f2))
+let exp_rfloat = opt_bop ( ** )
+let exp_rcomplex = opt_bop Complex.pow
+
+let rvector_exp = bop_rvectors
+    exp_rint
+    exp_rfloat
+    exp_rcomplex
+    (fun _ _ -> failwith "Non-numeric exponentiation")
+    (fun _ _ -> failwith "Non-numeric exponentiation")
+
+(* TODO Comparison *)
 
 (* The old way:
 (* Combine two rvectors of the same length through addition *)
