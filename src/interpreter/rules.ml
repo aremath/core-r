@@ -278,8 +278,11 @@ let rule_LambdaAbs : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
-      let func = DataObj (FuncVal (params, expr, c_env_mem), attrs_empty) in
-      let (mem, heap2) = heap_alloc func state.heap in
+      let f_env = { env_empty with pred_mem = c_env_mem } in
+      let f_env_obj = DataObj (EnvVal f_env, attrs_empty) in
+      let (f_env_mem, heap2) = heap_alloc f_env_obj state.heap in
+      let func = DataObj (FuncVal (params, expr, f_env_mem), attrs_empty) in
+      let (mem, heap2) = heap_alloc func heap2 in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
                         slot = ReturnSlot mem} in

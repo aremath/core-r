@@ -224,7 +224,6 @@ let id_variadic : ident =
   id_of_string "..."
 
 
-
 (* Attributes *)
 let attrs_empty : attributes =
   { rstr_map = Hashtbl.create 20 } (* TODO: what is the expected size? *)

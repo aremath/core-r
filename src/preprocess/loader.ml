@@ -177,21 +177,26 @@ let raw_inits_of_file : string -> string -> stack * heap * memref =
       | ((_, mem) :: _) -> (stack_push_list frames stack_empty, heap2, mem)
       | [] -> failwith "raw_inits_of_file: somehow failed to initialize envs"
 
-let make_native_binds : memref -> (ident * heapobj) list =
-  fun glbl_env_mem ->
-    map (fun (id, (params, body)) ->
-          (id, DataObj (FuncVal (params, body, glbl_env_mem), attrs_empty)))
-        native_injection_pairs
+let make_native_binds : memref -> heap -> (ident * heapobj) list * heap =
+  fun glbl_env_mem heap ->
+    fold_left
+      (fun (accs, hp) (id, (params, body)) ->
+        let f_env = { env_empty with pred_mem = glbl_env_mem } in
+        let f_env_obj = DataObj (EnvVal f_env, attrs_empty) in
+        let (f_env_mem, hp2) = heap_alloc f_env_obj hp in
+        let f_obj = DataObj (FuncVal (params, body, f_env_mem), attrs_empty) in
+          (accs @ [(id, f_obj)], hp2))
+      ([], heap) native_injection_pairs
 
 let raw_init_state : string -> string -> state =
   fun dir file ->
     let (stack, heap, glbl_env_mem) = raw_inits_of_file dir file in
-    let native_binds = make_native_binds glbl_env_mem in
-      match env_mem_bind_list native_binds glbl_env_mem heap with
-      | Some heap2 ->
+    let (native_binds, heap2) = make_native_binds glbl_env_mem heap in
+      match env_mem_bind_list native_binds glbl_env_mem heap2 with
+      | Some heap3 ->
           { state_default with
               stack = stack;
-              heap = heap2;
+              heap = heap3;
               global_env_mem = glbl_env_mem }
       | None ->
           failwith "raw_init_state: could not inject native binds"
