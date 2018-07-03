@@ -23,10 +23,12 @@ let uop_to_ident: R.unop -> 'a L.ident =
               L.name = Some (R.string_of_unop u);
               L.tag = None}
 
-let bop_to_ident: R.binop -> 'a L.ident =
-    fun b -> {L.pkg = Some N.native_rstring;
-              L.name = Some (R.string_of_binop b);
-              L.tag = None}
+let bop_to_ident : R.binop -> 'a L.ident =
+  fun b ->
+    match b with
+    | Plus -> native_vector_add_id
+    | Mult -> native_vector_mult_id
+    | _ -> native_id_of_string (R.string_of_binop b)
 
 let convert_ident: 'a R.ident -> 'a L.ident =
     fun i -> match i.R.pkg with
