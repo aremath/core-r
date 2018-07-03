@@ -6,6 +6,13 @@ open Engine
 open String
 open List
 
+let rec range : int -> int -> int list =
+  fun low high ->
+    if low > high then
+      []
+    else
+      low :: range (low + 1) high
+
 let rec repeat : string -> int -> string =
   fun str n ->
     if n <= 0 then
@@ -276,9 +283,12 @@ let string_of_passresult : passresult -> string =
 let string_of_passresult_list : passresult list -> string =
   fun passes ->
     let strs = (map string_of_passresult passes) in
-    let mods = map (fun s -> repeat "####" 10 ^
-                             "\n" ^ s ^ "\n" ^
-                             repeat "^^^^" 10) strs in
+    let mods = map (fun (s, i) ->
+                       "(" ^ string_of_int i ^ ") " ^
+                       repeat "####" 10 ^
+                       "\n" ^ s ^ "\n" ^
+                       repeat "^^^^" 10)
+                   (combine strs (range 1 (length strs))) in
       string_of_list_newline mods
 
 

@@ -148,7 +148,8 @@ let match_lambda_app :
       let nameds2 = map (fun (i, m) -> (i, OptA m)) nameds in
       let unuseds = remove_used_params params (map pair_first nameds) in
       (match match_mems unuseds regs with
-      | Some (posits, vards) -> Some (nameds2 @ posits, vards)
+      | Some (posits, vards) ->
+          Some (nameds2 @ posits, vards)
       | _ -> None)
     | _ -> None
 
