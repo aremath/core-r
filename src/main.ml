@@ -24,11 +24,11 @@ let main () =
 
   let ress = run_n_hist n [([], [], init)] init in
 
-  print_endline (string_of_passresult_list ress);
-
   (*
-  print_endline (string_of_passresult_list_first_complete ress);
+  print_endline (string_of_passresult_list ress);
   *)
+
+  print_endline (string_of_passresult_list_first_complete ress);
 
   print_endline "done!";
   ;;
