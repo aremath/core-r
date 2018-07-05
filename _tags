@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0e05803fd6b8ac8d405b97d1b32b10b9)
-# Ignore VCS directories, you can use the same kind of rule outside 
-# OASIS_START/STOP if you want to exclude directories that contains 
+# DO NOT EDIT (digest: 2cb3ee45de5638abb76f4f0b71b47f49)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
+true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -19,29 +20,30 @@
 "src/parser/parser.cmxs": use_parser
 # Executable absyn_generator
 "src/parser/absyn_generator.byte": use_parser
-<src/parser/*.ml{,i}>: use_parser
+<src/parser/*.ml{,i,y}>: use_parser
 # Library natives
 "src/natives/natives.cmxs": use_natives
-<src/natives/*.ml{,i}>: use_language
+<src/natives/*.ml{,i,y}>: use_language
 # Library interpreter
 "src/interpreter/interpreter.cmxs": use_interpreter
-<src/interpreter/*.ml{,i}>: use_natives
-<src/interpreter/*.ml{,i}>: use_language
+<src/interpreter/*.ml{,i,y}>: use_language
+<src/interpreter/*.ml{,i,y}>: use_natives
 # Library loader
 "src/preprocess/loader.cmxs": use_loader
-<src/preprocess/*.ml{,i}>: use_natives
-<src/preprocess/*.ml{,i}>: use_language
-<src/preprocess/*.ml{,i}>: use_parser
+<src/preprocess/*.ml{,i,y}>: use_language
+<src/preprocess/*.ml{,i,y}>: use_natives
+<src/preprocess/*.ml{,i,y}>: use_parser
 # Executable main
-"src/main.byte": use_loader
 "src/main.byte": use_interpreter
-"src/main.byte": use_natives
 "src/main.byte": use_language
+"src/main.byte": use_loader
+"src/main.byte": use_natives
 "src/main.byte": use_parser
-<src/*.ml{,i}>: use_loader
-<src/*.ml{,i}>: use_interpreter
-<src/*.ml{,i}>: use_natives
-<src/*.ml{,i}>: use_language
-<src/*.ml{,i}>: use_parser
+<src/*.ml{,i,y}>: use_interpreter
+<src/*.ml{,i,y}>: use_language
+<src/*.ml{,i,y}>: use_loader
+<src/*.ml{,i,y}>: use_natives
+<src/*.ml{,i,y}>: use_parser
 # OASIS_STOP
 true: use_menhir
+true: use_ounit

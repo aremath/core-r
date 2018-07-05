@@ -16,6 +16,7 @@ type rule =
   | ERuleLambdaAppArgsEval
   | ERuleLambdaAppArgsRet
   | ERuleLambdaAppEnter
+  | ERuleLambdaAppComplete
   | ERuleNativeLambdaApp
   | ERuleAssignIdEval
   | ERuleAssignStrEval
@@ -366,17 +367,32 @@ let rule_LambdaAppEnter : state -> state list =
             | Some (_, heap2) ->
               (match lift_param_binds binds f_env_mem heap2 with
               | Some (_, heap3) ->
-                let c_frame = { frame_default with
+                let e_frame = { frame_default with
                                   env_mem = f_env_mem;
                                   slot = EvalSlot body } in
+                let c_frame = { frame_default with
+                                  env_mem = c_env_mem;
+                                  slot = LambdaSlot (None, [], None, []) } in
                   [{ state with
                        heap = heap3;
-                       stack = stack_push c_frame c_stack2 }]
+                       stack = stack_push_list [e_frame; c_frame] c_stack2 }]
               | _ -> [])
             | _ -> [])
           | _ -> [])
         | _ -> [])
       | _ -> [])
+    | _ -> []
+
+let rule_LambdaAppComplete : state -> state list =
+  fun state ->
+    match stack_pop_v2 state.stack with
+    | Some (ReturnSlot mem, _,
+            LambdaSlot (None, [], None, []), c_env_mem, c_stack2) ->
+      let c_frame = { frame_default with
+                        env_mem = c_env_mem;
+                        slot = ReturnSlot mem } in
+        [{ state with
+             stack = stack_push c_frame c_stack2 }]
     | _ -> []
 
 
@@ -603,6 +619,7 @@ let rule_table : (rule * (state -> state list)) list =
     (ERuleLambdaAppArgsEval, rule_LambdaAppArgsEval);
     (ERuleLambdaAppArgsRet, rule_LambdaAppArgsRet);
     (ERuleLambdaAppEnter, rule_LambdaAppEnter);
+    (ERuleLambdaAppComplete, rule_LambdaAppComplete);
     (ERuleNativeLambdaApp, rule_NativeLambdaApp);
     (ERuleAssignIdEval, rule_AssignIdEval);
     (ERuleAssignStrEval, rule_AssignStrEval);

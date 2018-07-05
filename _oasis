@@ -5,7 +5,7 @@ Authors: Ross Mawhorter and Anton Xue
 License: LGPL with OCaml linking exception
 Description: R programming language analysis framework.
 OASISFormat: 0.3
-BuildTools: ocamlbuild
+BuildTools: ocamlbuild, ocamlfind
 Plugins: META (0.4), DevFiles (0.4)
 
 Executable "main"
@@ -38,7 +38,17 @@ Library "natives"
 
 Library "loader"
   Path: src/preprocess
-  Modules: Loader, Rast_to_language, Injections
   Modules: Loader, Rast_to_language
   BuildDepends: language, parser, natives
+
+# Executable "testytesty"
+#   Path: test
+#   MainIs: test.ml
+#   BuildDepends: main, interpreter, language, parser, absyn_generator,
+#                 natives, loader, oUnit
+
+# Test "testytesty"
+#   TestTools: testytesty
+#   Command: $testytesty
+#   WorkingDirectory: test
 

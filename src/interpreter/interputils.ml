@@ -235,6 +235,7 @@ let string_of_rule : rule -> string =
     | ERuleLambdaAppArgsEval -> "LambdaAppArgsEval"
     | ERuleLambdaAppArgsRet -> "LambdaAppArgsRet"
     | ERuleLambdaAppEnter -> "LambdaAppEnter"
+    | ERuleLambdaAppComplete -> "LambdaAppComplete"
     | ERuleNativeLambdaApp -> "NativeLambdaApp"
     | ERuleAssignIdEval -> "AssignIdEval"
     | ERuleAssignStrEval -> "AssignStrEval"

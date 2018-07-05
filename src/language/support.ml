@@ -125,6 +125,19 @@ type state =
     unique : int }
 
 
+(* Logical path constraints *)
+type atom = unit
+
+type formula =
+    Atom of atom
+  | Neg of formula
+  | And of formula * formula
+  | Or of formula * formula
+
+type pathcons =
+  { formula_list : formula list }
+
+
 (* Utility functions *)
 
 let state_unique : int ref = ref 32
