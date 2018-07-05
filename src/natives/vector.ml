@@ -13,6 +13,7 @@ let rvec_length: S.rvector -> int =
 (* Returns a memref because of ex.
     y = (dim(x) <- c(1,5))  # y = [1, 5]
     TODO: do we need to copy dim_ref' again so that y here doesn't point directly to x's dims?
+    I think it might be fine since there's no way to edit x's dims directly (anything will make a copy)
 *)
 let set_dims_mem: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     fun data_ref dim_ref heap ->
