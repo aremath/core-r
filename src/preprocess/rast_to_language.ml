@@ -23,11 +23,38 @@ let uop_to_ident: R.unop -> 'a L.ident =
               L.name = Some (R.string_of_unop u);
               L.tag = None}
 
+(* TODO: others? *)
 let bop_to_ident : R.binop -> 'a L.ident =
   fun b ->
     match b with
     | Plus -> native_vector_add_id
     | Mult -> native_vector_mul_id
+    | Div -> native_vector_div_id
+    | Minus -> native_vector_sub_id
+    | Mod -> native_vector_mod_id
+    | Pow -> native_vector_exp_id
+    (*
+    | IntDiv
+    | MatrixMult
+    | OuterProd
+    | KronProd
+    | Match
+    *)
+    | Gt -> native_vector_gt_id
+    | Ge -> native_vector_geq_id
+    | Lt -> native_vector_lt_id
+    | Le -> native_vector_leq_id
+    | Eq -> native_vector_eq_id
+    | Neq -> native_vector_neq_id
+    | AndVec -> native_vector_andvec_id
+    | And -> native_vector_and_id
+    | OrVec -> native_vector_orvec_id
+    | Or -> native_vector_or_id
+    (*
+    | Form
+    | Help
+    | ObjAttr
+    *)
     | _ -> native_id_of_string (R.string_of_binop b)
 
 let convert_ident: 'a R.ident -> 'a L.ident =

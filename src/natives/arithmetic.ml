@@ -253,15 +253,15 @@ let rboolize: (bool -> bool -> bool) -> (int -> int -> int) =
 
 (* & - vectorized and *)
 (* Does not do coercion for now *)
-let and_failure = (fun _ _ -> failwith "Non-boolean &")
+let andvec_failure = (fun _ _ -> failwith "Non-boolean &")
 
-let and_rint = and_failure
-let and_rfloat = and_failure
-let and_rcomplex = and_failure
-let and_rstr = and_failure
+let and_rint = andvec_failure
+let and_rfloat = andvec_failure
+let and_rcomplex = andvec_failure
+let and_rstr = andvec_failure
 let and_rbool = opt_bop (rboolize (&&))
 
-let rvector_and = cmp_rvectors
+let rvector_andvec = cmp_rvectors
     and_rint
     and_rfloat
     and_rcomplex
@@ -269,7 +269,7 @@ let rvector_and = cmp_rvectors
     and_rbool
 
 (* && - non-vectorized only compares first two elements *)
-let and2_failure = (fun _ -> failwith "Non-boolean &&")
+let and_failure = (fun _ -> failwith "Non-boolean &&")
 
 (* *)
 let bool_op_rvectors: (S.rbool -> S.rbool -> S.rbool) -> 
@@ -287,18 +287,18 @@ let bool_op_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
         S.BoolVec v
     | _ -> failwith "Can't bop vectors with incompatible types"
 
-let rvector_and2 = bool_op_rvectors (opt_bop (rboolize (&&))) and2_failure
+let rvector_and = bool_op_rvectors (opt_bop (rboolize (&&))) and_failure
 
 (* | - vectorized or *)
-let or_failure = (fun _ _ -> failwith "Non-boolean |")
+let orvec_failure = (fun _ _ -> failwith "Non-boolean |")
 
-let or_rint = or_failure
-let or_rfloat = or_failure
-let or_rcomplex = or_failure
-let or_rstr = or_failure
+let or_rint = orvec_failure
+let or_rfloat = orvec_failure
+let or_rcomplex = orvec_failure
+let or_rstr = orvec_failure
 let or_rbool = opt_bop (rboolize (||))
 
-let rvector_or = cmp_rvectors
+let rvector_orvec = cmp_rvectors
     or_rint
     or_rfloat
     or_rcomplex
@@ -306,9 +306,9 @@ let rvector_or = cmp_rvectors
     or_rbool
 
 (* || - non-vectorized only compares the first two elements *)
-let or2_failure = (fun _ -> failwith "Non-boolean ||")
+let or_failure = (fun _ -> failwith "Non-boolean ||")
 
-let rvector_or2 = bool_op_rvectors (opt_bop (rboolize (||))) or2_failure
+let rvector_or = bool_op_rvectors (opt_bop (rboolize (||))) or_failure
 
 (* xor *)
 (* For some reason it seems like R only has vectorized xor *)
