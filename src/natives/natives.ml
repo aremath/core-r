@@ -47,7 +47,6 @@ let vec_binop: ident -> param list * expr =
         [id_of_string "vector1"; id_of_string "vector2"]))
 
 let native_vector_add_id : ident = native_id_of_string "vector.add"
-<<<<<<< HEAD
 let nw_fun_vec_add: param list * expr =
     vec_binop (native_vector_add_id)
 
@@ -100,50 +99,6 @@ let nw_fun_vec_or = vec_binop (native_vector_or_id)
 
 let native_vector_xor_id = native_id_of_string "vector.xor"
 let nw_fun_vec_xor = vec_binop (native_vector_xor_id)
-=======
-let nw_fun_vec_add : (param list) * expr =
-  ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
-   NativeLambdaApp
-     (native_vector_add_id,
-      [id_of_string "vector1"; id_of_string "vector2"]))
-
-let native_vector_mul_id: ident = native_id_of_string "vector.mul"
-let nw_fun_vec_mul : (param list) * expr =
-  ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
-   NativeLambdaApp
-     (native_vector_mul_id,
-      [id_of_string "vector1"; id_of_string "vector2"]))
-
-let native_vector_sub_id: ident = native_id_of_string "vector.sub"
-let nw_fun_vec_sub : (param list) * expr =
-  ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
-   NativeLambdaApp
-     (native_vector_sub_id,
-      [id_of_string "vector1"; id_of_string "vector2"]))
-
-let native_vector_div_id: ident = native_id_of_string "vector.div"
-let nw_fun_vec_div : (param list) * expr =
-  ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
-   NativeLambdaApp
-     (native_vector_div_id,
-      [id_of_string "vector1"; id_of_string "vector2"]))
-
-let native_vector_mod_id: ident = native_id_of_string "vector.mod"
-let nw_fun_vec_mod : (param list) * expr =
-  ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
-   NativeLambdaApp
-     (native_vector_mod_id,
-      [id_of_string "vector1"; id_of_string "vector2"]))
-
-let native_vector_exp_id: ident = native_id_of_string "vector.exp"
-let nw_fun_vec_exp : (param list) * expr =
-  ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],
-   NativeLambdaApp
-     (native_vector_exp_id,
-      [id_of_string "vector1"; id_of_string "vector2"]))
-
-
->>>>>>> 5f999ff3847f45f4bae617919346b49ce65e9117
 
 (* Pairs to inject with *)
 let native_injection_pairs : (ident * (param list * expr)) list =
