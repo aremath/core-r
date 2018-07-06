@@ -4,7 +4,7 @@ Synopsis: A library for analyzing the R programming language.
 Authors: Ross Mawhorter and Anton Xue
 License: LGPL with OCaml linking exception
 Description: R programming language analysis framework.
-OASISFormat: 0.4
+OASISFormat: 0.3
 BuildTools: ocamlbuild, ocamlfind
 Plugins: META (0.4), DevFiles (0.4)
 
