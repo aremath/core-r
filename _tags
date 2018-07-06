@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 2cb3ee45de5638abb76f4f0b71b47f49)
+# DO NOT EDIT (digest: 98f495c501093aa05c8595ec0202cf8e)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -44,6 +44,23 @@ true: annot, bin_annot
 <src/*.ml{,i,y}>: use_loader
 <src/*.ml{,i,y}>: use_natives
 <src/*.ml{,i,y}>: use_parser
+# Library ounit
+"test/ounit/ounit.cmxs": use_ounit
+<test/ounit/*.ml{,i,y}>: pkg_unix
+# Executable testytesty
+"test/test.byte": pkg_unix
+"test/test.byte": use_interpreter
+"test/test.byte": use_language
+"test/test.byte": use_loader
+"test/test.byte": use_natives
+"test/test.byte": use_ounit
+"test/test.byte": use_parser
+<test/*.ml{,i,y}>: pkg_unix
+<test/*.ml{,i,y}>: use_interpreter
+<test/*.ml{,i,y}>: use_language
+<test/*.ml{,i,y}>: use_loader
+<test/*.ml{,i,y}>: use_natives
+<test/*.ml{,i,y}>: use_ounit
+<test/*.ml{,i,y}>: use_parser
 # OASIS_STOP
 true: use_menhir
-true: use_ounit

@@ -4,7 +4,7 @@ Synopsis: A library for analyzing the R programming language.
 Authors: Ross Mawhorter and Anton Xue
 License: LGPL with OCaml linking exception
 Description: R programming language analysis framework.
-OASISFormat: 0.3
+OASISFormat: 0.4
 BuildTools: ocamlbuild, ocamlfind
 Plugins: META (0.4), DevFiles (0.4)
 
@@ -33,7 +33,8 @@ Executable "absyn_generator"
 
 Library "natives"
   Path: src/natives
-  Modules: Natives, Constants, Copy, Vector, Coerce, Subscript, Native_calls, Arithmetic
+  Modules: Natives, Constants, Copy, Vector, Coerce, Subscript,
+           Native_calls, Arithmetic
   BuildDepends: language
 
 Library "loader"
@@ -41,14 +42,18 @@ Library "loader"
   Modules: Loader, Rast_to_language
   BuildDepends: language, parser, natives
 
-# Executable "testytesty"
-#   Path: test
-#   MainIs: test.ml
-#   BuildDepends: main, interpreter, language, parser, absyn_generator,
-#                 natives, loader, oUnit
+Library "ounit"
+  Path: test/ounit
+  Modules: OUnit, OUnitTypes, OUnitUtils, OUnitLogger, OUnitChooser
+  BuildDepends: unix
 
-# Test "testytesty"
-#   TestTools: testytesty
-#   Command: $testytesty
-#   WorkingDirectory: test
+Executable "testytesty"
+  Path: test
+  MainIs: test.ml
+  BuildDepends: interpreter, language, parser, natives, loader, ounit
+
+Test "testytesty"
+  TestTools: testytesty
+  Command: $testytesty
+  WorkingDirectory: test
 
