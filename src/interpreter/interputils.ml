@@ -111,3 +111,12 @@ let string_of_passresult_list_first_complete : passresult list -> string =
     | (p :: _) -> string_of_passresult p
 
 
+let string_of_value_attr_opt_pair : (value * attributes) option -> string =
+  fun res -> match res with
+    | None -> "No result yet, run for higher values of n"
+    | Some (v, a) ->
+        "value: " ^ string_of_value v ^ "\n" ^
+        "attrs: " ^ string_of_attributes a ^ ""
+
+
+

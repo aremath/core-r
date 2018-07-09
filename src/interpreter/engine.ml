@@ -75,15 +75,6 @@ let run_pass : (rule list * state) list -> passresult =
                 (csts @ c, e, ncsts @ i))
         (comps, [], []) incomps
 
-let rec do_n : int -> passresult -> passresult =
-  fun n (comps, errs, incomps) ->
-    if n <= 0 then
-      (comps, errs, incomps)
-    else
-      (print_endline ("hue");
-      let (comps2, errs2, incomps2) = run_pass incomps in
-        do_n (n - 1) (comps2 @ comps, errs2 @ errs, incomps @ incomps2));;
-
 let run_n : int -> state list -> passresult =
   fun n inits ->
     let raws = map (fun s -> ([], s)) inits in
@@ -93,7 +84,6 @@ let run_n : int -> state list -> passresult =
     let incomps = ref raws in
       begin
         while (!ticks >= 0) do
-          print_endline ("boo!");
           if List.length !incomps <= 0 then
             begin ticks := -1; end
           else
@@ -122,9 +112,14 @@ let run_n_hist : int -> state list -> passresult list =
     let raws = map (fun s -> ([], s)) inits in
       do_hist_n n [([], [], raws)] raws
 
+let get_first_completed_after_n :
+  int -> state list ->  (value * attributes) option =
+  fun n inits ->
+    let (comps, errs, incomps) = run_n n inits in
+    let results = map (fun (_, s) -> get_completed_result s) comps in
+      match results with
+      | (first_res :: _) -> first_res
+      | _ -> None
 
-(*
-let get_completed_after_n :
-  int -> passresult list -> (rule list * state) -> passresult list =
-*)
+
 
