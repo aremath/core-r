@@ -1,13 +1,17 @@
-Proto:0:foo1 start
+Simple:0:assign.R start
 ok
-Proto:0:foo1 end
-Proto:1:foo2 start
-FAIL
-Proto:1:foo2 end
-==============================================================================
-Failure: Proto:1:foo2
-
-OUnit: not equalMAYBE_BACKTRACE
-------------------------------------------------------------------------------
-Ran: 2 tests in: 0.00 seconds.
-FAILED: Cases: 2 Tried: 2 Errors: 0 Failures: 1 Skip:0 Todo:0
+Simple:0:assign.R end
+Simple:1:dots.R start
+ok
+Simple:1:dots.R end
+Simple:2:gt.R start
+ok
+Simple:2:gt.R end
+Simple:3:arithmetics.R start
+ok
+Simple:3:arithmetics.R end
+Simple:4:vecs.R start
+ok
+Simple:4:vecs.R end
+Ran: 5 tests in: 0.00 seconds.
+OK

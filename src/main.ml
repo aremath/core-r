@@ -26,13 +26,13 @@ let main () =
   print_endline (string_of_passresult_list ress);
   *)
 
-  (*
   let res = run_n n [state] in
   print_endline (string_of_passresult res);
-  *)
 
+  (*
   let res = get_first_completed_after_n n [state] in
   print_endline (string_of_value_attr_opt_pair res);
+  *)
 
 
   print_endline "SimpleR: done!";

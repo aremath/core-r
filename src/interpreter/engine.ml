@@ -3,6 +3,8 @@ open Syntax
 open Support
 open Rules
 open Native_calls
+open Loader
+
 open List
 
 type redresult =
@@ -20,7 +22,7 @@ let step_rule : state -> redresult =
         | ((r, ss) :: []) -> ReductionOkay (r, ss)
         | toomuch -> MultipleRulesMatch toomuch
 
-let get_completed_result : state -> (value * attributes) option =
+let get_state_result : state -> (value * attributes) option =
   fun state ->
     match (stack_pop_v state.stack, stack_pop_v2 state.stack) with
     | (Some (ReturnSlot mem, _, _), None) ->
@@ -31,7 +33,7 @@ let get_completed_result : state -> (value * attributes) option =
 
 let is_state_complete : state -> bool =
   fun state ->
-    match get_completed_result state with
+    match get_state_result state with
     | Some _ -> true
     | None -> false
 
@@ -75,6 +77,8 @@ let run_pass : (rule list * state) list -> passresult =
                 (csts @ c, e, ncsts @ i))
         (comps, [], []) incomps
 
+(* Different versions of run functions for debugging, etc *)
+
 let run_n : int -> state list -> passresult =
   fun n inits ->
     let raws = map (fun s -> ([], s)) inits in
@@ -83,7 +87,7 @@ let run_n : int -> state list -> passresult =
     let errs = ref [] in
     let incomps = ref raws in
       begin
-        while (!ticks >= 0) do
+        while (!ticks > 0) do
           if List.length !incomps <= 0 then
             begin ticks := -1; end
           else
@@ -98,28 +102,45 @@ let run_n : int -> state list -> passresult =
         (!comps, !errs, !incomps)
       end
 
-let rec do_hist_n :
-  int -> passresult list -> (rule list * state) list -> passresult list =
-  fun n hist todos ->
-    if (n <= 0) || (List.length todos = 0) then
-      hist @ [([], [], todos)]
-    else
-      let (comps2, errs2, incomps2) = run_pass todos in
-            do_hist_n (n - 1) (hist @ [(comps2, errs2, incomps2)]) incomps2
-
 let run_n_hist : int -> state list -> passresult list =
   fun n inits ->
     let raws = map (fun s -> ([], s)) inits in
-      do_hist_n n [([], [], raws)] raws
+    let ticks = ref n in
+    let hist = ref [([], [], raws)] in
+    let incomps = ref raws in
+      begin
+        while (!ticks > 0) do
+          if List.length !incomps <= 0 then
+            begin ticks := -1; end
+          else
+            begin
+              let (comps2, errs2, incomps2) = run_pass !incomps in
+              hist := !hist @ [(comps2, errs2, incomps2)];
+              incomps := incomps2;
+              ticks := !ticks - 1;
+            end
+        done;
+        !hist
+      end
 
-let get_first_completed_after_n :
+let run_n_first_result :
   int -> state list ->  (value * attributes) option =
   fun n inits ->
     let (comps, errs, incomps) = run_n n inits in
-    let results = map (fun (_, s) -> get_completed_result s) comps in
-      match results with
-      | (first_res :: _) -> first_res
+    let ress = map (fun (_, s) -> get_state_result s) comps in
+      match ress with
+      | (res :: ress_tail) ->
+          begin
+            let len = List.length ress_tail in
+            if (len > 0) then
+              print_endline ("omitting " ^ string_of_int len ^ " results");
+            res
+          end
       | _ -> None
 
+let load_run_n_first_result : string -> int -> (value * attributes) option =
+  fun file n ->
+    let state = load_file_guess file in
+      run_n_first_result n [state]
 
 

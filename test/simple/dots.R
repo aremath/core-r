@@ -18,7 +18,7 @@ huahua <- function(a, b, c) {
 
 foo(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
-huehue(1, 2, 3, 4, 5, 6)
+# huehue(1, 2, 3, 4, 5, 6)
 
 
 
