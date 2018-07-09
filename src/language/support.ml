@@ -76,6 +76,7 @@ type value =
   | FuncVal of param list * expr * memref
   | EnvVal of env
   | ListVal of (rstring * memref) list
+  | SymVal
 
 type attributes =
   { rstr_map : (rstring, memref) Hashtbl.t }
@@ -91,7 +92,8 @@ type slot =
   (* Used for eager stuff *)
   | AssignSlot of ident
   | SupAssignSlot of ident
-  | LambdaSlot of memref option * (arg * memref) list * arg option * arg list
+  | LambdaASlot of memref option * (arg * memref) list * arg option * arg list
+  | LambdaBSlot of memref
 
   (* Used for lazy evaluation *)
   | UpdateSlot of memref

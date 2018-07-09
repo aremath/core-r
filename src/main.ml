@@ -16,19 +16,19 @@ let main () =
   (* dumpTokens "/home/celery/Desktop/base/R/aperm.R"; *)
   (* parseFile "/home/celery/Desktop/base/R/aperm.R" *)
   let state = load_file_guess Sys.argv.(1) in
-  let n = if Array.length Sys.argv < 2 then
+  let n = if Array.length Sys.argv < 3 then
             default_steps
           else
             int_of_string Sys.argv.(2) in
-  let init = [([], state)] in
 
-  let ress = run_n_hist n [([], [], init)] init in
+  let ress = run_n_hist n [state] in
+  print_endline (string_of_passresult_list ress);
 
   (*
-  print_endline (string_of_passresult_list ress);
+  let res = run_n n [state] in
+  print_endline (string_of_passresult res);
   *)
 
-  print_endline (string_of_passresult_list_first_complete ress);
 
   print_endline "done!";
   ;;

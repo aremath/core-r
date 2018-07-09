@@ -5,34 +5,6 @@ open Support
 open Native_calls
 open Copy
 
-type rule =
-  | ERuleIdent
-  | ERuleMemRef
-  | ERuleConst
-  | ERuleSeq
-  | ERuleLambdaAbs
-  | ERuleLambdaAppEval
-  | ERuleLambdaAppFuncRet
-  | ERuleLambdaAppArgsEval
-  | ERuleLambdaAppArgsRet
-  | ERuleLambdaAppEnter
-  | ERuleLambdaAppComplete
-  | ERuleNativeLambdaApp
-  | ERuleAssignIdEval
-  | ERuleAssignStrEval
-  | ERuleAssignRet
-  | ERuleIfEval
-  | ERuleIfRet
-  | ERuleWhileEval
-  | ERuleWhileCondTrue
-  | ERuleWhileCondFalse
-  | ERuleWhileBodyDone
-  | ERuleBreak
-  | ERuleNext
-  | ERuleDiscard
-  | ERuleBlank
-
-
 let pair_first : 'a * 'b -> 'a =
   fun (a, b) -> a
 
@@ -303,7 +275,7 @@ let rule_LambdaAppEval : state -> state list =
                         slot = EvalSlot func } in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
-                        slot = LambdaSlot (None, [], None, args) } in
+                        slot = LambdaASlot (None, [], None, args) } in
         [{ state with
              stack = stack_push_list [f_frame; c_frame] c_stack2 }]
     | _ -> []
@@ -312,11 +284,11 @@ let rule_LambdaAppFuncRet : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
     | Some (ReturnSlot f_mem, _,
-            LambdaSlot (None, [], None, args), c_env_mem,
+            LambdaASlot (None, [], None, args), c_env_mem,
             c_stack2) ->
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = LambdaSlot (Some f_mem, [], None, args) } in
+                          slot = LambdaASlot (Some f_mem, [], None, args) } in
           [{ state with
                stack = stack_push c_frame c_stack2 }]
     | _ -> []
@@ -324,14 +296,14 @@ let rule_LambdaAppFuncRet : state -> state list =
 let rule_LambdaAppArgsEval : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
-    | Some (LambdaSlot (Some f_mem, da_mems, None, arg :: args_tl),
+    | Some (LambdaASlot (Some f_mem, da_mems, None, arg :: args_tl),
             c_env_mem, c_stack2) ->
       let a_frame = { frame_default with
                         env_mem = c_env_mem;
                         slot = EvalSlot (expr_of_arg arg) } in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
-                        slot = LambdaSlot (Some f_mem, da_mems,
+                        slot = LambdaASlot (Some f_mem, da_mems,
                                            Some arg, args_tl) } in
         [{ state with
              stack = stack_push_list [a_frame; c_frame] c_stack2 }]
@@ -341,12 +313,12 @@ let rule_LambdaAppArgsRet : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
     | Some (ReturnSlot a_mem, _,
-            LambdaSlot (Some f_mem, da_mem, Some arg, args), c_env_mem,
+            LambdaASlot (Some f_mem, da_mem, Some arg, args), c_env_mem,
             c_stack2) ->
       let da_mems2 = da_mem @ [(arg, a_mem)] in
       let c_frame = { frame_default with
                   env_mem = c_env_mem;
-                  slot = LambdaSlot (Some f_mem, da_mems2, None, args) } in
+                  slot = LambdaASlot (Some f_mem, da_mems2, None, args) } in
         [{ state with
              stack = stack_push c_frame c_stack2 }]
 
@@ -355,7 +327,7 @@ let rule_LambdaAppArgsRet : state -> state list =
 let rule_LambdaAppEnter : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
-    | Some (LambdaSlot (Some f_mem, da_mems, None, []),
+    | Some (LambdaASlot (Some f_mem, da_mems, None, []),
             c_env_mem, c_stack2) ->
       (match heap_find c_env_mem state.heap with
       | Some (DataObj (EnvVal env, _)) ->
@@ -372,7 +344,7 @@ let rule_LambdaAppEnter : state -> state list =
                                   slot = EvalSlot body } in
                 let c_frame = { frame_default with
                                   env_mem = c_env_mem;
-                                  slot = LambdaSlot (None, [], None, []) } in
+                                  slot = LambdaBSlot f_mem } in
                   [{ state with
                        heap = heap3;
                        stack = stack_push_list [e_frame; c_frame] c_stack2 }]
@@ -387,7 +359,7 @@ let rule_LambdaAppComplete : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
     | Some (ReturnSlot mem, _,
-            LambdaSlot (None, [], None, []), c_env_mem, c_stack2) ->
+            LambdaBSlot _, c_env_mem, c_stack2) ->
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
                         slot = ReturnSlot mem } in
@@ -606,6 +578,33 @@ let rule_Blank : state -> state list =
   fun state -> []
 
 (***********************)
+
+type rule =
+  | ERuleIdent
+  | ERuleMemRef
+  | ERuleConst
+  | ERuleSeq
+  | ERuleLambdaAbs
+  | ERuleLambdaAppEval
+  | ERuleLambdaAppFuncRet
+  | ERuleLambdaAppArgsEval
+  | ERuleLambdaAppArgsRet
+  | ERuleLambdaAppEnter
+  | ERuleLambdaAppComplete
+  | ERuleNativeLambdaApp
+  | ERuleAssignIdEval
+  | ERuleAssignStrEval
+  | ERuleAssignRet
+  | ERuleIfEval
+  | ERuleIfRet
+  | ERuleWhileEval
+  | ERuleWhileCondTrue
+  | ERuleWhileCondFalse
+  | ERuleWhileBodyDone
+  | ERuleBreak
+  | ERuleNext
+  | ERuleDiscard
+  | ERuleBlank
 
 
 let rule_table : (rule * (state -> state list)) list =
