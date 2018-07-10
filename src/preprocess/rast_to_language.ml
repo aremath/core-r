@@ -166,18 +166,18 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     (* | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2) *)
     (* TODO: check this *)
     | R.For ((i, e1), e2)   ->
-        (* tmp  holds the INDEX in the vector we're iterating over *)
-        let tmp = fresh_rident () in
-        let init = R.Bop (R.Assign, R.Ident tmp, R.NumericConst (R.Int 1)) in
-        (* tmp2 holds the LENGTH of the vector we're iterating over *)
-        let tmp2 = fresh_rident () in
-        let init2 = L.Assign (L.Ident (convert_ident tmp2),
+        (* tmp_index  holds the INDEX in the vector we're iterating over *)
+        let tmp_index = fresh_rident () in
+        let init = R.Bop (R.Assign, R.Ident tmp_index, R.NumericConst (R.Int 1)) in
+        (* tmp_length holds the LENGTH of the vector we're iterating over *)
+        let tmp_length = fresh_rident () in
+        let init2 = L.Assign (L.Ident (convert_ident tmp_length),
             L.LambdaApp(L.Ident native_vector_length_id, [L.Arg (convert_expr e1)])) in
         (* Use Le since the vector is 1-indexed in the R code *)
-        let cond = R.Bop (R.Le, R.Ident tmp, R.Ident tmp2) in
+        let cond = R.Bop (R.Le, R.Ident tmp_index, R.Ident tmp_length) in
         let access = R.Bop (R.Assign, R.Ident i,
-            R.ListProj(e1, [R.ExprArg (R.Ident tmp)])) in
-        let incr = R.Bop (R.Assign, R.Ident tmp, R.Bop (R.Plus, R.Ident tmp, R.NumericConst (R.Int 1))) in
+            R.ListProj(e1, [R.ExprArg (R.Ident tmp_index)])) in
+        let incr = R.Bop (R.Assign, R.Ident tmp_index, R.Bop (R.Plus, R.Ident tmp_index, R.NumericConst (R.Int 1))) in
         let block = begin match e2 with
         | R.Block es        -> R.Block ([access; incr] @ es)
         | e                 -> R.Block [access; incr; e]
