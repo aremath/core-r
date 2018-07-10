@@ -174,7 +174,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
         let init2 = L.Assign (L.Ident (convert_ident tmp2),
             L.LambdaApp(L.Ident native_vector_length_id, [L.Arg (convert_expr e1)])) in
         (* Use Le since the vector is 1-indexed in the R code *)
-        let cond = R.Bop (R.Le, R.Ident i, R.Ident tmp2) in
+        let cond = R.Bop (R.Le, R.Ident tmp, R.Ident tmp2) in
         let access = R.Bop (R.Assign, R.Ident i,
             R.ListProj(e1, [R.ExprArg (R.Ident tmp)])) in
         let incr = R.Bop (R.Assign, R.Ident tmp, R.Bop (R.Plus, R.Ident tmp, R.NumericConst (R.Int 1))) in
