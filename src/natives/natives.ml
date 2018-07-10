@@ -37,7 +37,7 @@ let nw_fun_vec_make : (param list) * expr =
 
 (* Vector length *)
 let native_vector_length_id: ident = native_id_of_string "vector.length"
-let nw_fun_vec_make : (param list) * expr =
+let nw_fun_vec_length : (param list) * expr =
     ([Param (id_of_string "data")],
     NativeLambdaApp
         (native_vector_length_id,
@@ -114,6 +114,7 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_subscript_id, nw_fun_vec_subscript);
     (native_vector_subset_id, nw_fun_vec_subset);
     (native_vector_make_id, nw_fun_vec_make);
+    (native_vector_length_id, nw_fun_vec_length);
 
     (native_vector_add_id, nw_fun_vec_add);
     (native_vector_mul_id, nw_fun_vec_mul);
