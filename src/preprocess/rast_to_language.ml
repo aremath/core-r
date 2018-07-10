@@ -129,6 +129,10 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     | R.Bop (R.Assign, R.StringConst str, rhs) ->
                                 L.Assign (L.Const (L.Str (T.rstring_of_string str)),
                                           convert_expr rhs)
+    | R.Bop (R.Range, e1, e2) ->
+                              LambdaApp (L.Ident native_vector_colon_id,
+                                 map convert_arg [R.ExprArg e1; R.ExprArg e2])
+                                      
     | R.Bop (op, e1, e2)    -> let b_ident = bop_to_ident op in
                                 let c_e1 = convert_expr e1 in
                                 let c_e2 = convert_expr e2 in

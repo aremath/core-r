@@ -16,5 +16,8 @@ Simple:4:vecs.R end
 Simple:5:branching.R start
 ok
 Simple:5:branching.R end
-Ran: 6 tests in: 0.01 seconds.
+Simple:6:loops.R start
+ok
+Simple:6:loops.R end
+Ran: 7 tests in: 0.01 seconds.
 OK

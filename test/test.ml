@@ -46,7 +46,6 @@ let test_file : string -> int -> rvector -> unit -> unit =
                  " does not yield " ^ string_of_rvector vec)
                 (result_equals_rvector (load_run_n_first_result file n) vec)
 
-
 let test_test = "Proto" >:::
   [
     "foo1" >:: (fun _ -> assert_equal "x" "x");
@@ -80,6 +79,9 @@ let test_simple = "Simple" >:::
     "branching.R" >::
       test_file (test_simple_dir ^ "/branching.R") 100
                 (rint_vec_of_ints [201]);
+    "loops.R" >::
+      test_file (test_simple_dir ^ "/loops.R") 500
+                (rint_vec_of_ints [15]);
   ]
 
 let _ =

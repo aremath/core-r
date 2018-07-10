@@ -106,6 +106,18 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                    stack = stack_push c_frame state.stack }
       | _ -> None)
 
+    else if id = native_vector_colon_id then
+      (match arg_mems with
+      | (low_mem :: high_mem :: []) ->
+        let (mem2, heap2) = range_int_mems low_mem high_mem state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
+      | _ -> None)
+
     (* Vector binary operations *)
     else if id = native_vector_add_id then
        do_rvector_bop rvector_add arg_mems c_env_mem state
@@ -141,6 +153,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         do_rvector_bop rvector_or arg_mems c_env_mem state
     else if id = native_vector_xor_id then
         do_rvector_bop rvector_xor arg_mems c_env_mem state
+
     (* Oh no! *)
     else
       None

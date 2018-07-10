@@ -54,6 +54,10 @@ let vec_binop: ident -> param list * expr =
         (id,
         [id_of_string "vector1"; id_of_string "vector2"]))
 
+(* Colon *)
+let native_vector_colon_id = native_id_of_string "vector.colon"
+let nw_fun_vec_colon = vec_binop (native_vector_colon_id)
+
 let native_vector_add_id : ident = native_id_of_string "vector.add"
 let nw_fun_vec_add: param list * expr =
     vec_binop (native_vector_add_id)
@@ -108,6 +112,7 @@ let nw_fun_vec_or = vec_binop (native_vector_or_id)
 let native_vector_xor_id = native_id_of_string "vector.xor"
 let nw_fun_vec_xor = vec_binop (native_vector_xor_id)
 
+
 (* Pairs to inject with *)
 let native_injection_pairs : (ident * (param list * expr)) list =
   [
@@ -115,6 +120,7 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_subset_id, nw_fun_vec_subset);
     (native_vector_make_id, nw_fun_vec_make);
     (native_vector_length_id, nw_fun_vec_length);
+    (native_vector_colon_id, nw_fun_vec_colon);
 
     (native_vector_add_id, nw_fun_vec_add);
     (native_vector_mul_id, nw_fun_vec_mul);
@@ -132,6 +138,6 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_and_id, nw_fun_vec_and);
     (native_vector_orvec_id, nw_fun_vec_orvec);
     (native_vector_or_id, nw_fun_vec_or);
-    (native_vector_xor_id, nw_fun_vec_xor)
+    (native_vector_xor_id, nw_fun_vec_xor);
   ]
 
