@@ -111,6 +111,7 @@ and string_of_expr : expr -> string =
                                     string_of_expr e2 ^ ")"
     | Break -> "Break"
     | Next -> "Next"
+    | Return e -> "Return (" ^ string_of_expr e ^ ")"
     | Error -> "Error"
 
     | Tick (t, e) -> "Tick (" ^ string_of_tick t ^
@@ -168,7 +169,7 @@ let string_of_rcomplex: rcomplex -> string =
 
 let string_of_rbool: rbool -> string =
     function
-    | Some b -> if b = 1 then "True" else "False"
+    | Some b -> if b = 0 then "False" else "True"
     | None -> "NaBool"
 
 let string_of_rvector: rvector -> string =

@@ -21,13 +21,13 @@ let main () =
           else
             int_of_string Sys.argv.(2) in
 
-  (*
   let ress = run_n_hist n [state] in
   print_endline (string_of_passresult_list ress);
-  *)
+  (*
 
   let res = run_n n [state] in
   print_endline (string_of_passresult res);
+  *)
 
   (*
   let res = get_first_completed_after_n n [state] in

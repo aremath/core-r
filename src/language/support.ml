@@ -206,6 +206,70 @@ let na_rstring : rstring = None
 let string_of_rstring : rstring -> string option =
   fun rs -> rs
 
+(* Values *)
+let rvector_length : rvector -> int =
+  fun rvec ->
+    match rvec with
+    | IntVec ivec -> Array.length ivec
+    | FloatVec fvec -> Array.length fvec
+    | ComplexVec cvec -> Array.length cvec
+    | StrVec svec -> Array.length svec
+    | BoolVec bvec -> Array.length bvec
+
+(* One-based indexing *)
+let rvector_get_rint : rvector -> int -> rint option =
+  fun rvec i ->
+    match rvec with
+    | IntVec arr ->
+        if i <= rvector_length rvec then
+          Some (Array.get arr (i - 1))
+        else
+          None
+    | _ -> None
+
+let rvector_get_rfloat : rvector -> int -> rfloat option =
+  fun rvec i ->
+    match rvec with
+    | FloatVec arr ->
+        if i <= rvector_length rvec then
+          Some (Array.get arr (i - 1))
+        else
+          None
+    | _ -> None
+
+let rvector_get_rcomplex : rvector -> int -> rcomplex option =
+  fun rvec i ->
+    match rvec with
+    | ComplexVec arr ->
+        if i <= rvector_length rvec then
+          Some (Array.get arr (i - 1))
+        else
+          None
+    | _ -> None
+
+let rvector_get_rstring : rvector -> int -> rstring option =
+  fun rvec i ->
+    match rvec with
+    | StrVec arr ->
+        if i <= rvector_length rvec then
+          Some (Array.get arr (i - 1))
+        else
+          None
+    | _ -> None
+
+let rvector_get_rbool : rvector -> int -> rbool option =
+  fun rvec i ->
+    match rvec with
+    | BoolVec arr ->
+        if i <= rvector_length rvec then
+          Some (Array.get arr (i - 1))
+        else
+          None
+    | _ -> None
+
+
+
+
 (* Fresh identifier *)
 let id_default : ident =
   { R.pkg = None;

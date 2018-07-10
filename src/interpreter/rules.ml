@@ -150,24 +150,35 @@ let lift_param_binds :
       | _ -> None
 
 let is_mem_true : memref -> heap -> bool =
-  fun mem heap -> true
-
-let is_mem_val : memref -> heap -> bool =
   fun mem heap ->
     match heap_find mem heap with
-    | Some(DataObj _) -> true
-    | _-> false
+    | Some (DataObj (Vec rvec, _)) ->
+      (match (rvector_get_rint rvec 1,
+              rvector_get_rfloat rvec 1,
+/bin/bash: :w: command not found
+      | _ -> false)
+    | _ -> true
+    | None -> false
 
 let rec unwind_to_loop_slot :
-  stack -> (expr * expr * memref * memref * stack) option =
+  stack -> ((expr * expr * memref) * memref * stack) option =
   fun stack ->
     match stack_pop_v stack with
     | Some (LoopSlot (cond, body, o_body_mem), env_mem, stack2) ->
         let body_mem = (match o_body_mem with
                          | None -> mem_null
                          | Some mem -> mem) in
-          Some (cond, body, body_mem, env_mem, stack2)
+          Some ((cond, body, body_mem), env_mem, stack2)
     | Some (_, _, stack2) -> unwind_to_loop_slot stack2
+    | None -> None
+
+let rec unwind_to_lambdab_slot :
+  stack -> (memref * memref * stack) option =
+  fun stack ->
+    match stack_pop_v stack with
+    | Some (LambdaBSlot mem, env_mem, stack2) ->
+        Some (mem, env_mem, stack2)
+    | Some (_, _, stack2) -> unwind_to_lambdab_slot stack2
     | None -> None
 
 let rec pull_all_ids : ident list -> env -> heap -> (memref list) option =
@@ -476,6 +487,7 @@ let rule_WhileEval : state -> state list =
            stack = stack_push_list [d_frame; c_frame] c_stack2 }]
     | _ -> []
 
+
 let rule_WhileCondTrue : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
@@ -495,6 +507,7 @@ let rule_WhileCondTrue : state -> state list =
         []
     | _ -> []
 
+
 let rule_WhileCondFalse : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
@@ -510,6 +523,7 @@ let rule_WhileCondFalse : state -> state list =
           [{ state with
                stack = stack_push c_frame c_stack2 }]
     | _ -> []
+
 
 let rule_WhileBodyDone : state -> state list =
   fun state ->
@@ -527,12 +541,13 @@ let rule_WhileBodyDone : state -> state list =
              stack = stack_push_list [d_frame; c_frame] c_stack2 }]
     | _ -> []
 
+
 let rule_Break : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot Break, _, c_stack2) ->
       (match unwind_to_loop_slot c_stack2 with
-      | Some (_, _, body_mem, l_env_mem, c_stack3) ->
+      | Some ((_, _, body_mem), l_env_mem, c_stack3) ->
         let c_frame = { frame_default with
                           env_mem = l_env_mem;
                           slot = ReturnSlot body_mem } in
@@ -541,21 +556,42 @@ let rule_Break : state -> state list =
       | _ -> [])
     | _ -> []
 
+
 let rule_Next : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot Next, _, c_stack2) ->
       (match unwind_to_loop_slot c_stack2 with
-      | Some (cond, body, body_mem, l_env_mem, c_stack3) ->
+      | Some ((cond, body, body_mem), l_env_mem, c_stack3) ->
         let b_frame = { frame_default with
                           env_mem = l_env_mem;
                           slot = EvalSlot body } in
         let c_frame = { frame_default with
-                          env_mem = l_env_mem } in
+                          env_mem = l_env_mem;
+                          slot = LoopSlot (cond, body, Some body_mem) } in
           [{ state with
-               stack = stack_push_list [b_frame; c_frame] c_stack2 }]
+               stack = stack_push_list [b_frame; c_frame] c_stack3 }]
       | _ -> [])
     | _ -> []
+
+
+let rule_Return : state -> state list =
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (EvalSlot (Return expr), c_env_mem, c_stack2) ->
+      (match unwind_to_lambdab_slot c_stack2 with
+      | Some (f_mem, l_env_mem, c_stack3) ->
+        let r_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = EvalSlot expr } in
+        let c_frame = { frame_default with
+                          env_mem = l_env_mem;
+                          slot = LambdaBSlot f_mem } in
+          [{ state with
+               stack = stack_push_list [r_frame; c_frame] c_stack3 }]
+      | _ -> [])
+    | _ -> []
+
 
 let rule_Discard : state -> state list =
   fun state ->
@@ -571,7 +607,6 @@ let rule_Discard : state -> state list =
         else
           []
     | _ -> []
-
 
 
 let rule_Blank : state -> state list =
@@ -603,6 +638,7 @@ type rule =
   | ERuleWhileBodyDone
   | ERuleBreak
   | ERuleNext
+  | ERuleReturn
   | ERuleDiscard
   | ERuleBlank
 
@@ -631,6 +667,7 @@ let rule_table : (rule * (state -> state list)) list =
     (ERuleWhileBodyDone, rule_WhileBodyDone);
     (ERuleBreak, rule_Break);
     (ERuleNext, rule_Next);
+    (ERuleReturn, rule_Return);
     (ERuleDiscard, rule_Discard);
     (ERuleBlank, rule_Blank) ]
 

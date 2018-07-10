@@ -51,6 +51,7 @@ and ('a, 'b) expr =
   | While of ('a, 'b) expr * ('a, 'b) expr
   | Break
   | Next
+  | Return of ('a, 'b) expr
   | Error
   | Tick of 'b tick * ('a, 'b) expr
 

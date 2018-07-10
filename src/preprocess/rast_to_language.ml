@@ -134,6 +134,14 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 let c_e2 = convert_expr e2 in
                                 L.LambdaApp (L.Ident b_ident,
                                 [L.Arg c_e1; L.Arg c_e2])
+    | R.FuncCall (Ident { name = "return" }, []) ->
+                                L.Return (Const Nil)
+    | R.FuncCall (Ident { name = "return" }, arg :: []) ->
+                                (match convert_arg arg with
+                                | Arg e -> Return e
+                                | _ -> failwith "default or variadic return")
+    | R.FuncCall (Ident { name = "return" }, a :: b :: _) ->
+                                failwith "too many arguments passed to return"
     | R.FuncCall (Ident { name = "c" }, args) ->
                                 LambdaApp (L.Ident native_vector_make_id,
                                            map convert_arg args)

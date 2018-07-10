@@ -119,7 +119,7 @@ let string_to_complex: Complex.complex option -> S.expr =
 let bool_to_string: int option -> S.expr =
     function
     | None      -> S.Const (S.String None)
-    | Some x    -> S.Const (S.String (if x = 1 then "True" else "False"))
+    | Some x    -> S.Const (S.String (if x = 0 then "False" else "True"))
 
 let int_to_string: int option -> S.expr =
     function
