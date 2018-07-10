@@ -224,6 +224,33 @@ let convert_vector_mems: (S.rvector -> S.rvector) -> S.memref -> S.heap -> (S.me
     (* TODO: when does type conversion keep attributes? *)
     S.heap_alloc (S.DataObj (S.Vec (convert), S.attrs_empty)) heap
 
+(* Helper for v *)
+let array_length_assign: 'a option array -> int -> 'a option array =
+    fun a n ->
+    Array.init n (fun i -> if i < Array.length a then a.(i) else None)
+
+(* Return an rvector with length len. If len is longer than vec, fills with NA,
+if len is shorter than vec, only uses the first len values *)
+let rvec_length_assign: S.rvector -> int -> S.rvector =
+    fun vec len ->
+    match vec with
+    | S.IntVec i -> S.IntVec (array_length_assign i len)
+    | S.FloatVec f -> S.FloatVec (array_length_assign f len)
+    | S.ComplexVec c -> S.ComplexVec (array_length_assign c len)
+    | S.StrVec s -> S.StrVec (array_length_assign s len)
+    | S.BoolVec b -> S.BoolVec (array_length_assign b len)
+    
+(* length<- function *)
+let vector_length_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun data_ref len_ref heap ->
+    let data_vec = C.dereference_rvector data_ref heap in
+    let len = match C.get_single_rint len_ref heap with
+    | Some i -> i (* TODO: R fails with length<-c(2,2), but this will merely warning *)
+    | None -> failwith "NA invalid in length<-" in
+    let new_rvec = rvec_length_assign data_vec len in
+    (* Allocate it *)
+    S.heap_alloc (S.DataObj (S.Vec (new_rvec), S.attrs_empty)) heap
+
 (*
 (* Given n, make a1, a2, ..., an *)
 let make_index_names: S.rstring -> int -> S.rstring array =

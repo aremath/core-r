@@ -53,6 +53,16 @@ let get_single_rint: S.memref -> S.heap -> S.rint =
         () in
     a.(0)
 
+let get_single_rstr: S.memref -> S.heap -> S.rstring =
+    fun mem heap ->
+    let vec = dereference_rvector mem heap in
+    let a = rvector_to_str_array vec in
+    let _ = if (Array.length a) > 1 then Printf.printf
+        "Warning: only the first element used of expression with %d elements" (Array.length a)
+    else
+        () in
+    a.(0)
+
 (* Type conversion *)
 
 (* For using ex. float_of_int to convert float option to int option *)
