@@ -201,11 +201,11 @@ let rvector_eq = cmp_rvectors
     eq_rbool
 
 (* Inequality *)
-let neq_rint = opt_bop (rbool_wrap (!=))
-let neq_rfloat = opt_bop (rbool_wrap (!=))
-let neq_rcomplex = opt_bop (rbool_wrap (!=))
-let neq_rstr = opt_bop (rbool_wrap (!=))
-let neq_rbool = opt_bop (rbool_wrap (!=))
+let neq_rint = opt_bop (rbool_wrap (<>))
+let neq_rfloat = opt_bop (rbool_wrap (<>))
+let neq_rcomplex = opt_bop (rbool_wrap (<>))
+let neq_rstr = opt_bop (rbool_wrap (<>))
+let neq_rbool = opt_bop (rbool_wrap (<>))
 
 let rvector_neq = cmp_rvectors
     neq_rint

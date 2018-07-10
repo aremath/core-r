@@ -89,26 +89,26 @@ let opt_op f x y =
     | None      -> None
 
 let exception_divide x y =
-    if y != 0 then
+    if y <> 0 then
       x / y
     else
       (* Changes the error slightly TODO*)
       raise (Numeric_Binop_Exception (Int (Some x), Int (Some y), msg_div_by_zero))
 
 let exception_float_divide x y = 
-    if y != 0.0 then
+    if y <> 0.0 then
       x /. y
     else
       raise (Numeric_Binop_Exception (Float (Some x), Float (Some y), msg_div_by_zero))
 
 let exception_complex_divide x y =
-    if y.C.re != 0.0 || y.C.im != 0.0 then
+    if y.C.re <> 0.0 || y.C.im <> 0.0 then
       C.div x y
     else
       raise (Numeric_Binop_Exception (Complex (Some x), Complex (Some y), msg_div_by_zero))
 
 let exception_float_int_divide x y =
-    if y != 0.0 then
+    if y <> 0.0 then
       floor (x /. y)
     else
       raise (Numeric_Binop_Exception (Float (Some x), Float (Some y), msg_div_by_zero))
@@ -171,41 +171,41 @@ let do_numeric_binop : numbinop -> numeric -> numeric -> numeric =
     | (NumEq, ComplexPair (c1, c2)) ->
         Int (int_of_bool_opt (opt_op (fun x y -> x.C.re = y.C.re && x.C.im = y.C.im) c1 c2))
 
-    | (NumNeq, IntPair (i1, i2)) -> Int (int_of_bool_opt (opt_op (!=) i1 i2))
-    | (NumNeq, FloatPair (f1, f2)) -> Int (int_of_bool_opt (opt_op (!=) f1 f2))
+    | (NumNeq, IntPair (i1, i2)) -> Int (int_of_bool_opt (opt_op (<>) i1 i2))
+    | (NumNeq, FloatPair (f1, f2)) -> Int (int_of_bool_opt (opt_op (<>) f1 f2))
     | (NumNeq, ComplexPair (c1, c2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x.C.re != y.C.re || x.C.im != y.C.im) c1 c2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x.C.re <> y.C.re || x.C.im <> y.C.im) c1 c2))
 
     | (NumAndVec, IntPair (i1, i2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x!=0 && y!=0) i1 i2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x<>0 && y<>0) i1 i2))
     | (NumAndVec, FloatPair (f1, f2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x!=0.0 && y!=0.0) f1 f2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x<>0.0 && y<>0.0) f1 f2))
     | (NumAndVec, ComplexPair (c1, c2)) ->
         Int (int_of_bool_opt (opt_op (fun x y ->
-            (x.C.re != 0.0 || x.C.im != 0.0) && (y.C.re != 0.0 || y.C.im != 0.0)) c1 c2))
+            (x.C.re <> 0.0 || x.C.im <> 0.0) && (y.C.re <> 0.0 || y.C.im <> 0.0)) c1 c2))
 
     | (NumAnd, IntPair (i1, i2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x != 0 && y != 0) i1 i2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x <> 0 && y <> 0) i1 i2))
     | (NumAnd, FloatPair (f1, f2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x != 0.0 && y != 0.0) f1 f2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x <> 0.0 && y <> 0.0) f1 f2))
     | (NumAnd, ComplexPair (c1, c2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> (x.C.re != 0.0 || x.C.im != 0.0) &&
-                          (y.C.re != 0.0 || y.C.im != 0.0)) c1 c2))
+        Int (int_of_bool_opt (opt_op (fun x y -> (x.C.re <> 0.0 || x.C.im <> 0.0) &&
+                          (y.C.re <> 0.0 || y.C.im <> 0.0)) c1 c2))
     (* TODO: vectorized operations are different! *)
     | (NumOrVec, IntPair (i1, i2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x != 0 || y != 0) i1 i2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x <> 0 || y <> 0) i1 i2))
     | (NumOrVec, FloatPair (f1, f2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x != 0.0 || y != 0.0) f1 f2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x <> 0.0 || y <> 0.0) f1 f2))
     | (NumOrVec, ComplexPair (c1, c2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x.C.re != 0.0 || x.C.im != 0.0 ||
-                          y.C.re != 0.0 || y.C.im != 0.0) c1 c2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x.C.re <> 0.0 || x.C.im <> 0.0 ||
+                          y.C.re <> 0.0 || y.C.im <> 0.0) c1 c2))
 
     | (NumOr, IntPair (i1, i2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x != 0 || y != 0) i1 i2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x <> 0 || y <> 0) i1 i2))
     | (NumOr, FloatPair (f1, f2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x != 0.0 || y != 0.0) f1 f2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x <> 0.0 || y <> 0.0) f1 f2))
     | (NumOr, ComplexPair (c1, c2)) ->
-        Int (int_of_bool_opt (opt_op (fun x y -> x.C.re != 0.0 || x.C.im != 0.0 ||
-                          y.C.re != 0.0 || y.C.im != 0.0) c1 c2))
+        Int (int_of_bool_opt (opt_op (fun x y -> x.C.re <> 0.0 || x.C.im <> 0.0 ||
+                          y.C.re <> 0.0 || y.C.im <> 0.0) c1 c2))
 
 
