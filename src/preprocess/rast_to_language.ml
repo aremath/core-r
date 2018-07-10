@@ -165,8 +165,14 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     | R.IfElse (e1, e2, e3) -> L.If (convert_expr e1, convert_expr e2, convert_expr e3)
     (* | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2) *)
     (* TODO: check this *)
-    | R.For ((i, e1), e2)   -> let tmp = fresh_rident () in
-        let init = R.Bop (R.Assign, R.Ident tmp, R.NumericConst (R.Int 0)) in
+    | R.For ((i, e1), e2)   ->
+        (* tmp  holds the INDEX in the vector we're iterating over *)
+        let tmp = fresh_rident () in
+        let init = R.Bop (R.Assign, R.Ident tmp, R.NumericConst (R.Int 1)) in
+        (* tmp2 holds the LENGTH of the vector we're iterating over *)
+        let tmp2 = fresh_rident () in
+        let init2 = L.Assign (L.Ident (convert_ident tmp2),
+            L.LambdaApp(L.Ident native_vector_length_id, [L.Arg (convert_expr e1)])) in
         let cond = R.Bop (R.Lt, R.Ident i, e1) in
         let access = R.Bop (R.Assign, R.Ident i,
             R.ListProj(e1, [R.ExprArg (R.Ident tmp)])) in
@@ -176,7 +182,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
         | e                 -> R.Block [access; incr; e]
         end in
         let loop = R.While (cond, block) in
-        L.Seq [convert_expr init; convert_expr loop]
+        L.Seq [convert_expr init; init2; convert_expr loop]
     | R.While (e1, e2)      -> L.While (convert_expr e1, convert_expr e2)
     | R.Repeat e            -> L.While (L.Const (L.Bool (Some 1)), convert_expr e)
     | R.Next                -> L.Next

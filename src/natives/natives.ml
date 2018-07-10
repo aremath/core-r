@@ -35,6 +35,14 @@ let nw_fun_vec_make : (param list) * expr =
     (native_vector_make_id,
      [id_variadic]))
 
+(* Vector length *)
+let native_vector_length_id: ident = native_id_of_string "vector.length"
+let nw_fun_vec_make : (param list) * expr =
+    ([Param (id_of_string "data")],
+    NativeLambdaApp
+        (native_vector_length_id,
+        [id_of_string "data"]))
+
 (* Vector binary operations *)
 
 (* Sets up a native lambda app for a function with name ident that takes two arguments:

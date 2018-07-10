@@ -10,6 +10,14 @@ let rvec_length: S.rvector -> int =
     | S.ComplexVec c -> Array.length c
     | S.StrVec s -> Array.length s
 
+let rvec_length_mem: S.memref -> S.heap -> (S.memref * S.heap) =
+    fun data_ref heap ->
+    let data_rvec = C.dereference_rvector data_ref heap in
+    let len = rvec_length data_rvec in
+    let len_vec = S.IntVec (Array.make 1 (Some len)) in
+    (* allocate the length *)
+    S.heap_alloc (S.DataObj (S.Vec len_vec, S.attrs_empty)) heap
+
 (* Returns a memref because of ex.
     y = (dim(x) <- c(1,5))  # y = [1, 5]
     TODO: do we need to copy dim_ref' again so that y here doesn't point directly to x's dims?
