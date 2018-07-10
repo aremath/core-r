@@ -155,7 +155,14 @@ let is_mem_true : memref -> heap -> bool =
     | Some (DataObj (Vec rvec, _)) ->
       (match (rvector_get_rint rvec 1,
               rvector_get_rfloat rvec 1,
-/bin/bash: :w: command not found
+              rvector_get_rcomplex rvec 1,
+              rvector_get_rstring rvec 1,
+              rvector_get_rbool rvec 1) with
+      | (Some v, _, _, _, _) -> v <> rint_of_int 0
+      | (_, Some v, _, _, _) -> v <> rfloat_of_float 0.0
+      | (_, _, Some v, _, _) -> v <> rcomplex_of_complex Complex.zero
+      | (_, _, _, Some v, _) -> true
+      | (_, _, _, _, Some v) -> v <> rbool_of_bool 0
       | _ -> false)
     | _ -> true
     | None -> false

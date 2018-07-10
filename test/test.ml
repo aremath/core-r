@@ -77,6 +77,9 @@ let test_simple = "Simple" >:::
     "vecs.R" >::
       test_file (test_simple_dir ^ "/vecs.R") 100
                 (rint_vec_of_ints [9]);
+    "branching.R" >::
+      test_file (test_simple_dir ^ "/branching.R") 100
+                (rint_vec_of_ints [201]);
   ]
 
 let _ =
