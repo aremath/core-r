@@ -33,7 +33,7 @@ Executable "absyn_generator"
 
 Library "natives"
   Path: src/natives
-  Modules: Natives, Constants, Copy, Vector, Coerce, Subscript,
+  Modules: Natives, Constants, Copy, Vector, Native_support, Subscript,
            Native_calls, Arithmetic
   BuildDepends: language
 

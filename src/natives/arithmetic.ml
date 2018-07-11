@@ -1,4 +1,5 @@
 module S = Support
+module C = Native_support
 
 (* Perform a non-optional binary operation on options *)
 let opt_bop: ('a -> 'b -> 'c) -> ('a option -> 'b option -> 'c option) =
@@ -7,17 +8,6 @@ let opt_bop: ('a -> 'b -> 'c) -> ('a option -> 'b option -> 'c option) =
     | (Some l, Some r) -> Some (f l r)
     | _ -> None
 
-(* TODO: Array.map2 introduced in 4.03 but for dumb reasons we're in 4.01.
- This is my best shot at conciseness *)
-let array_map2: ('a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array =
-    fun f a1 a2 ->
-    let l1 = Array.length a1 in
-    let l2 = Array.length a2 in
-    if l1 = l2 then
-        (* Kind of gross *)
-        Array.init l1 (fun i -> f a1.(i) a2.(i))
-    else
-        failwith "Map2 arrays not of same length"
 
 (* Applies five functions to rvectors as cases for each type of rvector.
  Reuses code nicely, but not general in the sense that the operation
@@ -31,11 +21,11 @@ let bop_rvectors: (S.rint -> S.rint -> S.rint) ->
                   S.rvector -> S.rvector -> S.rvector =
     fun fi ff fc fs fb lhs rhs ->
     match (lhs, rhs) with
-    | (S.IntVec l, S.IntVec r) -> S.IntVec (array_map2 fi l r)
-    | (S.FloatVec l, S.FloatVec r) -> S.FloatVec (array_map2 ff l r)
-    | (S.ComplexVec l, S.ComplexVec r) -> S.ComplexVec (array_map2 fc l r)
-    | (S.StrVec l, S.StrVec r) -> S.StrVec (array_map2 fs l r)
-    | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (array_map2 fb l r)
+    | (S.IntVec l, S.IntVec r) -> S.IntVec (C.array_map2 fi l r)
+    | (S.FloatVec l, S.FloatVec r) -> S.FloatVec (C.array_map2 ff l r)
+    | (S.ComplexVec l, S.ComplexVec r) -> S.ComplexVec (C.array_map2 fc l r)
+    | (S.StrVec l, S.StrVec r) -> S.StrVec (C.array_map2 fs l r)
+    | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (C.array_map2 fb l r)
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Addition *)
@@ -135,11 +125,11 @@ let cmp_rvectors: (S.rint -> S.rint -> S.rbool) ->
                   S.rvector -> S.rvector -> S.rvector =
     fun fi ff fc fs fb lhs rhs ->
     match (lhs, rhs) with
-    | (S.IntVec l, S.IntVec r) -> S.BoolVec (array_map2 fi l r)
-    | (S.FloatVec l, S.FloatVec r) -> S.BoolVec (array_map2 ff l r)
-    | (S.ComplexVec l, S.ComplexVec r) -> S.BoolVec (array_map2 fc l r)
-    | (S.StrVec l, S.StrVec r) -> S.BoolVec (array_map2 fs l r)
-    | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (array_map2 fb l r)
+    | (S.IntVec l, S.IntVec r) -> S.BoolVec (C.array_map2 fi l r)
+    | (S.FloatVec l, S.FloatVec r) -> S.BoolVec (C.array_map2 ff l r)
+    | (S.ComplexVec l, S.ComplexVec r) -> S.BoolVec (C.array_map2 fc l r)
+    | (S.StrVec l, S.StrVec r) -> S.BoolVec (C.array_map2 fs l r)
+    | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (C.array_map2 fb l r)
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Error behavior when comparing two complex numbers *)

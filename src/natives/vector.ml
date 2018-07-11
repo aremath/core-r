@@ -1,5 +1,6 @@
+(* Functions for dealing with rvectors - creating them, editing their attributes, etc. *)
 module S = Support
-module C = Coerce
+module C = Native_support (* was Coerce *)
 module Copy = Copy
 
 let rvec_length: S.rvector -> int =
@@ -145,6 +146,11 @@ let rec array_wrap: 'a array -> int -> 'a array =
     (* Wrap more than once means append a copy of a onto the rest of the wrap *)
     else (Array.concat ( (Array.copy a)::[(array_wrap a (n-1))]))
 
+(* TODO: can accomplish the same result with iteration
+ and having each vector modulo the iterator by their length.
+ Doesn't let us use the current setup, but definitely saves
+ time copying things. Then again when has R ever cared about
+ saving time copying things? :) *)
 (* Wraps an rvector n times *)
 let rvector_wrap: S.rvector -> int -> S.rvector =
     fun v n ->
@@ -240,7 +246,9 @@ let rvec_length_assign: S.rvector -> int -> S.rvector =
     | S.StrVec s -> S.StrVec (array_length_assign s len)
     | S.BoolVec b -> S.BoolVec (array_length_assign b len)
     
-(* length<- function *)
+(* TODO: for this to work properly, the preprocessor needs to translate 
+ length(x) = 12 as x = length<-(x, 12) rather than just length<-(x,12) *)
+(* length<- *)
 let vector_length_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     fun data_ref len_ref heap ->
     let data_vec = C.dereference_rvector data_ref heap in
@@ -250,6 +258,79 @@ let vector_length_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.h
     let new_rvec = rvec_length_assign data_vec len in
     (* Allocate it *)
     S.heap_alloc (S.DataObj (S.Vec (new_rvec), S.attrs_empty)) heap
+
+(* Helper for list_ref_length. Errors out if vec_ref points to anything other than
+ a StrVec with length 1. *)
+let assert_len1_strvec: S.memref -> S.heap -> unit =
+    fun vec_ref heap ->
+    (* dimnames can contain NAs, otherwise match [|Some s|] *)
+    match C.dereference_rvector vec_ref heap with
+    | S.StrVec [|s|] -> ()
+    | _ -> failwith "Invalid reference in list_ref_length."
+
+(* Helper for list_dims_mems. Finds the "length" of a reference. In this case,
+ Because dimnames is a list of lists or literal values, will produce an error if
+ the reference is to anything other than a length 1 string vector or to a list *)
+(* NOTE: R will coerce vectors in dimnames to lists - SimpleR will not. *)
+let list_ref_length: S.memref -> S.heap -> int =
+    fun list_ref heap ->
+    match S.heap_find list_ref heap with
+    (* Matches only a stringvec with length 1 *)
+    | Some (S.DataObj (S.Vec (S.StrVec [|s|]), _)) -> 1
+    | Some (S.DataObj (S.RefArray l, _)) ->
+        (* Assert that each element of the list is a single string. *)
+        let _ = List.iter (fun ref -> assert_len1_strvec ref heap) l in
+        List.length l
+    | _ -> failwith "Invalid reference in list_ref_length."
+
+(* Create the implied dims for a list - If the dims produced by this is the same
+ as the actual dims for a vector, then this list is a valid dimnames *)
+let list_dims_mems: S.memref -> S.heap -> int array =
+    fun list_ref heap ->
+    let lst = match S.heap_find list_ref heap with
+    | Some (S.DataObj (S.RefArray l, _)) -> l
+    | _ -> failwith "List not found" in
+    let out_array = Array.make (List.length lst) 0 in
+    (* Assign to out_array the calculated length of each reference *)
+    let _ = List.iteri (fun i lref -> out_array.(i) <- list_ref_length lref heap) lst in
+    out_array
+
+(* Compare two int arrays for equality *)
+let compare_dims: int array -> int array -> bool =
+    fun dims1 dims2 ->
+    (* Want each element to be equal *)
+    Array.fold_left (&&) true
+        (* The array of bools, whether dims1[i] = dims2[i] *)
+        (C.array_map2 (=) dims1 dims2)
+
+(* dimnames<- *)
+let vector_dimnames_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun data_ref dimnames_ref heap ->
+    (* Dimnames must be a LIST whose extent matches the dim attribute of the data.
+     ex. If x has dims c(3,3,3), then the dimnames passed here must be a list of three lists,
+     each with length three. Note that slicing a vector should also slice its dimnames (TODO) *)
+    (* First, copy data and dimnames - data's attrs are edited, and dimnames is captured *)
+    let data_ref', heap' = Copy.deep_copy data_ref heap in
+    let dimnames_ref', heap'' = Copy.deep_copy dimnames_ref heap' in
+    begin match S.heap_find data_ref' heap'' with
+    | Some (S.DataObj (S.Vec v, data_attrs)) ->
+        (* First get the dims to figure out what lengths dimnames has to satisfy *)
+        begin match S.attrs_find (Some "dim") data_attrs with
+        | Some (dim_ref) -> let dim_vec = C.resolve_vec 
+                (C.rvector_to_int_array (C.dereference_rvector dim_ref heap'')) in
+            (* Check that dimnames has the right length *)
+            let dimnames_dim_vec = list_dims_mems dimnames_ref' heap in
+            let _ = if compare_dims dim_vec dimnames_dim_vec then ()
+                else failwith "Dimnames not compatible with dims" in
+            (* Put dimnames into data's attrs *)
+            let _ = Hashtbl.replace data_attrs.S.rstr_map (Some "dimnames") dimnames_ref' in
+            (* Return a reference to dimnames and the heap with the copies *)
+            (* TODO: Same issue here as with dim<- : does the returned reference need to be a second copy? *)
+            (dimnames_ref', heap'')
+        | None -> failwith "data has no dim attribute"
+        end
+    | _ -> failwith "Missing data or data not a vec in dimnames assignment"
+    end
 
 (*
 (* Given n, make a1, a2, ..., an *)
@@ -355,15 +436,5 @@ let do_matrix_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
         (* return the copied vector and the heap with dims allocated *)
         (data_ref', heap''')
     | _ -> failwith "bad call to do_matrix" (* wrong number of arguments *)
-*)
-
-(* (* removes unnecessary dimensions from the rvector *)
-(* TODO: should be (memref list/array) -> heap -> (memref * heap) *)
-let drop_dims: (rvector * attributes) -> (rvector * attributes) =
-    fun (vec, attrs) ->
-    let dims_opt = attrs_find "dim" attrs in
-    match dims_opt with
-    | None -> (vec, attrs) (* no change to attrs is needed *)
-    | Some dim_ref -> (* dereference! *)
 *)
 

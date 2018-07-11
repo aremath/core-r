@@ -1,5 +1,5 @@
 module S = Support
-module C = Coerce
+module C = Native_support
 module V = Vector
 
 (* The offset array tells the subscripter how much variation in a single dimension
@@ -169,6 +169,20 @@ let rvector_slice: S.rvector -> int array -> int array list -> (S.rvector * S.rv
     | S.StrVec s -> do_subset_string (s, data_dims) subs
     | S.BoolVec b -> do_subset_bool (b, data_dims) subs
 
+(* TODO: For a vector with dimnames, can also do 
+ ex. v["a", "b",], which slices by the dimension name *)
+(* TODO: For a vector with names, ex. v=c(a=1,b=2), we know that
+ v[1] retains a copy of v's names attribute, but reduced to
+ cover the vector. In this case:
+    names(v) = c("a", "b") and
+    names(v[1]) = c("a")
+ The same thing happens when slicing a vector by its dimnames -
+ The sliced vector should retain a (possibly smaller) version of the dimnames
+ which corresponds to the dimensions it still has. This works pretty weird if
+ v has both a "dimnames" and a "names" attribute - it seems like single-element
+ subsetting and subscripting use "names" while multi-element subsetting and
+ subscripting use "dimnames".
+*)
 (* v[x] *)
 let subset_mems: S.memref -> S.memref list -> S.heap -> (S.memref * S.heap) =
     fun data_ref sub_refs heap ->
@@ -195,6 +209,7 @@ let rec find : 'a array -> 'a -> int -> int =
     if a.(n) = x then n else
     find a x (n+1) (* Will error out if it reaches the end without finding *)
 
+(* TODO: names might be dimnames! *)
 (* Find the index of subscript_vec in names *)
 let find_names_index: S.rstring array -> S.rstring array -> int =
     fun names subscript_vec ->

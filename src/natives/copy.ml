@@ -81,12 +81,14 @@ and copy_attributes: S.attributes -> S.heap -> (S.attributes * S.heap) =
     let new_table = alist_to_hashtable attr_alist' in (* can use S.attrs_add_list too *)
     ({S.rstr_map = new_table}, heap')
 
+(*
 and copy_list: (S.rstring * S.memref) list -> S.heap -> ((S.rstring * S.memref) list * S.heap) =
     fun l heap ->
     let (ids, mems) = unzip_list l in 
     let mems', heap' = copy_ref_array mems heap in
     let idmems = zip_list ids mems' in
     idmems, heap'
+*)
 
 (* deep copy a memory reference *)
 and deep_copy: S.memref -> S.heap -> (S.memref * S.heap) =
@@ -105,9 +107,9 @@ and deep_copy: S.memref -> S.heap -> (S.memref * S.heap) =
         | S.EnvVal v      -> let env, h'' = copy_env v h' in
             let alloc_obj = S.DataObj ((S.EnvVal env), a') in
             S.heap_alloc alloc_obj h''
-        | S.ListVal v     -> let l, h'' = copy_list v h' in
+        (* | S.ListVal v     -> let l, h'' = copy_list v h' in
             let alloc_obj = S.DataObj ((S.ListVal l), a') in
-            S.heap_alloc alloc_obj h''
+            S.heap_alloc alloc_obj h'' *)
         end
     | None                  -> mem, heap (* can copy pointers with no associated memory for free *)
 

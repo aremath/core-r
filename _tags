@@ -1,9 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: 5f48e10e0510bbede1343e1c9b8e3ae7)
-# Ignore VCS directories, you can use the same kind of rule outside
-# OASIS_START/STOP if you want to exclude directories that contains
+# DO NOT EDIT (digest: 17fcd9fbc34f426e49f5e1286205dae0)
+# Ignore VCS directories, you can use the same kind of rule outside 
+# OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
-true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -20,49 +19,49 @@ true: annot, bin_annot
 "src/parser/parser.cmxs": use_parser
 # Executable absyn_generator
 "src/parser/absyn_generator.byte": use_parser
-<src/parser/*.ml{,i,y}>: use_parser
+<src/parser/*.ml{,i}>: use_parser
 # Library natives
 "src/natives/natives.cmxs": use_natives
-<src/natives/*.ml{,i,y}>: use_language
+<src/natives/*.ml{,i}>: use_language
 # Library loader
 "src/preprocess/loader.cmxs": use_loader
-<src/preprocess/*.ml{,i,y}>: use_language
-<src/preprocess/*.ml{,i,y}>: use_natives
-<src/preprocess/*.ml{,i,y}>: use_parser
+<src/preprocess/*.ml{,i}>: use_natives
+<src/preprocess/*.ml{,i}>: use_language
+<src/preprocess/*.ml{,i}>: use_parser
 # Library interpreter
 "src/interpreter/interpreter.cmxs": use_interpreter
-<src/interpreter/*.ml{,i,y}>: use_language
-<src/interpreter/*.ml{,i,y}>: use_loader
-<src/interpreter/*.ml{,i,y}>: use_natives
-<src/interpreter/*.ml{,i,y}>: use_parser
+<src/interpreter/*.ml{,i}>: use_loader
+<src/interpreter/*.ml{,i}>: use_natives
+<src/interpreter/*.ml{,i}>: use_language
+<src/interpreter/*.ml{,i}>: use_parser
 # Executable main
 "src/main.byte": use_interpreter
-"src/main.byte": use_language
 "src/main.byte": use_loader
 "src/main.byte": use_natives
+"src/main.byte": use_language
 "src/main.byte": use_parser
-<src/*.ml{,i,y}>: use_interpreter
-<src/*.ml{,i,y}>: use_language
-<src/*.ml{,i,y}>: use_loader
-<src/*.ml{,i,y}>: use_natives
-<src/*.ml{,i,y}>: use_parser
+<src/*.ml{,i}>: use_interpreter
+<src/*.ml{,i}>: use_loader
+<src/*.ml{,i}>: use_natives
+<src/*.ml{,i}>: use_language
+<src/*.ml{,i}>: use_parser
 # Library ounit
 "test/ounit/ounit.cmxs": use_ounit
-<test/ounit/*.ml{,i,y}>: pkg_unix
+<test/ounit/*.ml{,i}>: pkg_unix
 # Executable testytesty
-"test/test.byte": pkg_unix
 "test/test.byte": use_interpreter
-"test/test.byte": use_language
 "test/test.byte": use_loader
 "test/test.byte": use_natives
-"test/test.byte": use_ounit
+"test/test.byte": use_language
 "test/test.byte": use_parser
-<test/*.ml{,i,y}>: pkg_unix
-<test/*.ml{,i,y}>: use_interpreter
-<test/*.ml{,i,y}>: use_language
-<test/*.ml{,i,y}>: use_loader
-<test/*.ml{,i,y}>: use_natives
-<test/*.ml{,i,y}>: use_ounit
-<test/*.ml{,i,y}>: use_parser
+"test/test.byte": use_ounit
+"test/test.byte": pkg_unix
+<test/*.ml{,i}>: use_interpreter
+<test/*.ml{,i}>: use_loader
+<test/*.ml{,i}>: use_natives
+<test/*.ml{,i}>: use_language
+<test/*.ml{,i}>: use_parser
+<test/*.ml{,i}>: use_ounit
+<test/*.ml{,i}>: pkg_unix
 # OASIS_STOP
 true: use_menhir

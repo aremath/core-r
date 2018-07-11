@@ -72,10 +72,9 @@ type rvector =
 
 type value =
   | Vec of rvector
-  | RefArray of memref list
+  | RefArray of memref list (* for function arguments as well as R lists *)
   | FuncVal of param list * expr * memref
   | EnvVal of env
-  | ListVal of (rstring * memref) list
   | SymVal
 
 type attributes =
@@ -187,7 +186,7 @@ let rcomplex_of_complex : complex -> rcomplex =
 
 let na_rcomplex : rcomplex = None
 
-let complex_of_rcomples : rcomplex -> complex option =
+let complex_of_rcomplex : rcomplex -> complex option =
   fun rc -> rc
 
 let rbool_of_bool : int -> rbool =

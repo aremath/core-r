@@ -204,11 +204,9 @@ let string_of_value: value -> string =
                    "[" ^ string_of_list_comma params_strs ^ "] " ^
                    "{" ^ expr_str ^ "}"
     | EnvVal e -> string_of_env e
-    | ListVal l ->
-        let list_strs = map (fun (rs, mem) ->
-            string_of_pair (rs, mem)
-                           (string_of_rstring, string_of_memref)) l in
-          "List [" ^ string_of_list_comma list_strs ^ "]"
+    (* | ListVal l ->
+        let list_strs = map (fun mem -> string_of_memref mem) l in
+          "List [" ^ string_of_list_comma list_strs ^ "]" *)
         
     | SymVal -> "SymVal"
 

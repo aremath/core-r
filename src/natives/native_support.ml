@@ -1,6 +1,18 @@
-(* TODO: name this file something different... dereference.ml? *)
 module S = Support
 
+(* TODO: Array.map2 introduced in 4.03 but for dumb reasons we're in 4.01.
+ This is my best shot at conciseness *)
+let array_map2: ('a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array =
+    fun f a1 a2 ->
+    let l1 = Array.length a1 in
+    let l2 = Array.length a2 in
+    if l1 = l2 then
+        (* Kind of gross *)
+        Array.init l1 (fun i -> f a1.(i) a2.(i))
+    else
+        failwith "Map2: arrays not of same length"
+
+(* Memory management *)
 let resolve_vec: 'a option array -> 'a array =
     fun v ->
     Array.map (fun x -> match x with
@@ -35,6 +47,12 @@ let dereference_rvector: S.memref -> S.heap -> S.rvector =
     match S.heap_find mem heap with
     | Some (S.DataObj (S.Vec v, _)) -> v
     | _ -> failwith "Vec expected in dereference"
+
+let dereference_rlist_attrs: S.memref -> S.heap -> S.memref list * S.attributes =
+    fun mem heap ->
+    match S.heap_find mem heap with
+    | Some (S.DataObj (S.RefArray l, a)) -> l, a
+    | _ -> failwith "List expected in dereference"
 
 (* TODO: catch a dereference error somehow? *)
 let dereference: S.memref list -> S.heap -> S.heapobj list =
