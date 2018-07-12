@@ -4,6 +4,7 @@ open Syntax
 open Support
 open Native_calls
 open Copy
+open Langutils
 
 let pair_first : 'a * 'b -> 'a =
   fun (a, b) -> a
@@ -72,10 +73,28 @@ let rec pull_args :
       | Some tl -> Some (OptB (id, mem) :: tl)
       | _ -> None)
     | ((VarArg, mem) :: args_tl) ->
+        (* We need to have variadic arguments to match with their names *)
         (match heap_find mem heap with
-        | Some (DataObj (RefArray v_mems, _)) ->
+        | Some (DataObj (RefArray v_mems, attrs)) ->
           (match pull_args args_tl heap with
-          | Some tl -> Some ((map (fun m -> OptA m) v_mems) @ tl)
+          | Some tl ->
+            (match attrs_find (rstring_of_string "names") attrs with
+            | Some names_mem ->
+              (match heap_find names_mem heap with
+              | Some (DataObj (Vec (StrVec rstrs), _)) ->
+                if Array.length rstrs = length v_mems then
+                  let pairs = combine (Array.to_list rstrs) v_mems in
+                  let v_args =
+                      map (fun (a, m) ->
+                        if (a = na_rstring) || (a = rstring_of_string "") then
+                          OptA m
+                        else
+                          OptB (id_of_rstring a, m)) pairs in
+                    Some (v_args @ tl)
+                else
+                  None
+              | _ -> None)
+            | _ -> Some ((map (fun m -> OptA m) v_mems) @ tl))
           | _ -> None)
         | _ -> None)
 
@@ -256,10 +275,11 @@ let lift_variadic_binds :
     let mems = map (fun a -> match a with
                       | OptA a_mem -> a_mem
                       | OptB (_, a_mem) -> a_mem) args in
+    begin
     let names_vec =
           StrVec (Array.of_list
                     (map (fun a -> match a with
-                       | OptA _ -> na_rstring
+                       | OptA _ -> rstring_of_string ""
                        | OptB (p_id, _) -> p_id.name) args)) in
     let (s_mem, heap2) = heap_alloc (DataObj (Vec names_vec, attrs_empty ()))
                                     heap in
@@ -270,6 +290,7 @@ let lift_variadic_binds :
       match env_mem_add id_variadic ref_mem env_mem heap3 with
         | Some heap4 -> Some (ref_mem, heap4)
         | _ -> None
+    end
 (*
 let lift_variadic_binds : memref list -> memref -> heap ->
   (memref * heap) option =
@@ -574,7 +595,6 @@ let rule_AssignStrEval : state -> state list =
                         slot = EvalSlot (Assign (Ident id, expr)) } in
         [{ state with
              stack = stack_push c_frame c_stack2 }]
-                                                           
     | _ -> []
 
 let rule_AssignRet : state -> state list =

@@ -83,7 +83,8 @@ let native_call : ident -> memref list -> memref -> state -> state option =
       | (var_mem :: []) ->
           (match heap_find var_mem state.heap with
           | Some (DataObj (RefArray refs, _)) ->
-            let (mem2, heap2) = make_vector_simple_mems refs state.heap in
+            (* let (mem2, heap2) = make_vector_simple_mems refs state.heap in *)
+            let (mem2, heap2) = make_vector_mems var_mem state.heap in
             let c_frame = { frame_default with
                               env_mem = c_env_mem;
                               slot = ReturnSlot mem2 } in
