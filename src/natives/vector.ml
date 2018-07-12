@@ -61,7 +61,7 @@ let concat_rvectors: S.rvector -> S.rvector -> S.rvector =
 let fold_rvectors: S.rvector list -> S.rvector =
     fun vlist ->
     match vlist with
-    | [] -> failwith "Cannot fold empty rvectors list - no type known"
+    | [] -> failwith "Cannot fold empty rvectors list - type unknown"
     (* Determine the type based on the head. 
     concat_rvectors will throw an error if the types do not reconcile. *)
     | hd::tl -> begin match hd with
@@ -72,14 +72,8 @@ let fold_rvectors: S.rvector list -> S.rvector =
         | S.BoolVec _ -> List.fold_left concat_rvectors (mk_empty_boolvec ()) vlist
         end
 
-(* Vector creation - R's "c" function *)
-(* Does not support ex. c(a=c(1,2)) *)
-let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
-    fun vec_mems heap ->
-    (* First, deep copy the arguments so they're not captured *)
-    let vec_mems', heap' = Copy.copy_ref_array vec_mems heap in
-    (* Dereference the copies *)
-    let vecs = List.map (fun m -> C.dereference_rvector m heap') vec_mems' in
+let alloc_fold_vectors: S.rvector list -> S.heap -> (S.memref * S.heap) =
+    fun vecs heap ->
     match vecs with
     | [] -> (S.mem_null, heap) (* Empty arrays are null *)
     (* TODO: this might cause bugs if you try to assign to an empty array's dims or something
@@ -88,7 +82,63 @@ let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
     (* Fold them with concat *)
     | _ -> let new_vec = fold_rvectors vecs in
         (* Allocate the new vector and return a reference to it *)
-        S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty)) heap'
+        S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty)) heap
+
+(* Vector creation - R's "c" function *)
+(* Does not support ex. c(a=c(1,2)) *)
+let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
+    fun vec_mems heap ->
+    (* First, deep copy the arguments so they're not captured *)
+    let vec_mems', heap' = Copy.copy_ref_array vec_mems heap in
+    (* Dereference the copies *)
+    let vecs = List.map (fun m -> C.dereference_rvector m heap') vec_mems' in
+    alloc_fold_vectors vecs heap'
+
+(* Produces ex. (Some "a") 2 -> S.StrVec [| (Some "a1"), (Some "a2") |] *)
+let n_names: S.rstring -> int -> S.rvector =
+    fun so n ->
+    match so with
+    (* Empty string is for a vector that wasn't given a name as an argument.
+    That means the names of all of its components in the final version will be "" *)
+    | Some "" -> S.StrVec (Array.make n (Some ""))
+    (* Non-empty string means that for n > 1, the names will be
+     s ^ "1", s ^ "2", etc. *)
+    | Some s -> if n = 1 then S.StrVec [|Some s|]
+        else S.StrVec (Array.init n (fun i -> Some (s ^ (string_of_int (i + 1)))))
+    (* None is invalid - variadic arguments will either not have a names attribute at all
+     or have entries with "". Note that None is a valid value for an element of names in general,
+     but it will never be passed in a call to make_vector. *)
+    | None -> failwith "Invalid None name in n_names"
+
+let make_vector_mems: S.memref -> S.heap -> (S.memref * S.heap) =
+    fun var_mem heap ->
+    (* First, copy the arguments since vector will capture them *)
+    let var_mem', heap' = Copy.deep_copy var_mem heap in
+    (* Dereference the variadic argument into a list of memrefs and the attrs *)
+    let vec_mems, list_attrs = C.dereference_rlist_attrs var_mem' heap' in
+    let vecs = List.map (fun m -> C.dereference_rvector m heap') vec_mems in
+    match S.attrs_find (Some "names") list_attrs with
+    (* names is a StrVec with one element per element of vec_mems 
+     We need to unpack it so that it has one element per element of the fold of the vectors.
+     This means converting the "a" in a=c(1,2) to "a1,a2" *)
+    | Some (arg_names_ref) -> let arg_names_list = Array.to_list
+            (C.rvector_to_str_array (C.dereference_rvector arg_names_ref heap')) in
+        let vec_lengths = List.map (fun v -> rvec_length v) vecs in
+        let n_names_list = List.map2 n_names arg_names_list vec_lengths in
+        (* Fold the new names vectors into a single names and allocate it *)
+        let names_ref, heap'' = alloc_fold_vectors n_names_list heap' in
+        (* Fold the data vectors and into a single data and allocate it *)
+        let vec_ref, heap''' = alloc_fold_vectors vecs heap'' in
+        (* It's clunky, but we're going to dereference the newly-allocated vec_ref
+         to bind it's attributes and create the name attribute. *)
+        let _ = match S.heap_find vec_ref heap''' with
+        | Some (S.DataObj (_, vec_attrs)) -> S.attrs_add (Some "names") names_ref vec_attrs
+        | _ -> failwith "That should not have happened!!!" in
+        (* The return reference is to the vector *)
+        vec_ref, heap'''
+    (* No names means we're just supposed to fold the vectors together like usual.
+      The resulting rvector has attrs_empty *)
+    | None -> alloc_fold_vectors vecs heap'
 
 (* Heavy lifting for range - creates a range of integers from start to end as an array *)
 let int_range: int -> int -> int array =
