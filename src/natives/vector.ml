@@ -35,7 +35,7 @@ let set_dims_mem: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     if dim_size = data_len then
         match S.heap_find data_ref heap' with
         | Some (S.DataObj(_, attrs)) ->
-            let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
+            let _ = S.attrs_add (Some "dim") dim_ref' attrs in
             (dim_ref', heap')
         | _ -> failwith "Data missing in set_dims"
     else
@@ -209,7 +209,7 @@ let drop_dims_mems: S.memref -> S.heap -> (S.memref * S.heap) =
             let (dim_ref', heap'') = S.heap_alloc
                 (S.DataObj (S.Vec (S.IntVec new_dim_array), S.attrs_empty)) heap' in
             (* Replace attrs' dim mapping *)
-            let _ = Hashtbl.replace attrs.S.rstr_map (Some "dim") dim_ref' in
+            let _ = S.attrs_add (Some "dim") dim_ref' attrs in
             (* TODO: what is this supposed to return? *)
             (dim_ref', heap'')
         (* No dims means nothing to drop *)
@@ -323,7 +323,7 @@ let vector_dimnames_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S
             let _ = if compare_dims dim_vec dimnames_dim_vec then ()
                 else failwith "Dimnames not compatible with dims" in
             (* Put dimnames into data's attrs *)
-            let _ = Hashtbl.replace data_attrs.S.rstr_map (Some "dimnames") dimnames_ref' in
+            let _ = S.attrs_add (Some "dimnames") dimnames_ref' data_attrs in
             (* Return a reference to dimnames and the heap with the copies *)
             (* TODO: Same issue here as with dim<- : does the returned reference need to be a second copy? *)
             (dimnames_ref', heap'')

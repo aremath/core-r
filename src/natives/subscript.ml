@@ -59,7 +59,7 @@ let out_indices: int -> int array -> int array list -> int array -> int -> int a
 (* Produce a vector which is the right subset of the original,
  given the dimensions of the original vector, and which indices to
  slice. *)
-let do_subset: ('a array * int array) -> int array list -> ('a array * int array) =
+let do_subset: 'a. ('a array * int array) -> int array list -> ('a array * int array) =
     fun (in_array, in_dims) subs ->
     let n_dims = Array.length in_dims in
     (* bounds is the dimension of out_array *)
@@ -73,35 +73,25 @@ let do_subset: ('a array * int array) -> int array list -> ('a array * int array
     let _ = Array.iteri (fun i v -> out_array.(i) <- in_array.(v)) final_indices in
     (out_array, bounds)
 
-(* thanks ocaml types :( *)
-let do_subset_int: (S.rint array * int array) -> int array list -> (S.rvector * S.rvector) =
-    fun (i,idims) subs ->
-        let iv, id = do_subset (i, idims) subs in
+(* Produces a slice from data *)
+let rvector_slice: S.rvector -> int array -> int array list -> (S.rvector * S.rvector) =
+    fun data data_dims subs ->
+    match data with
+    | S.IntVec i -> let iv, id = do_subset (i, data_dims) subs in
         S.IntVec iv, S.IntVec (C.unresolve_vec id)
-
-let do_subset_float: (S.rfloat array * int array) -> int array list -> (S.rvector * S.rvector) =
-    fun (i, idims) subs ->
-        let fv, fd = do_subset (i, idims) subs in
+    | S.FloatVec f -> let fv, fd = do_subset (f, data_dims) subs in
         S.FloatVec fv, S.IntVec (C.unresolve_vec fd)
-
-let do_subset_complex: (S.rcomplex array * int array) -> int array list -> (S.rvector * S.rvector) =
-    fun (i, idims) subs ->
-        let cv, cd = do_subset (i, idims) subs in
+    | S.ComplexVec c -> let cv, cd = do_subset (c, data_dims) subs in
         S.ComplexVec cv, S.IntVec (C.unresolve_vec cd)
-
-let do_subset_string: (S.rstring array * int array) -> int array list -> (S.rvector * S.rvector) =
-    fun (i, idims) subs ->
-        let sv, sd = do_subset (i, idims) subs in
+    | S.StrVec s -> let sv, sd = do_subset (s, data_dims) subs in
         S.StrVec sv, S.IntVec (C.unresolve_vec sd)
-
-let do_subset_bool: (S.rint array * int array) -> int array list -> (S.rvector * S.rvector) =
-    fun (b, bdims) subs ->
-        let bv, bd = do_subset (b, bdims) subs in
+    | S.BoolVec b -> let bv, bd = do_subset (b, data_dims) subs in
         S.BoolVec bv, S.IntVec (C.unresolve_vec bd)
 
 (* Assign assign_array to the correct slice of in_array. Checks that the assign_array is
- a multiple of the slice size *)
-let do_subset_assign: ('a array * int array) -> int array list -> 'a array -> unit =
+ a multiple of the slice size. Quantified over 'a to allow
+ for multiple possible assignments of 'a in the next function. *)
+let do_subset_assign: 'a. ('a array * int array) -> int array list -> 'a array -> unit =
     fun (in_array, in_dims) subs assign_array ->
     let n_dims = Array.length in_dims in
     (* bounds is the dimension of out_array *)
@@ -119,25 +109,15 @@ let do_subset_assign: ('a array * int array) -> int array list -> 'a array -> un
     (* Do the assignments - wrap assigns using mod *)
     Array.iteri (fun i v -> in_array.(v) <- assign_array.(i mod n_assigns)) final_indices
 
-let do_subset_assign_int: (S.rint array * int array) -> int array list -> S.rint array -> unit =
-    fun (i, idims) subs iassign ->
-        do_subset_assign (i, idims) subs iassign;;
-
-let do_subset_assign_float: (S.rfloat array * int array) -> int array list -> S.rfloat array -> unit =
-    fun (f, fdims) subs fassign ->
-        do_subset_assign (f, fdims) subs fassign;;
-
-let do_subset_assign_complex: (S.rcomplex array * int array) -> int array list -> S.rcomplex array -> unit =
-    fun (c, cdims) subs cassign ->
-        do_subset_assign (c, cdims) subs cassign;;
-
-let do_subset_assign_string: (S.rstring array * int array) -> int array list -> S.rstring array -> unit =
-    fun (s, sdims) subs sassign ->
-        do_subset_assign (s, sdims) subs sassign;;
-
-let do_subset_assign_bool: (S.rbool array * int array) -> int array list -> S.rbool array -> unit =
-    fun (b, bdims) subs bassign ->
-        do_subset_assign (b, bdims) subs bassign;;
+let rvector_subset_assign: S.rvector -> int array -> int array list -> S.rvector -> unit =
+    fun data data_dims subs assign ->
+    match (data, assign) with
+    | (S.IntVec id, S.IntVec ia) -> do_subset_assign (id, data_dims) subs ia
+    | (S.FloatVec fd, S.FloatVec fa) -> do_subset_assign (fd, data_dims) subs fa
+    | (S.ComplexVec cd, S.ComplexVec ca) -> do_subset_assign (cd, data_dims) subs ca
+    | (S.StrVec sd, S.StrVec sa) -> do_subset_assign (sd, data_dims) subs sa
+    | (S.BoolVec bd, S.BoolVec ba) -> do_subset_assign (bd, data_dims) subs ba
+    | (_, _) -> failwith "Mismatched types in subset assign"
 
 (* TODO: implicit defaults and negative indices *)
 (* convert the list of subset references to the actual list of integer arrays that will
@@ -159,15 +139,6 @@ let get_dims: S.attributes -> S.heap -> int array =
     (* coerce it to an int array *)
     C.resolve_vec (C.rvector_to_int_array data_dims)
 
-(* Produces a slice from data *)
-let rvector_slice: S.rvector -> int array -> int array list -> (S.rvector * S.rvector) =
-    fun data data_dims subs ->
-    match data with
-    | S.IntVec i -> do_subset_int (i, data_dims) subs 
-    | S.FloatVec f -> do_subset_float (f, data_dims) subs
-    | S.ComplexVec c -> do_subset_complex (c, data_dims) subs
-    | S.StrVec s -> do_subset_string (s, data_dims) subs
-    | S.BoolVec b -> do_subset_bool (b, data_dims) subs
 
 (* TODO: For a vector with dimnames, can also do 
  ex. v["a", "b",], which slices by the dimension name *)
@@ -288,15 +259,6 @@ let do_replace: S.rvector -> (int * S.rvector) -> unit =
     (* TODO: better error messaging *)
     | (_, _) -> failwith "Badly-typed replacement, or too many things to replace"
 
-let rvector_subset_assign: S.rvector -> int array -> int array list -> S.rvector -> unit =
-    fun data data_dims subs assign ->
-    match (data, assign) with
-    | (S.IntVec id, S.IntVec ia) -> do_subset_assign_int (id, data_dims) subs ia
-    | (S.FloatVec fd, S.FloatVec fa) -> do_subset_assign_float (fd, data_dims) subs fa
-    | (S.ComplexVec cd, S.ComplexVec ca) -> do_subset_assign_complex (cd, data_dims) subs ca
-    | (S.StrVec sd, S.StrVec sa) -> do_subset_assign_string (sd, data_dims) subs sa
-    | (S.BoolVec bd, S.BoolVec ba) -> do_subset_assign_bool (bd, data_dims) subs ba
-    | (_, _) -> failwith "Mismatched types in subset assign"
 
 (* v[x] <- y *)
 let subset_assign_mems: S.memref -> S.memref list -> S.memref -> S.heap -> (S.memref * S.heap) =

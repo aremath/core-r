@@ -313,9 +313,11 @@ let attrs_find : rstring -> attributes -> memref option =
     with
       Not_found -> None
 
+(* Replaces because Hashtbls can have multiple bindings of the same key that shadow each other.
+ In our case, R attributes should not be able to do the same thing. *)
 let attrs_add : rstring -> memref -> attributes -> unit =
   fun rstr mem attrs ->
-    Hashtbl.add attrs.rstr_map rstr mem
+    Hashtbl.replace attrs.rstr_map rstr mem
 
 let rec attrs_add_list : (rstring * memref) list -> attributes -> unit =
   fun binds attrs ->

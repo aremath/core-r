@@ -5,18 +5,17 @@ module Copy = Copy
 (* Top level length of a list *)
 let list_length_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     fun list_ref heap ->
-    let lst = C.dereference_rlist list_ref heap in
+    let lst, attrs = C.dereference_rlist_attrs list_ref heap in
     List.length lst
 
-(* It might seem silly, but make_list expects its arguments as a ListVal. This is
- because it takes variadic arguments, and variadic arguments are passed as ListVal to
+(* It might seem silly, but make_list expects its arguments as a RefArray. This is
+ because it takes variadic arguments, and variadic arguments are passed as RefArray to
  allow for things like ex.
     list(ayy=c(1), lmao=c(2))
  which is passed as
-    ListVal [(Some "ayy", ref to c(1))::(Some "lmao", ref to c(2))]
+    RefArray [c(1)_ref::c(2)_ref] , names = ref to (StrVec [| "ayy"; "lmao" |])
  The resulting list should actually be the same as the arguments passed, but copied
- since the arguments are captured.
- TODO: should have a names attribute
+ since the arguments are captured. Copying also takes care of setting up the names attribute.
  *)
 let make_list_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     fun list_ref heap ->
@@ -45,7 +44,7 @@ let mk_boolvec: S.rbool -> S.heapobj =
     fun b -> S.DataObj(S.Vec (S.BoolVec [|b|]), S.attrs_empty)
 
 (* TODO: should this be in vector.ml? *)
-(* Make n individual rvectors from a vector of length n *)
+(* Make and allocate n individual rvectors from a vector of length n *)
 let split_rvector: S.rvector -> heap -> (S.memref list * heap) =
     fun vec heap ->
        match vec with
@@ -56,9 +55,6 @@ let split_rvector: S.rvector -> heap -> (S.memref list * heap) =
        | S.BoolVec b -> split_rarray mk_boolvec b heap 0
 
 (* Conversion *)
-(* TODO: this does the conversion without reference to the 'names' attribute.
- What should happen is that the vector's names are transferred to the new list.
- This requires converting the vector's names into a list as well. *)
 (* TODO: bad if we allocate the attrs only to have a problem somewhere else? *)
 let list_of_vector_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     fun vec_ref heap ->
@@ -66,11 +62,37 @@ let list_of_vector_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     | Some (S.DataObj (S.Vec v, vattrs)) -> v, vattrs
     | _ -> failwith "Invalid vector argument in list_of_vector"
     in
-    (* TODO: use the attrs to get a [rstring] which can populate the first half
-    of each tuple in the list *)
+    (* Copy names and add it to a new attrs *)
+    let list_attrs, heap' = match S.attrs_find "names" heap with
+    | Some names_ref -> let names_ref', heap' = Copy.deep_copy names_ref in
+        let a = S.attrs_empty in
+        let _ = S.attrs_add (Some "names") names_ref' a in
+        a, heap'
+    | None -> S.attrs_empty, heap
+    in
     (* Change the vector into a list of length-1 vectors allocated separately *)
     let vec_refs, heap'' = split_rvector vec heap' in
     (* Make a ListVal from the references list, then allocate it *)
     let new_list = S.ListVal (List.map (fun ref -> (None, ref)) vec_refs) in
-    S.heap_alloc S.DataObj(new_list, S.attrs_empty) heap''
+    S.heap_alloc S.DataObj(new_list, list_attrs) heap''
+
+(* names<- for lists *)
+let list_names_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
+    fun list_ref names_ref heap ->
+    (* Copy the list since we're editing it *)
+    let list_ref', heap' = Copy.deep_copy list_ref heap in
+    (* Dereference the list to bind its attrs and check its length *)
+    let list_len, list_attrs = match S.heap_find list_ref' heap' with
+    | Some (S.DataObj (S.ListVal l, lattrs)) -> (List.length l), lattrs
+    | _ -> failwith "Invalid list argument in list_names_assign" in
+    (* Dereference the vector to extend it to lst_len. Extending
+      copies the vector, so no need to copy it earlier (plus its attributes aren't needed
+      for it to be a 'names') *)
+    let names = match S.heap_find names_ref', heap' with
+    | Some (S.DataObj (S.Vec (S.StrVec s), _)) -> C.na_extend_array s list_len
+    | _ -> failwith "Invalid names argument in list_names_assign" in
+    (* Allocate the new names and add it to list_attrs *)
+    let names_ref', heap'' = S.heap_alloc (S.DataObj (S.Vec (S.StrVec names)), S.attrs_empty) in
+    let _ = S.attrs_add (Some "names") names_ref' lattrs in
+    (names_ref', heap'')
 

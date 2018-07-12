@@ -81,6 +81,30 @@ let get_single_rstr: S.memref -> S.heap -> S.rstring =
         () in
     a.(0)
 
+(* Extend a vector to 'length' with NAs of the appropriate type. Error if length is less than
+ the length of the vector *)
+
+let array_extend_err: unit -> 'a =
+    fun _ -> failwith "Cannot extend array to a smaller length"
+
+(* Not actually recursive, but this lets me use na_extend_help instead of 
+  writing five different versions with separate type annotations *)
+let na_extend_array: 'a. 'a option array -> int -> 'a option array =
+    fun a n ->
+    let a_len = Array.length a in
+    if n >= a_len then
+        Array.init n (fun i -> if i < a_len then a.(i) else None)
+    else array_extend_err ()
+
+let na_extend: S.rvector -> int -> S.rvector =
+    fun vec len ->
+    match vec with
+    | S.IntVec i -> S.IntVec (na_extend_array i len)
+    | S.FloatVec f -> S.FloatVec (na_extend_array f len)
+    | S.ComplexVec c -> S.ComplexVec (na_extend_array c len)
+    | S.StrVec s -> S.StrVec (na_extend_array s len)
+    | S.BoolVec b -> S.BoolVec (na_extend_array b len)
+
 (* Type conversion *)
 
 (* For using ex. float_of_int to convert float option to int option *)
