@@ -33,15 +33,15 @@ let rec split_rarray: ('a -> S.heapobj) -> 'a array -> heap -> int -> (S.memref 
     mem::mems, heap''
 
 let mk_intvec: S.rint -> S.heapobj =
-    fun i -> S.DataObj(S.Vec (S.IntVec [|i|]), S.attrs_empty)
+    fun i -> S.DataObj(S.Vec (S.IntVec [|i|]), S.attr_empty ())
 let mk_floatvec: S.rfloat -> S.heapobj =
-    fun f -> S.DataObj(S.Vec (S.FloatVec [|f|]), S.attrs_empty)
+    fun f -> S.DataObj(S.Vec (S.FloatVec [|f|]), S.attr_empty ())
 let mk_complexvec: S.rcomplex -> S.heapobj =
-    fun c -> S.DataObj(S.Vec (S.ComplexVec [|c|]), S.attrs_empty)
+    fun c -> S.DataObj(S.Vec (S.ComplexVec [|c|]), S.attr_empty ())
 let mk_strvec: S.rstring -> S.heapobj =
-    fun s -> S.DataObj(S.Vec (S.StrVec [|s|]), S.attrs_empty)
+    fun s -> S.DataObj(S.Vec (S.StrVec [|s|]), S.attr_empty ())
 let mk_boolvec: S.rbool -> S.heapobj =
-    fun b -> S.DataObj(S.Vec (S.BoolVec [|b|]), S.attrs_empty)
+    fun b -> S.DataObj(S.Vec (S.BoolVec [|b|]), S.attr_empty ())
 
 (* TODO: should this be in vector.ml? *)
 (* Make and allocate n individual rvectors from a vector of length n *)
@@ -65,10 +65,10 @@ let list_of_vector_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     (* Copy names and add it to a new attrs *)
     let list_attrs, heap' = match S.attrs_find "names" heap with
     | Some names_ref -> let names_ref', heap' = Copy.deep_copy names_ref in
-        let a = S.attrs_empty in
+        let a = S.attr_empty () in
         let _ = S.attrs_add (Some "names") names_ref' a in
         a, heap'
-    | None -> S.attrs_empty, heap
+    | None -> S.attr_empty (), heap
     in
     (* Change the vector into a list of length-1 vectors allocated separately *)
     let vec_refs, heap'' = split_rvector vec heap' in
@@ -92,7 +92,7 @@ let list_names_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap
     | Some (S.DataObj (S.Vec (S.StrVec s), _)) -> C.na_extend_array s list_len
     | _ -> failwith "Invalid names argument in list_names_assign" in
     (* Allocate the new names and add it to list_attrs *)
-    let names_ref', heap'' = S.heap_alloc (S.DataObj (S.Vec (S.StrVec names)), S.attrs_empty) in
+    let names_ref', heap'' = S.heap_alloc (S.DataObj (S.Vec (S.StrVec names)), S.attr_empty ()) in
     let _ = S.attrs_add (Some "names") names_ref' lattrs in
     (names_ref', heap'')
 

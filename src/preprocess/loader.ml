@@ -135,7 +135,7 @@ let alloc_file_envs :
       ([], heap)
     else
       let envs = map (fun f -> DataObj (EnvVal env_empty,
-                                          attrs_empty)) files in
+                                          attrs_empty ())) files in
       let (mems, heap2) = heap_alloc_list envs heap in
       let pred_mems = sup_env_mem :: mems in
       let pairs = combine mems (rev (tl (rev pred_mems))) in
@@ -181,9 +181,9 @@ let make_native_binds : memref -> heap -> (ident * heapobj) list * heap =
     fold_left
       (fun (accs, hp) (id, (params, body)) ->
         let f_env = { env_empty with pred_mem = glbl_env_mem } in
-        let f_env_obj = DataObj (EnvVal f_env, attrs_empty) in
+        let f_env_obj = DataObj (EnvVal f_env, attrs_empty ()) in
         let (f_env_mem, hp2) = heap_alloc f_env_obj hp in
-        let f_obj = DataObj (FuncVal (params, body, f_env_mem), attrs_empty) in
+        let f_obj = DataObj (FuncVal (params, body, f_env_mem), attrs_empty ()) in
           (accs @ [(id, f_obj)], hp2))
       ([], heap) native_injection_pairs
 

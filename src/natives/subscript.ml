@@ -166,8 +166,8 @@ let subset_mems: S.memref -> S.memref list -> S.heap -> (S.memref * S.heap) =
         (* get data as an rvector *)
         let slice_rvec, slice_dims = rvector_slice data_rvector data_dims subs in
         (* allocate dims on the heap, give it to data as dim *)
-        let slice_dims_mem, heap' = S.heap_alloc (S.DataObj (S.Vec (slice_dims), S.attrs_empty)) heap in
-        let slice_attrs = S.attrs_empty in
+        let slice_dims_mem, heap' = S.heap_alloc (S.DataObj (S.Vec (slice_dims), S.attrs_empty ())) heap in
+        let slice_attrs = S.attrs_empty () in
         let _ = S.attrs_add (Some "dim") slice_dims_mem in
         (* allocate data on the heap *)
         S.heap_alloc (S.DataObj (S.Vec (slice_rvec), slice_attrs)) heap'
@@ -197,7 +197,7 @@ let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.heap -> 
     | S.ComplexVec c -> S.ComplexVec (Array.make 1 c.(idx))
     | S.StrVec s -> S.StrVec (Array.make 1 s.(idx))
     | S.BoolVec b -> S.BoolVec (Array.make 1 b.(idx)) in
-    S.heap_alloc (S.DataObj ((S.Vec out_rvec), S.attrs_empty)) heap
+    S.heap_alloc (S.DataObj ((S.Vec out_rvec), S.attrs_empty ())) heap
 
 (* Find the true index into the vector given an integer *)
 let find_int_index: int -> int array -> int =
@@ -224,7 +224,7 @@ let subscript_int: S.rvector -> int array -> S.heap -> (S.memref * S.heap) =
         S.BoolVec (Array.make 1 v)
     end in
     (* allocate it as a data object on the heap *)
-    S.heap_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty)) heap
+    S.heap_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty ())) heap
 
 (* v[[x]] *)
 let subscript_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =

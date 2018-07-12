@@ -133,7 +133,7 @@ let lift_var_bind :
   fun exprs expr_env_mem inj_env_mem heap ->
     let proms = map (fun e -> PromiseObj (e, expr_env_mem)) exprs in
     let (mems, heap2) = heap_alloc_list proms heap in
-    let data = DataObj (RefArray mems, attrs_empty) in
+    let data = DataObj (RefArray mems, attrs_empty ()) in
     let (d_mem, heap3) = heap_alloc data heap2 in
       match env_mem_add id_variadic d_mem inj_env_mem heap3 with
         | None -> None
@@ -291,7 +291,7 @@ let rule_Func : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
-        let data = DataObj (FuncVal (params, expr, c_env_mem), attrs_empty) in
+        let data = DataObj (FuncVal (params, expr, c_env_mem), attrs_empty ()) in
         let (f_mem, heap2) = heap_alloc data state.heap in
         let c_frame = { frame_default with
                           slot = ReturnSlot f_mem } in

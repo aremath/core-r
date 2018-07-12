@@ -303,8 +303,9 @@ let id_variadic : ident =
 
 
 (* Attributes *)
-let attrs_empty : attributes =
-  { rstr_map = Hashtbl.create 20 } (* TODO: what is the expected size? *)
+let attrs_empty : unit -> attributes =
+  fun _ ->
+    { rstr_map = Hashtbl.create 20 } (* TODO: what is the expected size? *)
 
 let attrs_find : rstring -> attributes -> memref option =
   fun rstr attrs ->
@@ -317,7 +318,7 @@ let attrs_find : rstring -> attributes -> memref option =
  In our case, R attributes should not be able to do the same thing. *)
 let attrs_add : rstring -> memref -> attributes -> unit =
   fun rstr mem attrs ->
-    Hashtbl.replace attrs.rstr_map rstr mem
+    Hashtbl.replace attrs.rstr_map rstr mem;;
 
 let rec attrs_add_list : (rstring * memref) list -> attributes -> unit =
   fun binds attrs ->
@@ -436,7 +437,7 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
         | R.Num (R.Complex c) -> Vec (ComplexVec (Array.of_list [c]))
         | R.Bool b -> Vec (BoolVec (Array.of_list [b]))
         | R.Nil -> Vec (BoolVec (Array.of_list []))
-        ), attrs_empty)) heap
+        ), attrs_empty ())) heap
 
 let heap_remove : memref -> heap -> heap =
   fun mem heap ->
