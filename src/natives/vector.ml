@@ -17,7 +17,7 @@ let rvec_length_mem: S.memref -> S.heap -> (S.memref * S.heap) =
     let len = rvec_length data_rvec in
     let len_vec = S.IntVec (Array.make 1 (Some len)) in
     (* allocate the length *)
-    S.heap_alloc (S.DataObj (S.Vec len_vec, S.attrs_empty)) heap
+    S.heap_alloc (S.DataObj (S.Vec len_vec, S.attrs_empty ())) heap
 
 (* Returns a memref because of ex.
     y = (dim(x) <- c(1,5))  # y = [1, 5]
@@ -88,7 +88,7 @@ let make_vector_simple_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
     (* Fold them with concat *)
     | _ -> let new_vec = fold_rvectors vecs in
         (* Allocate the new vector and return a reference to it *)
-        S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty)) heap'
+        S.heap_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty ())) heap'
 
 (* Heavy lifting for range - creates a range of integers from start to end as an array *)
 let int_range: int -> int -> int array =
@@ -126,7 +126,7 @@ let range_int_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
     | (S.FloatVec [|Some sf|], S.FloatVec [|Some ef|]) -> let frange = float_range sf ef in
         S.FloatVec (C.unresolve_vec frange)
     | _ -> failwith "Bad range call" in (* TODO: better error messaging *)
-    S.heap_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty)) heap
+    S.heap_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty ())) heap
 
 (* Need to do this pattern matching because of how rvector is defined *)
 let rvector_length: S.rvector -> int =
@@ -186,8 +186,8 @@ let vector_bop_mems: (S.rvector -> S.rvector -> S.rvector) ->
     (* Do the operation on the (possibly wrapped) vectors *)
     let new_vec = binop true_rhs true_lhs in
     (* Allocate the result! *)
-    (* TODO: is attrs_empty appropriate? *)
-    S.heap_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty)) heap
+    (* TODO: is attrs_empty () appropriate? *)
+    S.heap_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty ())) heap
 
 (* Inefficient, but works *)
 let array_filter: ('a -> bool) -> 'a array -> 'a array =
@@ -207,7 +207,7 @@ let drop_dims_mems: S.memref -> S.heap -> (S.memref * S.heap) =
             let new_dim_array = array_filter (fun i -> i = Some 1) dim_array in
             (* Allocate the new dims *)
             let (dim_ref', heap'') = S.heap_alloc
-                (S.DataObj (S.Vec (S.IntVec new_dim_array), S.attrs_empty)) heap' in
+                (S.DataObj (S.Vec (S.IntVec new_dim_array), S.attrs_empty ())) heap' in
             (* Replace attrs' dim mapping *)
             let _ = S.attrs_add (Some "dim") dim_ref' attrs in
             (* TODO: what is this supposed to return? *)
@@ -228,7 +228,7 @@ let convert_vector_mems: (S.rvector -> S.rvector) -> S.memref -> S.heap -> (S.me
     let convert = convert_fun rvec in
     (* Allocate it *)
     (* TODO: when does type conversion keep attributes? *)
-    S.heap_alloc (S.DataObj (S.Vec (convert), S.attrs_empty)) heap
+    S.heap_alloc (S.DataObj (S.Vec (convert), S.attrs_empty ())) heap
 
 (* Helper for v *)
 let array_length_assign: 'a option array -> int -> 'a option array =
@@ -257,7 +257,7 @@ let vector_length_assign_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.h
     | None -> failwith "NA invalid in length<-" in
     let new_rvec = rvec_length_assign data_vec len in
     (* Allocate it *)
-    S.heap_alloc (S.DataObj (S.Vec (new_rvec), S.attrs_empty)) heap
+    S.heap_alloc (S.DataObj (S.Vec (new_rvec), S.attrs_empty ())) heap
 
 (* Helper for list_ref_length. Errors out if vec_ref points to anything other than
  a StrVec with length 1. *)
@@ -421,7 +421,7 @@ let do_matrix_mems: S.memref list -> S.heap -> (S.memref * S.heap) =
 
         (* Create and allocate the new dims *)
         let dims = get_dims old_data nrows ncols in
-        let dims_ref, heap''' = heap_alloc (S.DataObj (S.IntVec dims, attrs_empty)) heap'' in
+        let dims_ref, heap''' = heap_alloc (S.DataObj (S.IntVec dims, attrs_empty ())) heap'' in
 
         (* Add dim and dimnames to the new vector's attrs *)
         (* TODO: want to mutably access data attributes without reallocating the object *)

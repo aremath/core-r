@@ -35,18 +35,28 @@ let rec ids_contains_id : ident list -> ident -> bool =
     | [] -> false
     | (hd :: ids_tl) -> hd.name = id.name || ids_contains_id ids_tl id
 
-let rec get_default_params : param list -> ((ident * const) list) option =
+let rec default_params_val_pairs : param list -> ((ident * const) list) option =
   fun params ->
     match params with
     | [] -> Some []
-    | (Param _ :: params_tl) -> get_default_params params_tl
-    | (VarParam :: params_tl) -> get_default_params params_tl
+    | (Param _ :: params_tl) -> default_params_val_pairs params_tl
+    | (VarParam :: params_tl) -> default_params_val_pairs params_tl
+    (* We only permit const values for now, that's why we have option here *)
     | ((Default (id, Const const)) :: params_tl) ->
-        (match get_default_params params_tl with
+        (match default_params_val_pairs params_tl with
         | Some tl -> Some ((id, const) :: tl)
         | _ -> None)
     | ((Default _) :: params_tl) -> None
 
+(*
+  args - the argument / memref pairs we pull.
+         We track the arg for variadics, and named parameters.
+         We never actually really use the contents inside besides the Named id.
+  heap - The heap we are drawing from.
+
+  If successful, returns a list where each element is the corresponding
+  memref (OptA) or the (id, memref) (OptB) if it was named.
+*)
 let rec pull_args :
   (arg * memref) list -> heap ->
     (((memref, (ident * memref)) either) list) option =
@@ -68,7 +78,100 @@ let rec pull_args :
           | Some tl -> Some ((map (fun m -> OptA m) v_mems) @ tl)
           | _ -> None)
         | _ -> None)
-          
+
+
+(*
+  params - The parameters we are filtering out.
+  id - the id we are filtering by
+*)
+let filter_used_param : param list -> ident -> param list =
+  fun params id ->
+    filter (fun p -> match p with
+                     | Param p_id -> id.name <> p_id.name
+                     | Default (p_id, _) -> id.name <> p_id.name
+                     | VarParam -> true)
+           params
+
+(*
+  at this point, the arguments are going to be memory references on
+  the heap since they have already been evaluated due to assuemd eagerness
+*)
+let default_match_fold_fun :
+    (param list *
+        ((memref, (ident * memref)) either) list *
+        (ident * memref) list) ->
+    ((memref, (ident * memref)) either) ->
+    (param list *
+        ((memref, (ident * memref)) either) list *
+        (ident * memref) list) =
+  fun (params_remaining, unmatched_args, matched_args) arg ->
+    match arg with
+    | OptA mem ->
+        (params_remaining, unmatched_args @ [arg], matched_args)
+    | OptB (id, mem) ->
+        let filtered = filter_used_param params_remaining id in
+          (* Match successful if we have less after filtering *)
+          if length filtered < length params_remaining then
+            (filtered, unmatched_args, matched_args @ [(id, mem)])
+          (* Match unsuccessful if it did not accomplish anything *)
+          else
+            (filtered, unmatched_args @ [arg], matched_args)
+
+(*
+  match the remaining parameters and also detect the variadic match
+  we output (the matched positional argument, variadic argument with naming)
+*)
+let rec positional_match :
+  param list ->
+  ((memref, (ident * memref)) either) list ->
+      ((ident * ((memref, const) either)) list *
+       ((memref, (ident * memref)) either) list) option =
+  fun params args ->
+    match (params, args) with
+    (* Have more args than params available, disregard excessive args *)
+    | ([], _) -> Some ([], [])
+    (* Have not enough params remaining *)
+    | (_, []) ->
+      (match default_params_val_pairs params with
+      | Some defaults ->
+        let mods = map (fun (i, c) -> (i, OptB c)) defaults in
+          Some (mods, [])
+      | _ -> None)
+    (* After hitting a variadic parameter, the best we can do is get the
+       tail of the default values and move on *)
+    | (VarParam :: params_tl, _) ->
+      (match default_params_val_pairs params_tl with
+      | Some defaults ->
+          let mods = map (fun (i, c) -> (i, OptB c)) defaults in
+            Some (mods, args)
+      | _ -> None)
+    (* When we hit a regular parameter, we can only expect to match to
+       non-named arguments, because all those relevant should have been
+       filtered out earlier. If not, they would have matched with variadics *)
+    | (Param p_id :: params_tl, arg :: args_tl) ->
+        (match arg with
+        (* If the argument here is a named one, then it should have been
+           filtered out earlier if it was going to be used. Discard it *)
+        | OptB (_, _) -> positional_match params args_tl
+        (* If the argument is just regular memory, then we are fine *)
+        | OptA a_mem ->
+          (match positional_match params_tl args_tl with
+          | Some (binds, vars) -> Some ((p_id, OptA a_mem) :: binds, vars)
+          | _ -> None))
+    (* The default parameter value is overwritten by the argument *)
+    | (Default (p_id, _) :: params_tl, arg :: args_tl) ->
+      (match arg with
+      (* Like with the regular parameters, we drop named arguments *)
+      | OptB (_, _) -> positional_match params args_tl
+      | OptA a_mem ->
+        (match positional_match params_tl args_tl with
+        | Some (binds, vars) -> Some ((p_id, OptA a_mem) :: binds, vars)
+        | _ -> None))
+
+
+
+(********************************)
+(* Prune a list of used parameters *)
 let rec remove_used_params : param list -> ident list -> param list =
   fun params args ->
     match params with
@@ -90,13 +193,13 @@ let rec match_mems :
     match (params, mems) with
     | ([], _) -> Some ([], []) (* OH NO??? *)
     | (_, []) ->
-      (match get_default_params params with
+      (match default_params_val_pairs params with
       | Some defs ->
         let mods = map (fun (i, c) -> (i, OptB c)) defs in
           Some (mods, [])
       | _ -> None)
     | (VarParam :: params_tl, _) ->
-      (match get_default_params params_tl with
+      (match default_params_val_pairs params_tl with
       | Some defs ->
         let mods = map (fun (i, c) -> (i, OptB c)) defs in
           Some (mods, mems)
@@ -113,6 +216,25 @@ let rec match_mems :
 (* Oh god I really hope this function works, I've spent too much time here *)
 let match_lambda_app :
   param list -> (arg * memref) list -> env -> heap ->
+    ((ident * ((memref, const) either)) list *
+     ((memref, (ident * memref)) either) list) option =
+  fun params arg_mems env heap ->
+    match pull_args arg_mems heap with
+    | Some pulled ->
+      let (rem_params, rem_args, used_args) =
+          fold_left default_match_fold_fun (params, [], []) pulled in
+
+        (match positional_match rem_params rem_args with
+        | Some (matched, vars) ->
+            let mods = map (fun (i, m) -> (i, OptA m)) used_args in
+            Some (mods @ matched, vars)
+        | _ -> None)
+    | _ -> None
+
+
+(*
+let match_lambda_app :
+  param list -> (arg * memref) list -> env -> heap ->
     ((ident * ((memref, const) either)) list * memref list) option =
   fun params args env heap ->
     match pull_args args heap with
@@ -125,7 +247,30 @@ let match_lambda_app :
           Some (nameds2 @ posits, vards)
       | _ -> None)
     | _ -> None
+  *)
 
+let lift_variadic_binds :
+  ((memref, (ident * memref)) either) list -> memref -> heap ->
+    (memref * heap) option =
+  fun args env_mem heap ->
+    let mems = map (fun a -> match a with
+                      | OptA a_mem -> a_mem
+                      | OptB (_, a_mem) -> a_mem) args in
+    let names_vec =
+          StrVec (Array.of_list
+                    (map (fun a -> match a with
+                       | OptA _ -> na_rstring
+                       | OptB (p_id, _) -> p_id.name) args)) in
+    let (s_mem, heap2) = heap_alloc (DataObj (Vec names_vec, attrs_empty ()))
+                                    heap in
+    let ref_attr = attrs_empty () in
+    let _ = attrs_add (rstring_of_string "names") s_mem ref_attr in
+    let refs = DataObj (RefArray mems, ref_attr) in
+    let (ref_mem, heap3) = heap_alloc refs heap2 in
+      match env_mem_add id_variadic ref_mem env_mem heap3 with
+        | Some heap4 -> Some (ref_mem, heap4)
+        | _ -> None
+(*
 let lift_variadic_binds : memref list -> memref -> heap ->
   (memref * heap) option =
   fun mems env_mem heap ->
@@ -134,6 +279,7 @@ let lift_variadic_binds : memref list -> memref -> heap ->
       match env_mem_add id_variadic mem env_mem heap2 with
       | Some heap3 -> Some (mem, heap3)
       | _ -> None
+*)
 
 let lift_param_binds :
   (ident * ((memref, const) either)) list -> memref -> heap ->
@@ -271,9 +417,9 @@ let rule_LambdaAbs : state -> state list =
     match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
       let f_env = { env_empty with pred_mem = c_env_mem } in
-      let f_env_obj = DataObj (EnvVal f_env, attrs_empty) in
+      let f_env_obj = DataObj (EnvVal f_env, attrs_empty ()) in
       let (f_env_mem, heap2) = heap_alloc f_env_obj state.heap in
-      let func = DataObj (FuncVal (params, expr, f_env_mem), attrs_empty) in
+      let func = DataObj (FuncVal (params, expr, f_env_mem), attrs_empty ()) in
       let (mem, heap2) = heap_alloc func heap2 in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
