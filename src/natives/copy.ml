@@ -1,4 +1,5 @@
 module S = Support
+module L = Langutils
 (* TODO: Current copying strategy goes into an infinite loop on cyclic pointer graphs.
 Fortunately, I think that because R passes objects by deep copy, it's not possible to
 create a cyclic pointer graph. *)
@@ -64,7 +65,7 @@ and copy_alist:'a. ('a * S.memref) list -> S.heap -> ('a * S.memref) list * S.he
     fun alist heap ->
     let keys, mems = unzip_list alist in
     let mems', heap' = copy_ref_array mems heap in
-    ((zip_list keys mems'), heap) (* no need to copy keys *)
+    ((zip_list keys mems'), heap') (* no need to copy keys *)
 
 and copy_env: S.env -> S.heap -> (S.env * S.heap) =
     fun env heap ->
@@ -93,20 +94,24 @@ and copy_list: (S.rstring * S.memref) list -> S.heap -> ((S.rstring * S.memref) 
 (* deep copy a memory reference *)
 and deep_copy: S.memref -> S.heap -> (S.memref * S.heap) =
     fun mem heap ->
-    let obj = try Some (S.MemRefMap.find mem heap.S.mem_map) with Not_found -> None in
+    let obj = S.heap_find mem heap in
     match obj with
     | Some (S.PromiseObj _)   -> failwith "can't copy promises" (* TODO: force evaluation somehow? *)
     | Some (S.DataObj (v,a))    -> let (a', h') = copy_attributes a heap in
         begin match v with
         | S.Vec v         -> let alloc_obj = S.DataObj (S.Vec (copy_rvector v), a') in
             S.heap_alloc alloc_obj h'
+
         | S.RefArray v    -> let ms, h'' = copy_ref_array v h' in 
             let alloc_obj = S.DataObj ((S.RefArray ms), a') in
             S.heap_alloc alloc_obj h''
+
         | S.FuncVal _     -> mem, heap (* do not try to deepcopy functions *)
+
         | S.EnvVal v      -> let env, h'' = copy_env v h' in
             let alloc_obj = S.DataObj ((S.EnvVal env), a') in
             S.heap_alloc alloc_obj h''
+
         (* | S.ListVal v     -> let l, h'' = copy_list v h' in
             let alloc_obj = S.DataObj ((S.ListVal l), a') in
             S.heap_alloc alloc_obj h'' *)

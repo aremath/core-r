@@ -2,6 +2,7 @@
 module S = Support
 module C = Native_support (* was Coerce *)
 module Copy = Copy
+module L = Langutils
 
 let rvec_length: S.rvector -> int =
     function
@@ -117,7 +118,7 @@ let make_vector_mems: S.memref -> S.heap -> (S.memref * S.heap) =
     (* Dereference the variadic argument into a list of memrefs and the attrs *)
     let vec_mems, list_attrs = C.dereference_rlist_attrs var_mem' heap' in
     let vecs = List.map (fun m -> C.dereference_rvector m heap') vec_mems in
-    match S.attrs_find (Some "names") list_attrs with
+    begin match S.attrs_find (Some "names") list_attrs with
     (* names is a StrVec with one element per element of vec_mems 
      We need to unpack it so that it has one element per element of the fold of the vectors.
      This means converting the "a" in a=c(1,2) to "a1,a2" *)
@@ -130,15 +131,17 @@ let make_vector_mems: S.memref -> S.heap -> (S.memref * S.heap) =
         (* Fold the data vectors and into a single data and allocate it *)
         let vec_ref, heap''' = alloc_fold_vectors vecs heap'' in
         (* It's clunky, but we're going to dereference the newly-allocated vec_ref
-         to bind it's attributes and create the name attribute. *)
-        let _ = match S.heap_find vec_ref heap''' with
+         to bind it's attributes and create the names attribute. *)
+        let _ = begin match S.heap_find vec_ref heap''' with
         | Some (S.DataObj (_, vec_attrs)) -> S.attrs_add (Some "names") names_ref vec_attrs
-        | _ -> failwith "That should not have happened!!!" in
-        (* The return reference is to the vector *)
+        | _ -> failwith "That should not have happened!!!"
+        end in
+        (* The return reference is to the resulting vector *)
         vec_ref, heap'''
     (* No names means we're just supposed to fold the vectors together like usual.
       The resulting rvector has attrs_empty *)
     | None -> alloc_fold_vectors vecs heap'
+    end
 
 (* Heavy lifting for range - creates a range of integers from start to end as an array *)
 let int_range: int -> int -> int array =
