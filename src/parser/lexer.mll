@@ -210,7 +210,7 @@
         | x                 -> [x] (* Binops *)
 
     (* which tokens match which other tokens *)
-    let token_match: Parser.token -> Parser.token -> bool = 
+    let token_match: Parser.token -> Parser.token -> bool =
         fun t1 t2 ->
             begin
             match t1 with
@@ -306,7 +306,7 @@ let rec is_if_context: Parser.token list -> bool =
 
 (* When the lexer matches a lexeme that contains newlines, its position and column reporting
  gets messed up. In errors, it reports a column number that matches the total length of the lexeme
- and a line number which effectively ignores the newlines in the matched lexeme. This function 
+ and a line number which effectively ignores the newlines in the matched lexeme. This function
  updates the lexer position to the correct information *)
 let update_position =
     fun lexeme lexbuf ->
@@ -352,6 +352,8 @@ Tokens that do not have a match do not go onto the context stack.*)
             let x = to_push tok in
             context_ref := x @ !context_ref
 
+let strip_string_quots : string -> string =
+  fun str -> String.sub str 1 (String.length str - 2)
 }
 
 let hex_digit =
@@ -432,10 +434,11 @@ let comment =
 let whitespace =
   [' ' '\t' '\x0c' ]
 
+
 (* For matching elses that occur after an if inside an if-context *)
 let nlelse = whitespace* "else"
-(* Any number of lines with no semantic meaning. 
- Require at least one, since we're interested in handling else's that 
+(* Any number of lines with no semantic meaning.
+ Require at least one, since we're interested in handling else's that
  can be on another line inside an if-context. *)
 let nothing = (whitespace* comment? newline)+
 let ifelse = nothing nlelse
@@ -543,8 +546,8 @@ rule tokenize context = parse
                     SYMBOL str }
   | user_op     { step (USER_OP (Lexing.lexeme lexbuf)) context;
                     USER_OP (Lexing.lexeme lexbuf) }
-  | string      { step (STRING_CONST (Lexing.lexeme lexbuf)) context;
-                    STRING_CONST (Lexing.lexeme lexbuf) }
+  | string      { step (STRING_CONST (strip_string_quots (Lexing.lexeme lexbuf))) context;
+                    STRING_CONST (strip_string_quots (Lexing.lexeme lexbuf)) }
   | hex         { step (INT_CONST 0) context;
                     INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
   | int         { step (INT_CONST 0) context;

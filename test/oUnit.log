@@ -19,5 +19,8 @@ Simple:5:branching.R end
 Simple:6:loops.R start
 ok
 Simple:6:loops.R end
-Ran: 7 tests in: 0.01 seconds.
+Simple:7:var-dots.R start
+ok
+Simple:7:var-dots.R end
+Ran: 8 tests in: 0.01 seconds.
 OK
