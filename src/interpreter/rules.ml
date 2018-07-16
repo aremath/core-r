@@ -592,6 +592,26 @@ let rule_IfRet : state -> state list =
     | Some (ReturnSlot mem, _,
             BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
+      if (not (is_mem_symval mem state.heap) &&
+         (is_mem_conc_true mem state.heap)) then
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = if is_mem_conc_true mem state.heap then
+                                   EvalSlot t_expr
+                                 else
+                                   EvalSlot f_expr } in
+          [{ state with
+               stack = stack_push c_frame c_stack2 }]
+      else
+        []
+    | _ -> []
+
+let rule_IfRetSym : state -> state list =
+  fun state ->
+    match stack_pop_v2 state.stack with
+    | Some (ReturnSlot mem, _,
+            BranchSlot (t_expr, f_expr), c_env_mem,
+            c_stack2) ->
       if is_mem_symval mem state.heap then
         let c_frame_t = { frame_default with
                             env_mem = c_env_mem;
@@ -607,18 +627,9 @@ let rule_IfRet : state -> state list =
            { state with
                stack = stack_push c_frame_f c_stack2;
                pathcons = path_f }]
-
       else
-        let c_frame = { frame_default with
-                          env_mem = c_env_mem;
-                          slot = if is_mem_conc_true mem state.heap then
-                                   EvalSlot t_expr
-                                 else
-                                   EvalSlot f_expr } in
-          [{ state with
-               stack = stack_push c_frame c_stack2 }]
+        []
     | _ -> []
-
 
 
 (* While *)
@@ -643,7 +654,8 @@ let rule_WhileCondTrue : state -> state list =
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
-      if is_mem_conc_true cond_mem state.heap then
+      if (not (is_mem_symval cond_mem state.heap) &&
+         (is_mem_conc_true cond_mem state.heap)) then
         let b_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = EvalSlot body } in
@@ -663,7 +675,8 @@ let rule_WhileCondFalse : state -> state list =
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
-      if is_mem_conc_true cond_mem state.heap then
+      if (not (is_mem_symval cond_mem state.heap) &&
+         (is_mem_conc_true cond_mem state.heap)) then
         []
       else
         let c_frame = { frame_default with
@@ -671,6 +684,32 @@ let rule_WhileCondFalse : state -> state list =
                           slot = ReturnSlot body_mem } in
           [{ state with
                stack = stack_push c_frame c_stack2 }]
+    | _ -> []
+
+
+let rule_WhileCondSym : state -> state list =
+  fun state ->
+    match stack_pop_v2 state.stack with
+    | Some (ReturnSlot cond_mem, _,
+            LoopSlot (cond, body, Some body_mem), c_env_mem,
+            c_stack2) ->
+      if is_mem_symval cond_mem state.heap then
+        let c_frame_b = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot body_mem } in
+        let path_b = add_pathcons (MemRef cond_mem) false state.pathcons in
+        let c_frame_c = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = LoopSlot (cond, body, None) } in
+        let path_c = add_pathcons (MemRef cond_mem) true state.pathcons in
+          [{ state with
+               stack = stack_push c_frame_b c_stack2;
+               pathcons = path_b };
+           { state with
+               stack = stack_push c_frame_c c_stack2;
+               pathcons = path_c }]
+      else
+        []
     | _ -> []
 
 
@@ -781,9 +820,11 @@ type rule =
   | ERuleAssignRet
   | ERuleIfEval
   | ERuleIfRet
+  | ERuleIfRetSym
   | ERuleWhileEval
   | ERuleWhileCondTrue
   | ERuleWhileCondFalse
+  | ERuleWhileCondSym
   | ERuleWhileBodyDone
   | ERuleBreak
   | ERuleNext
@@ -810,9 +851,11 @@ let rule_table : (rule * (state -> state list)) list =
     (ERuleAssignRet, rule_AssignRet);
     (ERuleIfEval, rule_IfEval);
     (ERuleIfRet, rule_IfRet);
+    (ERuleIfRetSym, rule_IfRetSym);
     (ERuleWhileEval, rule_WhileEval);
     (ERuleWhileCondTrue, rule_WhileCondTrue);
     (ERuleWhileCondFalse, rule_WhileCondFalse);
+    (ERuleWhileCondSym, rule_WhileCondSym);
     (ERuleWhileBodyDone, rule_WhileBodyDone);
     (ERuleBreak, rule_Break);
     (ERuleNext, rule_Next);
