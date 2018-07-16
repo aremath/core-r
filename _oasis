@@ -44,8 +44,8 @@ Library "loader"
 
 Library "smt"
   Path: src/smt
-  Modules: Smtsyntax, Smt
-
+  Modules: Smtsyntax, Converter, Smt
+  BuildDepends: language
 
 Library "ounit"
   Path: test/ounit
