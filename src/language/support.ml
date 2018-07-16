@@ -576,6 +576,14 @@ let env_nest : memref -> env =
     { env_empty with pred_mem = env_mem }
 
 
+(* Symbolic value detection *)
+let is_symval : memref -> heap -> bool =
+  fun mem heap ->
+    match heap_find mem heap with
+    | Some (DataObj (SymVal, _)) -> true
+    | _ -> false
+
+
 (* Execution state *)
 let state_default : state =
   { stack = stack_empty;
