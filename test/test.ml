@@ -82,6 +82,9 @@ let test_simple = "Simple" >:::
     "loops.R" >::
       test_file (test_simple_dir ^ "/loops.R") 500
                 (rint_vec_of_ints [15]);
+    "var-dots.R" >::
+      test_file (test_simple_dir ^ "/var-dots.R") 100
+                (rint_vec_of_ints [123]);
   ]
 
 let _ =
