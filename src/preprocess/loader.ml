@@ -17,7 +17,6 @@ open Sys
 let base_loc : string =
   "/home/celery/foo/harvard/core-r/base/R/custom.R"
 
-type memref = S.memref
 type rastexpr = unit R.expr
 
 module StringSet = Set.Make(String)
@@ -53,8 +52,8 @@ let exprs_of_file : string -> expr list =
 let cat_of_expr : expr -> (string, expr) either =
   fun expr ->
     match expr with
-    | S.LambdaApp (S.Ident ({ S.name = Some "source" }),
-                  [S.Arg (S.Const (S.Str (Some src)))]) ->
+    | LambdaApp (Ident ({ name = Some "source" }),
+                  [Arg (Const (Str (Some src)))]) ->
                     OptA (unwrap_raw_string_const src)
     | _ -> OptB expr
 
@@ -134,7 +133,7 @@ let alloc_file_envs :
     if length files = 0 then
       ([], heap)
     else
-      let envs = map (fun f -> DataObj (EnvVal env_empty,
+      let envs = map (fun f -> DataObj (EnvVal (env_empty ()),
                                           attrs_empty ())) files in
       let (mems, heap2) = heap_alloc_list envs heap in
       let pred_mems = sup_env_mem :: mems in
@@ -168,19 +167,19 @@ let frames_of_binds :
 let raw_inits_of_file : string -> string -> stack * heap * memref =
   fun dir file ->
     let heap1 = heap_empty_offset 1 in
-    let null_env_mem = mem_null in
+    let null_env_mem = mem_null () in
     let (files, file_expr_binds) = linearize_source dir file in
     let (file_env_binds, heap2) = alloc_file_envs files null_env_mem heap1 in
     let frames = frames_of_binds file_expr_binds file_env_binds in
       match file_env_binds with
-      | ((_, mem) :: _) -> (stack_push_list frames stack_empty, heap2, mem)
+      | ((_, mem) :: _) -> (stack_push_list frames (stack_empty ()), heap2, mem)
       | [] -> failwith "raw_inits_of_file: somehow failed to initialize envs"
 
 let make_native_binds : memref -> heap -> (ident * heapobj) list * heap =
   fun glbl_env_mem heap ->
     fold_left
       (fun (accs, hp) (id, (params, body)) ->
-        let f_env = { env_empty with pred_mem = glbl_env_mem } in
+        let f_env = { (env_empty ()) with pred_mem = glbl_env_mem } in
         let f_env_obj = DataObj (EnvVal f_env, attrs_empty ()) in
         let (f_env_mem, hp2) = heap_alloc f_env_obj hp in
         let f_obj = DataObj (FuncVal (params, body, f_env_mem), attrs_empty ()) in

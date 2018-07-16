@@ -4,6 +4,7 @@ open Absyn_generator
 open Loader
 open Engine
 open Interputils
+open Smt
 
 open Sys
 

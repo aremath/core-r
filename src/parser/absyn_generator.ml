@@ -1,6 +1,6 @@
 
 let parseFile filename =
-  print_endline ("attempting to open: " ^ filename);
+  print_endline ("parseFile: opening " ^ filename);
   let channel = open_in filename in
   let lexbuf = Lexing.from_channel channel in
   let absyn =
@@ -19,7 +19,7 @@ let parseFile filename =
               failwith "Syntax error"
             end in
   let _ = close_in channel in
-  print_endline ("successfully parsed " ^ filename);
+  print_endline ("parseFile: parsed okay " ^ filename);
   absyn;;
 
 let dumpTokens : string -> unit =

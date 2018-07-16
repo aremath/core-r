@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 5f48e10e0510bbede1343e1c9b8e3ae7)
+# DO NOT EDIT (digest: 4891fdade1c5c8d4cb965f2329f5f24c)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -35,17 +35,21 @@ true: annot, bin_annot
 <src/interpreter/*.ml{,i,y}>: use_loader
 <src/interpreter/*.ml{,i,y}>: use_natives
 <src/interpreter/*.ml{,i,y}>: use_parser
+# Library smt
+"src/smt/smt.cmxs": use_smt
 # Executable main
 "src/main.byte": use_interpreter
 "src/main.byte": use_language
 "src/main.byte": use_loader
 "src/main.byte": use_natives
 "src/main.byte": use_parser
+"src/main.byte": use_smt
 <src/*.ml{,i,y}>: use_interpreter
 <src/*.ml{,i,y}>: use_language
 <src/*.ml{,i,y}>: use_loader
 <src/*.ml{,i,y}>: use_natives
 <src/*.ml{,i,y}>: use_parser
+<src/*.ml{,i,y}>: use_smt
 # Library ounit
 "test/ounit/ounit.cmxs": use_ounit
 <test/ounit/*.ml{,i,y}>: pkg_unix

@@ -25,7 +25,7 @@ let nw_fun_vec_subset : (param list) * expr =
   ([Param (id_of_string "vector"); VarParam],
    NativeLambdaApp
      (native_vector_subset_id,
-      [id_of_string "vector"; id_variadic]))
+      [id_of_string "vector"; id_variadic ()]))
 
 (* Vector making *)
 let native_vector_make_id : ident = native_id_of_string "vector.make"
@@ -33,7 +33,7 @@ let nw_fun_vec_make : (param list) * expr =
   ([VarParam],
    NativeLambdaApp
     (native_vector_make_id,
-     [id_variadic]))
+     [id_variadic ()]))
 
 (* Vector length *)
 let native_vector_length_id: ident = native_id_of_string "vector.length"

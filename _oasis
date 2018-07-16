@@ -11,7 +11,7 @@ Plugins: META (0.4), DevFiles (0.4)
 Executable "main"
   Path: src
   MainIs: main.ml
-  BuildDepends: language, interpreter, loader, natives
+  BuildDepends: language, interpreter, loader, natives, smt
 
 Library "interpreter"
   Path: src/interpreter
@@ -41,6 +41,11 @@ Library "loader"
   Path: src/preprocess
   Modules: Loader, Rast_to_language
   BuildDepends: language, parser, natives
+
+Library "smt"
+  Path: src/smt
+  Modules: Smtsyntax, Smt
+
 
 Library "ounit"
   Path: test/ounit

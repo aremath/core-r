@@ -76,7 +76,7 @@ let fold_rvectors: S.rvector list -> S.rvector =
 let alloc_fold_vectors: S.rvector list -> S.heap -> (S.memref * S.heap) =
     fun vecs heap ->
     match vecs with
-    | [] -> (S.mem_null, heap) (* Empty arrays are null *)
+    | [] -> (S.mem_null (), heap) (* Empty arrays are null *)
     (* TODO: this might cause bugs if you try to assign to an empty array's dims or something
     since there's no actual object. On the other hand, just Array.makeing a 0-length vector
     also doesn't have the right behavior *)

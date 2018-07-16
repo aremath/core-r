@@ -28,7 +28,7 @@ let expr_of_arg : arg -> expr =
   fun arg -> match arg with
     | Arg expr -> expr
     | Named (_, expr) -> expr
-    | VarArg -> Ident id_variadic
+    | VarArg -> Ident (id_variadic ())
 
 let rec ids_contains_id : ident list -> ident -> bool =
   fun ids id ->
@@ -86,7 +86,8 @@ let rec pull_args :
                   let pairs = combine (Array.to_list rstrs) v_mems in
                   let v_args =
                       map (fun (a, m) ->
-                        if (a = na_rstring) || (a = rstring_of_string "") then
+                        if (a = na_rstring ()) ||
+                           (a = rstring_of_string "") then
                           OptA m
                         else
                           OptB (id_of_rstring a, m)) pairs in
@@ -251,23 +252,6 @@ let match_lambda_app :
     | _ -> None
 
 
-(*
-let match_lambda_app :
-  param list -> (arg * memref) list -> env -> heap ->
-    ((ident * ((memref, const) either)) list * memref list) option =
-  fun params args env heap ->
-    match pull_args args heap with
-    | Some pulled ->
-      let (regs, nameds) = split_eithers pulled in
-      let nameds2 = map (fun (i, m) -> (i, OptA m)) nameds in
-      let unuseds = remove_used_params params (map pair_first nameds) in
-      (match match_mems unuseds regs with
-      | Some (posits, vards) ->
-          Some (nameds2 @ posits, vards)
-      | _ -> None)
-    | _ -> None
-  *)
-
 let lift_variadic_binds :
   ((memref, (ident * memref)) either) list -> memref -> heap ->
     (memref * heap) option =
@@ -287,20 +271,10 @@ let lift_variadic_binds :
     let _ = attrs_add (rstring_of_string "names") s_mem ref_attr in
     let refs = DataObj (RefArray mems, ref_attr) in
     let (ref_mem, heap3) = heap_alloc refs heap2 in
-      match env_mem_add id_variadic ref_mem env_mem heap3 with
+      match env_mem_add (id_variadic ()) ref_mem env_mem heap3 with
         | Some heap4 -> Some (ref_mem, heap4)
         | _ -> None
     end
-(*
-let lift_variadic_binds : memref list -> memref -> heap ->
-  (memref * heap) option =
-  fun mems env_mem heap ->
-    let refs = DataObj ((RefArray mems), attrs_empty) in
-    let (mem, heap2) = heap_alloc refs heap in
-      match env_mem_add id_variadic mem env_mem heap2 with
-      | Some heap3 -> Some (mem, heap3)
-      | _ -> None
-*)
 
 let lift_param_binds :
   (ident * ((memref, const) either)) list -> memref -> heap ->
@@ -316,23 +290,6 @@ let lift_param_binds :
       | Some heap3 -> Some (binds2, heap3)
       | _ -> None
 
-let is_mem_true : memref -> heap -> bool =
-  fun mem heap ->
-    match heap_find mem heap with
-    | Some (DataObj (Vec rvec, _)) ->
-      (match (rvector_get_rint rvec 1,
-              rvector_get_rfloat rvec 1,
-              rvector_get_rcomplex rvec 1,
-              rvector_get_rstring rvec 1,
-              rvector_get_rbool rvec 1) with
-      | (Some v, _, _, _, _) -> v <> rint_of_int 0
-      | (_, Some v, _, _, _) -> v <> rfloat_of_float 0.0
-      | (_, _, Some v, _, _) -> v <> rcomplex_of_complex Complex.zero
-      | (_, _, _, Some v, _) -> true
-      | (_, _, _, _, Some v) -> v <> rbool_of_bool 0
-      | _ -> false)
-    | _ -> true
-    | None -> false
 
 let rec unwind_to_loop_slot :
   stack -> ((expr * expr * memref) * memref * stack) option =
@@ -340,7 +297,7 @@ let rec unwind_to_loop_slot :
     match stack_pop_v stack with
     | Some (LoopSlot (cond, body, o_body_mem), env_mem, stack2) ->
         let body_mem = (match o_body_mem with
-                         | None -> mem_null
+                         | None -> mem_null ()
                          | Some mem -> mem) in
           Some ((cond, body, body_mem), env_mem, stack2)
     | Some (_, _, stack2) -> unwind_to_loop_slot stack2
@@ -421,7 +378,7 @@ let rule_Seq : state -> state list =
       if List.length exprs = 0 then
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = ReturnSlot mem_null; } in
+                          slot = ReturnSlot (mem_null ()); } in
           [{ state with
                stack = stack_push c_frame c_stack2 }]
       else
@@ -437,7 +394,7 @@ let rule_LambdaAbs : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (LambdaAbs (params, expr)), c_env_mem, c_stack2) ->
-      let f_env = { env_empty with pred_mem = c_env_mem } in
+      let f_env = { (env_empty ()) with pred_mem = c_env_mem } in
       let f_env_obj = DataObj (EnvVal f_env, attrs_empty ()) in
       let (f_env_mem, heap2) = heap_alloc f_env_obj state.heap in
       let func = DataObj (FuncVal (params, expr, f_env_mem), attrs_empty ()) in
@@ -635,15 +592,34 @@ let rule_IfRet : state -> state list =
     | Some (ReturnSlot mem, _,
             BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
-      let c_frame = { frame_default with
-                        env_mem = c_env_mem;
-                        slot = if is_mem_true mem state.heap then
-                                 EvalSlot t_expr
-                               else
-                                 EvalSlot f_expr } in
-        [{ state with
-             stack = stack_push c_frame c_stack2 }]
+      if is_mem_symval mem state.heap then
+        let c_frame_t = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = EvalSlot t_expr } in
+        let path_t = add_pathcons (MemRef mem) true state.pathcons in
+        let c_frame_f = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = EvalSlot f_expr } in
+        let path_f = add_pathcons (MemRef mem) false state.pathcons in
+          [{ state with
+               stack = stack_push c_frame_t c_stack2;
+               pathcons = path_t };
+           { state with
+               stack = stack_push c_frame_f c_stack2;
+               pathcons = path_f }]
+
+      else
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = if is_mem_conc_true mem state.heap then
+                                   EvalSlot t_expr
+                                 else
+                                   EvalSlot f_expr } in
+          [{ state with
+               stack = stack_push c_frame c_stack2 }]
     | _ -> []
+
+
 
 (* While *)
 let rule_WhileEval : state -> state list =
@@ -655,7 +631,7 @@ let rule_WhileEval : state -> state list =
                         slot = EvalSlot cond } in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
-                        slot = LoopSlot (cond, body, Some mem_null) } in
+                        slot = LoopSlot (cond, body, Some (mem_null ())) } in
       [{ state with
            stack = stack_push_list [d_frame; c_frame] c_stack2 }]
     | _ -> []
@@ -667,7 +643,7 @@ let rule_WhileCondTrue : state -> state list =
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
-      if is_mem_true cond_mem state.heap then
+      if is_mem_conc_true cond_mem state.heap then
         let b_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = EvalSlot body } in
@@ -687,7 +663,7 @@ let rule_WhileCondFalse : state -> state list =
     | Some (ReturnSlot cond_mem, _,
             LoopSlot (cond, body, Some body_mem), c_env_mem,
             c_stack2) ->
-      if is_mem_true cond_mem state.heap then
+      if is_mem_conc_true cond_mem state.heap then
         []
       else
         let c_frame = { frame_default with

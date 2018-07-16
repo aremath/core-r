@@ -71,7 +71,7 @@ and copy_env: S.env -> S.heap -> (S.env * S.heap) =
     fun env heap ->
     let bindings = S.IdentMap.bindings env.S.id_map in
     let idmems, heap' = copy_alist bindings heap in
-    let env' = S.env_add_list idmems S.env_empty in
+    let env' = S.env_add_list idmems (S.env_empty ()) in
     let env'' = {env' with S.pred_mem = env.S.pred_mem} in (* parent is shared *)
     (env'', heap')
 

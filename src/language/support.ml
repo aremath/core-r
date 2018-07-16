@@ -116,27 +116,20 @@ type heap =
   { mem_map : heapobj MemRefMap.t;
     next_mem : memref }
 
+(* Logical path constraints *)
+type pathcons =
+  { path_list : (expr * bool) list }
+
+
 (* Execution state *)
 type state =
   { stack : stack;
     heap : heap;
     global_env_mem : memref;
+    pathcons : pathcons;
     fresh_count : int;
     pred_unique : int;
     unique : int }
-
-
-(* Logical path constraints *)
-type atom = unit
-
-type formula =
-    Atom of atom
-  | Neg of formula
-  | And of formula * formula
-  | Or of formula * formula
-
-type pathcons =
-  { formula_list : formula list }
 
 
 (* Utility functions *)
@@ -158,17 +151,19 @@ let mem_of_int : int -> memref =
 let mem_incr : memref -> memref =
   fun mem -> { mem with R.addr = mem.R.addr + 1 }
 
-let mem_null : memref = mem_of_int 0
+let mem_null : unit -> memref =
+  fun _ -> mem_of_int 0
 
 let is_mem_null : memref -> bool =
-  fun mem -> mem = mem_null
+  fun mem -> mem = mem_null ()
 
 
 (* R type utility *)
 let rint_of_int : int -> rint =
   fun i -> Some i
 
-let na_rint : rint = None
+let na_rint : unit -> rint =
+  fun _ -> None
 
 let int_of_rint : rint -> int option =
   fun ri -> ri
@@ -176,7 +171,8 @@ let int_of_rint : rint -> int option =
 let rfloat_of_float : float -> rfloat =
   fun f -> Some f
 
-let na_rfloat : rfloat = None
+let na_rfloat : unit -> rfloat =
+  fun _ -> None
 
 let float_of_rfloat : rfloat -> float option =
   fun rf -> rf
@@ -184,7 +180,8 @@ let float_of_rfloat : rfloat -> float option =
 let rcomplex_of_complex : complex -> rcomplex =
   fun c -> Some c
 
-let na_rcomplex : rcomplex = None
+let na_rcomplex : unit -> rcomplex =
+  fun _ -> None
 
 let complex_of_rcomplex : rcomplex -> complex option =
   fun rc -> rc
@@ -192,7 +189,8 @@ let complex_of_rcomplex : rcomplex -> complex option =
 let rbool_of_bool : int -> rbool =
   fun b -> Some b
 
-let na_rbool : rbool = None
+let na_rbool : unit -> rbool =
+  fun _ -> None
 
 let bool_of_rbool : rbool -> int option =
   fun rb -> rb
@@ -200,7 +198,8 @@ let bool_of_rbool : rbool -> int option =
 let rstring_of_string : string -> rstring =
   fun s -> Some s
 
-let na_rstring : rstring = None
+let na_rstring : unit -> rstring =
+  fun _ -> None
 
 let string_of_rstring : rstring -> string option =
   fun rs -> rs
@@ -267,17 +266,16 @@ let rvector_get_rbool : rvector -> int -> rbool option =
     | _ -> None
 
 
-
-
 (* Fresh identifier *)
-let id_default : ident =
-  { R.pkg = None;
-    R.name = na_rstring;
-    R.tag = None }
+let id_default : unit -> ident =
+  fun _ ->
+    { R.pkg = None;
+      R.name = na_rstring ();
+      R.tag = None }
 
 let id_of_rstring : rstring -> ident =
   fun name ->
-    { id_default with R.name = name }
+    { (id_default ()) with R.name = name }
 
 let id_of_string : string -> ident =
   fun name ->
@@ -298,8 +296,9 @@ let rec id_fresh_list : int -> state -> (ident list) * state =
       let (ids_tl, state3) = id_fresh_list (n - 1) state2 in
         (id :: ids_tl, state3)
 
-let id_variadic : ident =
-  id_of_string "..."
+let id_variadic : unit -> ident =
+  fun _ ->
+    id_of_string "..."
 
 
 (* Attributes *)
@@ -329,14 +328,16 @@ let rec attrs_add_list : (rstring * memref) list -> attributes -> unit =
         attrs_add_list binds_tl attrs;;
 
 (* Frame operations *)
-let frame_default : frame =
-  { env_mem = mem_null;
-    slot = ReturnSlot mem_null }
+let frame_default : unit -> frame =
+  fun _ ->
+    { env_mem = mem_null ();
+      slot = ReturnSlot (mem_null ()) }
 
 
 (* Stack operations *)
-let stack_empty : stack =
-  { frame_list = [] }
+let stack_empty : unit -> stack =
+  fun _ ->
+    { frame_list = [] }
 
 let stack_pop : stack -> (frame * stack) option =
   fun stack ->
@@ -375,13 +376,14 @@ let rec stack_push_list : frame list -> stack -> stack =
 
 
 (* Heap operations *)
-let heap_empty : heap =
-  { mem_map = MemRefMap.empty;
-    next_mem = mem_incr mem_null }
+let heap_empty : unit -> heap =
+  fun _ ->
+    { mem_map = MemRefMap.empty;
+      next_mem = mem_incr (mem_null ()) }
 
 let heap_empty_offset : int -> heap =
   fun offset ->
-    { heap_empty with next_mem = mem_of_int offset }
+    { (heap_empty ()) with next_mem = mem_of_int offset }
 
 let binds_of_heap : heap -> (memref * heapobj) list =
   fun heap ->
@@ -452,9 +454,10 @@ let rec heap_remove_list : memref list -> heap -> heap =
 
 (* Environment functions *)
 
-let env_empty : env =
-  { id_map = IdentMap.empty;
-    pred_mem = mem_null }
+let env_empty : unit -> env =
+  fun _ ->
+    { id_map = IdentMap.empty;
+      pred_mem = mem_null () }
 
 (* Flattening *)
 let binds_of_env : env -> (ident * memref) list =
@@ -573,22 +576,50 @@ let rec env_mem_remove_all_list : ident list -> memref -> heap -> heap option =
 (* Nesting *)
 let env_nest : memref -> env =
   fun env_mem ->
-    { env_empty with pred_mem = env_mem }
+    { (env_empty ()) with pred_mem = env_mem }
 
 
-(* Symbolic value detection *)
-let is_symval : memref -> heap -> bool =
+(* Path constraints *)
+let empty_pathcons : unit -> pathcons =
+  fun _ ->
+    { path_list = [] }
+
+let add_pathcons : expr -> bool -> pathcons -> pathcons =
+  fun expr truth pathcons ->
+    { pathcons with path_list = (expr, truth) :: pathcons.path_list }
+
+
+(* Value detection *)
+let is_mem_symval : memref -> heap -> bool =
   fun mem heap ->
     match heap_find mem heap with
     | Some (DataObj (SymVal, _)) -> true
     | _ -> false
 
+let is_mem_conc_true : memref -> heap -> bool =
+  fun mem heap ->
+    match heap_find mem heap with
+    | Some (DataObj (Vec rvec, _)) ->
+      (match (rvector_get_rint rvec 1,
+              rvector_get_rfloat rvec 1,
+              rvector_get_rcomplex rvec 1,
+              rvector_get_rstring rvec 1,
+              rvector_get_rbool rvec 1) with
+      | (Some v, _, _, _, _) -> v <> rint_of_int 0
+      | (_, Some v, _, _, _) -> v <> rfloat_of_float 0.0
+      | (_, _, Some v, _, _) -> v <> rcomplex_of_complex Complex.zero
+      | (_, _, _, Some v, _) -> true
+      | (_, _, _, _, Some v) -> v <> rbool_of_bool 0
+      | _ -> false)
+    | _ -> true
+    | None -> false
 
 (* Execution state *)
 let state_default : state =
-  { stack = stack_empty;
-    heap = heap_empty;
-    global_env_mem = mem_null;
+  { stack = stack_empty ();
+    heap = heap_empty ();
+    global_env_mem = mem_null ();
+    pathcons = empty_pathcons ();
     fresh_count = 1;
     pred_unique = 0;
     unique = 1 }
