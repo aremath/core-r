@@ -1,4 +1,5 @@
 module S = Support
+module Smt = Smtsyntax
 
 (* TODO: Array.map2 introduced in 4.03 but for dumb reasons we're in 4.01.
  This is my best shot at conciseness *)
@@ -104,6 +105,39 @@ let na_extend: S.rvector -> int -> S.rvector =
     | S.ComplexVec c -> S.ComplexVec (na_extend_array c len)
     | S.StrVec s -> S.StrVec (na_extend_array s len)
     | S.BoolVec b -> S.BoolVec (na_extend_array b len)
+
+(* let mk_len: 'a. 'a array -> smtexpr = *)
+
+(* Creates a new symbolic vector with the name id *)
+let vec_to_symvec: S.rvector -> Smt.smtvar -> S.rvector =
+    fun vec var ->
+    match vec with
+    | S.IntVec i ->
+        (* Enforce Get var i = x[i] for all relevant i *)
+        let gets = Array.to_list (Array.mapi (fun n index -> 
+            Smt.SmtEq (
+                Smt.SmtArrGet (Smt.SmtVar var, Smt.smt_int_const index),
+                Smt.smt_int_const n)) (resolve_vec i)) in
+        (* len(var) = length(x) *)
+        let len_constraint = Smt.smt_len_array var i in
+        SymVec (var, S.RInt, { S.path_list = [len_constraint] @ gets })
+    | S.FloatVec f ->
+        let gets = Array.to_list (Array.mapi (fun n index ->
+            Smt.SmtEq (
+                Smt.SmtArrGet (Smt.SmtVar var, Smt.smt_int_const index),
+                Smt.smt_float_const n)) (resolve_vec f)) in
+        let len_constraint = Smt.smt_len_array var f in
+        SymVec (var, S.RFloat, { S.path_list = [len_constraint] @ gets })
+    | S.ComplexVec c -> failwith "Symbolic complex vectors not implemented"
+    | S.StrVec s -> failwith "Symbolic string vectors not implemented"
+    | S.BoolVec b ->
+        let gets = Array.to_list (Array.mapi (fun n index ->
+            Smt.SmtEq (
+                Smt.SmtArrGet (Smt.SmtVar var, Smt.smt_int_const index),
+                Smt.smt_bool_const n)) (resolve_vec b)) in
+        let len_constraint = Smt.smt_len_array var b in
+        SymVec (var, S.RBool, { S.path_list = [len_constraint] @ gets })
+    | S.SymVec (name, ty, pcs) -> failwith "Vector is already symbolic"
 
 (* Type conversion *)
 
