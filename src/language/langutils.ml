@@ -138,10 +138,92 @@ and string_of_expr : expr -> string =
 let string_of_smtvar : smtvar -> string =
   fun var -> var
 
-let string_of_smtexpr : smtexpr -> string =
+let string_of_smtconst : smtconst -> string =
+  fun const -> const
+
+let rec string_of_smtsort : smtsort -> string =
+  fun sort ->
+    match sort with
+    | SortInt -> "SortInt"
+    | SortFloat -> "SortFloat"
+    | SortDouble -> "SortDouble"
+    | SortBool -> "SortBool"
+    | SortVar (v, ss) ->
+        "SortVar (" ^ string_of_smtvar v ^ "," ^
+                      string_of_list_comma (map string_of_smtsort ss) ^ ")"
+
+let rec string_of_smtexpr : smtexpr -> string =
   fun smtexpr ->
     match smtexpr with
-    | _ -> ""
+    | SmtVar v -> "Var (" ^ string_of_smtvar v ^ ")"
+    | SmtConst c -> "Const (" ^ string_of_smtconst c ^ ")"
+
+    | SmtGt (e1, e2) ->
+        "Gt (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+
+    | SmtGe (e1, e2) ->
+        "Ge (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtLt (e1, e2) ->
+        "Lt (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtLe (e1, e2) ->
+        "Le (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtEq (e1, e2) ->
+        "Eq (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtNeq (e1, e2) ->
+        "Neq (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+
+    | SmtAnd (e1, e2) ->
+        "And (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtOr (e1, e2) ->
+        "Or (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtNeg (e1) ->
+        "Neg (" ^ string_of_smtexpr e1 ^ ")"
+    | SmtImp (e1, e2) ->
+        "Imp (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtIff (e1, e2) ->
+        "SmtIff (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+
+    | SmtPlus (e1, e2) ->
+        "Plus (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtSub (e1, e2) ->
+        "Sub (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtMult (e1, e2) ->
+        "Mult (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtDiv (e1, e2) ->
+        "Div (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtExp (e1, e2) ->
+        "Exp (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtMod (e1, e2) ->
+        "Mod (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+
+    | SmtArrGet (e1, e2) ->
+        "ArrGet (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtArrSet (e1, e2) ->
+        "ArrSet (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+
+    | SmtFunApp (f, es) ->
+        "FunApp (" ^ string_of_smtvar f ^ "," ^
+                     string_of_list_comma (map string_of_smtexpr es) ^ ")"
+    | SmtLet (bs, e) ->
+        "Let (" ^ string_of_list_comma
+                  (map (fun (v, e) ->
+                    string_of_pair
+                    (v, e) (string_of_smtvar, string_of_smtexpr)) bs) ^ "," ^
+                  string_of_smtexpr e ^ ")"
+
+    | SmtForAll (bs, e) ->
+        "ForAll (" ^ string_of_list_comma
+                      (map (fun (v, s) ->
+                        string_of_pair (v, s)
+                          (string_of_smtvar, string_of_smtsort)) bs) ^ "," ^
+                     string_of_smtexpr e ^ ")"
+
+    | SmtExists (bs, e) ->
+        "Exists (" ^ string_of_list_comma
+                      (map (fun (v, s) ->
+                        string_of_pair (v, s)
+                          (string_of_smtvar, string_of_smtsort)) bs) ^ "," ^
+                     string_of_smtexpr e ^ ")"
 
 
 
