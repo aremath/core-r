@@ -55,3 +55,14 @@ let string_of_smtvar : smtvar -> string =
 let smtvar_of_string : string -> smtvar =
   fun str -> str
 
+(*
+let if_in_array_bounds: smtvar -> smtexpr -> smtexpr list =
+  fun array_name expr -> 
+  SmtForAll ("x", SortInt,
+    (SmtImp (SmtAnd (
+        SmtGe (SmtVar "x",  0),
+        SmtLt (SmtVar "x", SmtFuncCall ("len", [SmtVar array_name])))),
+    expr))
+*)  
+
+
