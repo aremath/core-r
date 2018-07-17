@@ -38,10 +38,11 @@ type smtexpr =
   | SmtDiv of smtexpr * smtexpr
   | SmtExp of smtexpr * smtexpr
   | SmtMod of smtexpr * smtexpr
+  | SmtRem of smtexpr * smtexpr
 
   (* Array Operations *)
   | SmtArrGet of smtexpr * smtexpr
-  | SmtArrSet of smtexpr * smtexpr
+  | SmtArrSet of smtexpr * smtexpr * smtexpr
 
   (* Function Calls *)
   | SmtFunApp of smtvar * smtexpr list
