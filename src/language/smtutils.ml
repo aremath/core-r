@@ -1,72 +1,4 @@
-
-(* cf p24: https://smtlib.github.io/jSMTLIB/SMTLIBTutorial.pdf *)
-
-type smtvar = string
-
-type smtsort =
-  | SortInt
-  | SortFloat
-  | SortDouble
-  | SortBool
-  | SortVar of smtvar * smtsort list
-
-type smtexpr =
-  | SmtVar of smtvar
-  | SmtConst of string
-
-  (* Equality comparison predicates *)
-  | SmtGt of smtexpr * smtexpr
-  | SmtGe of smtexpr * smtexpr
-  | SmtLt of smtexpr * smtexpr
-  | SmtLe of smtexpr * smtexpr
-  | SmtEq of smtexpr * smtexpr
-  | SmtNeq of smtexpr * smtexpr
-
-  (* Logical conjunctions *)
-  | SmtAnd of smtexpr * smtexpr
-  | SmtOr of smtexpr * smtexpr
-  | SmtNeg of smtexpr * smtexpr
-  | SmtImp of smtexpr * smtexpr
-  | SmtIff of smtexpr * smtexpr
-
-  (* Arithmetics *)
-  | SmtPlus of smtexpr * smtexpr
-  | SmtSub of smtexpr * smtexpr
-  | SmtMult of smtexpr * smtexpr
-  | SmtDiv of smtexpr * smtexpr
-  | SmtExp of smtexpr * smtexpr
-  | SmtMod of smtexpr * smtexpr
-
-  (* Array Operations *)
-  | SmtArrGet of smtexpr * smtexpr
-  | SmtArrSet of smtexpr * smtexpr
-
-  (* Function Calls *)
-  | SmtFunApp of smtvar * smtexpr list
-
-  (* Let expressions *)
-  | SmtLet of (smtvar * smtexpr) list * smtexpr
-
-  (* Quantifiers *)
-  | SmtForAll of (smtvar * smtsort) list * smtexpr
-  | SmtExists of (smtvar * smtsort) list * smtexpr
-
-
-  (* Declarations *)
-  | SmtDeclVar of smtvar * smtsort
-  | SmtDeclFun of smtvar * smtvar list * smtexpr
-  | SmtDeclSort of smtvar * int
-  | SmtDefSort of smtvar * smtvar list * smtsort
-
-  (* Assertions *)
-  | SmtAssert of smtexpr
-
-
-let string_of_smtvar : smtvar -> string =
-  fun var -> var
-
-let smtvar_of_string : string -> smtvar =
-  fun str -> str
+open Smtsyntax
 
 (* Used at the top level as the variable quantified in ForAlls.
   Because multiple ForAlls can be across the same identifier without conflict,
@@ -82,6 +14,12 @@ let smt_bool_const: bool -> smtexpr =
     fun b -> match b with
     | true -> SmtConst "true"
     | false -> SmtConst "false"
+(* Convert an rbool to an SMT bool *)
+let smt_rbool_const: int -> smtexpr =
+    fun b -> match b with
+    | 0 -> SmtConst "false"
+    | 1 -> SmtConst "true"
+    | _ -> failwith "Non-boolean bool"
 
 (* Refer to the length of v *)
 let smt_len: smtvar -> smtexpr =
@@ -124,5 +62,4 @@ let all_elements_eq: smtvar -> smtexpr -> smtexpr =
     (SmtEq (
         SmtArrGet (SmtVar array_name, SmtVar forall_var),
         expr))
-
 

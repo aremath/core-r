@@ -57,6 +57,7 @@ let concat_rvectors: S.rvector -> S.rvector -> S.rvector =
     | (S.ComplexVec c1, S.ComplexVec c2) -> S.ComplexVec (Array.concat [c1;c2])
     | (S.StrVec s1, S.StrVec s2) -> S.StrVec (Array.concat [s1;s2])
     | (S.BoolVec b1, S.BoolVec b2) -> S.BoolVec (Array.concat [b1;b2])
+    (* | (S.SymVec s, pcs, S.IntVec i) -> S.SymVec (s', pcs') *)
     | _ -> failwith "Can't concatenate incompatible vectors"
 
 let fold_rvectors: S.rvector list -> S.rvector =
