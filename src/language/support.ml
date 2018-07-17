@@ -1,6 +1,7 @@
 
 module R = Syntax
 module A = Annotations
+module S = Smtsyntax
 
 (* Type aliases *)
 type complex = Complex.t
@@ -11,6 +12,7 @@ type tick = A.annot R.tick
 type memref = R.memref
 type numeric = R.numeric
 type ident = tag R.ident
+type const = R.const
 type param = (tag, annot) R.param
 type arg = (tag, annot) R.arg
 type expr = (tag, annot) R.expr
@@ -20,6 +22,9 @@ type rcomplex = R.rcomplex
 type rstring = R.rstring
 type rbool = R.rbool
 
+type smtvar = S.smtvar
+type smtconst = S.smtconst
+type smtexpr = S.smtexpr
 
 (* RTypes *)
 type rtype =
@@ -72,7 +77,7 @@ type env =
 
 (* Logical path constraints *)
 type pathcons =
-  { path_list : (expr * bool) list }
+  { path_list : smtexpr list }
 
 (* Values *)
 type rvector =
@@ -81,7 +86,7 @@ type rvector =
   | ComplexVec of rcomplex array
   | StrVec of rstring array
   | BoolVec of rbool array
-  | SymVec of ident * rtype * pathcons
+  | SymVec of smtvar * rtype * pathcons
 
 type value =
   | Vec of rvector
@@ -591,9 +596,9 @@ let empty_pathcons : unit -> pathcons =
   fun _ ->
     { path_list = [] }
 
-let add_pathcons : expr -> bool -> pathcons -> pathcons =
-  fun expr truth pathcons ->
-    { pathcons with path_list = pathcons.path_list @ [(expr, truth)] }
+let add_pathcons : smtexpr -> pathcons -> pathcons =
+  fun smtexpr pathcons ->
+    { pathcons with path_list = pathcons.path_list @ [smtexpr] }
 
 
 (* Value detection *)
@@ -630,5 +635,63 @@ let state_default : state =
     fresh_count = 1;
     pred_unique = 0;
     unique = 1 }
+    
+    
+    
+(* Some SMT stuff *)
+
+let string_of_smtvar : smtvar -> string =
+  fun var -> var
+
+let smtvar_of_string : string -> smtvar =
+  fun str -> str
+
+let smtconst_of_const : const -> smtconst =
+  fun const ->
+    match const with
+    | Num rnum ->
+      (match rnum with
+      | Int rint ->
+        (match int_of_rint rint with
+        | Some i -> string_of_int i
+        | None -> "Na_int_")
+      | Float rfloat ->
+        (match float_of_rfloat rfloat with
+        | Some f -> string_of_float f
+        | None -> "Na_float_")
+      | Complex rcomplex ->
+        failwith "smtconst_of_const: dropping support for complex for now")
+        (*
+        (match complex_of_rcomplex rcomplex with
+        | Some c -> string_of_complex c
+        | None -> "Na_complex_"))
+        *)
+    | Str rstr ->
+      (match string_of_rstring rstr with
+      | Some str -> "\"" ^ str ^ "\""
+      | None -> "Na_string_")
+    | Bool rbool ->
+      (match bool_of_rbool rbool with
+      | Some b -> string_of_int b
+      | None -> "Na_bool_")
+    | Nil -> "nil"
+
+let smtvar_of_mem : memref -> smtvar =
+  fun mem ->
+    smtvar_of_string ("mem$" ^ string_of_int mem.addr)
+
+let smtvar_of_id : ident -> smtvar =
+  fun id ->
+    match string_of_rstring id.name with
+    | Some str -> smtvar_of_string str
+    | None -> smtvar_of_string "Na_string_"
+
+let rec smtexpr_of_langexpr : expr -> state -> smtexpr =
+  fun expr state -> match expr with
+    | Ident id -> SmtVar (smtvar_of_id id)
+    | MemRef mem -> SmtVar (smtvar_of_mem mem)
+    | Const const -> SmtConst (smtconst_of_const const)
+    | _ -> SmtVar "boo"
+  
 
 
