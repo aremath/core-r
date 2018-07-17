@@ -192,6 +192,20 @@ let string_of_attributes: attributes -> string =
                  attrs.rstr_map [] in
       "Attrs {" ^ (string_of_list_semicolon strs) ^ "}"
 
+let string_of_rtype : rtype -> string =
+  fun ty -> match ty with
+    | RBool -> "RBool"
+    | RInt -> "RInt"
+    | RFloat -> "RFloat"
+    | RComplex -> "RComplex"
+    | RChar -> "RChar"
+
+let string_of_pathcons : pathcons -> string =
+  fun path ->
+    string_of_list_comma
+        (map (fun (p, b) -> string_of_pair (p, b)
+             (string_of_expr, string_of_bool)) path.path_list)
+
 let string_of_value: value -> string =
   function
     | Vec v -> "[" ^ (string_of_rvector v) ^ "]"
@@ -208,7 +222,8 @@ let string_of_value: value -> string =
         let list_strs = map (fun mem -> string_of_memref mem) l in
           "List [" ^ string_of_list_comma list_strs ^ "]" *)
         
-    | SymVal -> "SymVal"
+    | SymVal (ty, pathcons) -> "SymVal (" ^ string_of_rtype ty ^ "," ^
+                                            string_of_pathcons pathcons ^ ")"
 
 let string_of_heapobj: heapobj -> string = 
   function

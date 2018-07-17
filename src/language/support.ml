@@ -21,6 +21,14 @@ type rstring = R.rstring
 type rbool = R.rbool
 
 
+(* RTypes *)
+type rtype =
+  | RBool
+  | RInt
+  | RFloat
+  | RComplex
+  | RChar
+
 (* Memory reference Map *)
 module MemRef = struct
   type t = memref
@@ -62,6 +70,10 @@ type env =
   { id_map : memref IdentMap.t;
     pred_mem : memref }
 
+(* Logical path constraints *)
+type pathcons =
+  { path_list : (expr * bool) list }
+
 (* Values *)
 type rvector =
   | IntVec of rint array
@@ -75,7 +87,7 @@ type value =
   | RefArray of memref list (* for function arguments as well as R lists *)
   | FuncVal of param list * expr * memref
   | EnvVal of env
-  | SymVal
+  | SymVal of rtype * pathcons
 
 type attributes =
   { rstr_map : (rstring, memref) Hashtbl.t }
@@ -116,17 +128,12 @@ type heap =
   { mem_map : heapobj MemRefMap.t;
     next_mem : memref }
 
-(* Logical path constraints *)
-type pathcons =
-  { path_list : (expr * bool) list }
-
-
 (* Execution state *)
 type state =
   { stack : stack;
     heap : heap;
     global_env_mem : memref;
-    pathcons : pathcons;
+    sym_mems : memref list;
     fresh_count : int;
     pred_unique : int;
     unique : int }
@@ -586,14 +593,14 @@ let empty_pathcons : unit -> pathcons =
 
 let add_pathcons : expr -> bool -> pathcons -> pathcons =
   fun expr truth pathcons ->
-    { pathcons with path_list = (expr, truth) :: pathcons.path_list }
+    { pathcons with path_list = pathcons.path_list @ [(expr, truth)] }
 
 
 (* Value detection *)
 let is_mem_symval : memref -> heap -> bool =
   fun mem heap ->
     match heap_find mem heap with
-    | Some (DataObj (SymVal, _)) -> true
+    | Some (DataObj (SymVal _, _)) -> true
     | _ -> false
 
 let is_mem_conc_true : memref -> heap -> bool =
@@ -619,7 +626,7 @@ let state_default : state =
   { stack = stack_empty ();
     heap = heap_empty ();
     global_env_mem = mem_null ();
-    pathcons = empty_pathcons ();
+    sym_mems = [];
     fresh_count = 1;
     pred_unique = 0;
     unique = 1 }
