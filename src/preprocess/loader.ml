@@ -3,7 +3,7 @@
 open Language
 *)
 module R = Rast
-module S = Syntax
+open Syntax
 open Support
 open Langutils
 open Rast_to_language

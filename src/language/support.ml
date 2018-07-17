@@ -225,6 +225,7 @@ let rvector_length : rvector -> int =
     | ComplexVec cvec -> Array.length cvec
     | StrVec svec -> Array.length svec
     | BoolVec bvec -> Array.length bvec
+    | SymVec _ -> 0 (* ??? *)
 
 (* One-based indexing *)
 let rvector_get_rint : rvector -> int -> rint option =
@@ -623,7 +624,7 @@ let is_mem_conc_true : memref -> heap -> bool =
       | (_, _, _, Some v, _) -> true
       | (_, _, _, _, Some v) -> v <> rbool_of_bool 0
       | _ -> false)
-    | _ -> true
+    | Some _ -> true
     | None -> false
 
 (* Execution state *)
@@ -649,32 +650,32 @@ let smtvar_of_string : string -> smtvar =
 let smtconst_of_const : const -> smtconst =
   fun const ->
     match const with
-    | Num rnum ->
+    | R.Num rnum ->
       (match rnum with
-      | Int rint ->
+      | R.Int rint ->
         (match int_of_rint rint with
         | Some i -> string_of_int i
         | None -> "Na_int_")
-      | Float rfloat ->
+      | R.Float rfloat ->
         (match float_of_rfloat rfloat with
         | Some f -> string_of_float f
         | None -> "Na_float_")
-      | Complex rcomplex ->
+      | R.Complex rcomplex ->
         failwith "smtconst_of_const: dropping support for complex for now")
         (*
         (match complex_of_rcomplex rcomplex with
         | Some c -> string_of_complex c
         | None -> "Na_complex_"))
         *)
-    | Str rstr ->
+    | R.Str rstr ->
       (match string_of_rstring rstr with
       | Some str -> "\"" ^ str ^ "\""
       | None -> "Na_string_")
-    | Bool rbool ->
+    | R.Bool rbool ->
       (match bool_of_rbool rbool with
       | Some b -> string_of_int b
       | None -> "Na_bool_")
-    | Nil -> "nil"
+    | R.Nil -> "nil"
 
 let smtvar_of_mem : memref -> smtvar =
   fun mem ->
@@ -688,10 +689,10 @@ let smtvar_of_id : ident -> smtvar =
 
 let rec smtexpr_of_langexpr : expr -> state -> smtexpr =
   fun expr state -> match expr with
-    | Ident id -> SmtVar (smtvar_of_id id)
-    | MemRef mem -> SmtVar (smtvar_of_mem mem)
-    | Const const -> SmtConst (smtconst_of_const const)
-    | _ -> SmtVar "boo"
+    | R.Ident id -> S.SmtVar (smtvar_of_id id)
+    | R.MemRef mem -> S.SmtVar (smtvar_of_mem mem)
+    | R.Const const -> S.SmtConst (smtconst_of_const const)
+    | _ -> S.SmtVar "boo"
   
 
 

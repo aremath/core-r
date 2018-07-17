@@ -1,6 +1,7 @@
 
 open List
 open Syntax
+open Smtsyntax
 open Support
 open Native_calls
 open Copy
