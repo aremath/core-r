@@ -114,7 +114,7 @@ let inj_binds_to_env_heap : (ident * expr) list -> memref -> heap -> heap =
         let env2 = env_add_list env_binds env in
           heap_add env_mem (DataObj (EnvVal env2, attrs)) heap2
     | _ -> failwith ("inj_binds_to_heap_global: did not find env at " ^
-                     string_of_memref env_mem)
+                     string_of_mem env_mem)
 
 let rec inj_heap_list : (memref * heapobj) list -> heap -> heap =
   fun binds heap ->
@@ -124,7 +124,7 @@ let rec inj_heap_list : (memref * heapobj) list -> heap -> heap =
         match heap_find mem heap with
         | None -> inj_heap_list binds_tl (heap_add mem hobj heap)
         | Some _ -> failwith ("inj_heap_list: binding exists at: " ^
-                               string_of_memref mem)
+                               string_of_mem mem)
 
 (* The ones closer to the tail are closer to the super duper env *)
 let alloc_file_envs :
@@ -143,7 +143,7 @@ let alloc_file_envs :
                                 let env2 = { env with pred_mem = s } in
                                   heap_add e (DataObj (EnvVal env2, attrs)) h
                             | _ -> failwith ("alloc_file_envs: " ^
-                                                string_of_memref e)
+                                                string_of_mem e)
                           ) heap2 pairs in
         (combine files (rev mems), heap3)
 

@@ -16,11 +16,11 @@ Executable "main"
 Library "interpreter"
   Path: src/interpreter
   Modules: Rules, Interputils, Engine
-  BuildDepends: language, natives, loader, smt
+  BuildDepends: language, natives, loader
 
 Library "language"
   Path: src/language
-  Modules: Syntax, Support, Annotations, Langutils
+  Modules: Syntax, Support, Annotations, Langutils, Smtsyntax
 
 Library "parser"
   Path: src/parser
@@ -35,7 +35,7 @@ Library "natives"
   Path: src/natives
   Modules: Natives, Constants, Copy, Vector, Native_support, Subscript,
            Native_calls, Arithmetic
-  BuildDepends: language, smt
+  BuildDepends: language
 
 Library "loader"
   Path: src/preprocess
@@ -44,7 +44,7 @@ Library "loader"
 
 Library "smt"
   Path: src/smt
-  Modules: Smtsyntax, Converter, Smt
+  Modules: Smt
   BuildDepends: language
 
 Library "ounit"
