@@ -172,26 +172,6 @@ let string_of_rbool: rbool -> string =
     | Some b -> if b = 0 then "False" else "True"
     | None -> "NaBool"
 
-let string_of_rvector: rvector -> string =
-    function
-    | IntVec i ->
-        String.concat "," (map string_of_rint (Array.to_list i))
-    | FloatVec f ->
-        String.concat "," (map string_of_rfloat (Array.to_list f))
-    | ComplexVec c ->
-        String.concat "," (map string_of_rcomplex (Array.to_list c))
-    | StrVec s ->
-        String.concat "," (map string_of_rstring (Array.to_list s))
-    | BoolVec b ->
-        String.concat "," (map string_of_rbool (Array.to_list b))
-
-let string_of_attributes: attributes -> string =
-  fun attrs ->
-    let strs = Hashtbl.fold (fun k v acc ->
-       (string_of_pair (k, v) (string_of_rstring, string_of_memref)) :: acc)
-                 attrs.rstr_map [] in
-      "Attrs {" ^ (string_of_list_semicolon strs) ^ "}"
-
 let string_of_rtype : rtype -> string =
   fun ty -> match ty with
     | RBool -> "RBool"
@@ -205,6 +185,31 @@ let string_of_pathcons : pathcons -> string =
     string_of_list_comma
         (map (fun (p, b) -> string_of_pair (p, b)
              (string_of_expr, string_of_bool)) path.path_list)
+
+let string_of_rvector: rvector -> string =
+    function
+    | IntVec i ->
+        string_of_list_comma (map string_of_rint (Array.to_list i))
+    | FloatVec f ->
+        string_of_list_comma (map string_of_rfloat (Array.to_list f))
+    | ComplexVec c ->
+        string_of_list_comma (map string_of_rcomplex (Array.to_list c))
+    | StrVec s ->
+        string_of_list_comma (map string_of_rstring (Array.to_list s))
+    | BoolVec b ->
+        string_of_list_comma (map string_of_rbool (Array.to_list b))
+    | SymVec (i, t, p) ->
+        "(" ^ string_of_ident i ^ ";" ^
+              string_of_rtype t ^ ";" ^
+              string_of_pathcons p ^ ")"
+
+let string_of_attributes: attributes -> string =
+  fun attrs ->
+    let strs = Hashtbl.fold (fun k v acc ->
+       (string_of_pair (k, v) (string_of_rstring, string_of_memref)) :: acc)
+                 attrs.rstr_map [] in
+      "Attrs {" ^ (string_of_list_semicolon strs) ^ "}"
+
 
 let string_of_value: value -> string =
   function
@@ -221,9 +226,6 @@ let string_of_value: value -> string =
     (* | ListVal l ->
         let list_strs = map (fun mem -> string_of_memref mem) l in
           "List [" ^ string_of_list_comma list_strs ^ "]" *)
-        
-    | SymVal (ty, pathcons) -> "SymVal (" ^ string_of_rtype ty ^ "," ^
-                                            string_of_pathcons pathcons ^ ")"
 
 let string_of_heapobj: heapobj -> string = 
   function

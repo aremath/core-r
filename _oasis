@@ -16,7 +16,7 @@ Executable "main"
 Library "interpreter"
   Path: src/interpreter
   Modules: Rules, Interputils, Engine
-  BuildDepends: language, natives, loader
+  BuildDepends: language, natives, loader, smt
 
 Library "language"
   Path: src/language
@@ -35,7 +35,7 @@ Library "natives"
   Path: src/natives
   Modules: Natives, Constants, Copy, Vector, Native_support, Subscript,
            Native_calls, Arithmetic
-  BuildDepends: language
+  BuildDepends: language, smt
 
 Library "loader"
   Path: src/preprocess

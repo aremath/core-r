@@ -81,13 +81,13 @@ type rvector =
   | ComplexVec of rcomplex array
   | StrVec of rstring array
   | BoolVec of rbool array
+  | SymVec of ident * rtype * pathcons
 
 type value =
   | Vec of rvector
   | RefArray of memref list (* for function arguments as well as R lists *)
   | FuncVal of param list * expr * memref
   | EnvVal of env
-  | SymVal of rtype * pathcons
 
 type attributes =
   { rstr_map : (rstring, memref) Hashtbl.t }
@@ -600,7 +600,7 @@ let add_pathcons : expr -> bool -> pathcons -> pathcons =
 let is_mem_symval : memref -> heap -> bool =
   fun mem heap ->
     match heap_find mem heap with
-    | Some (DataObj (SymVal _, _)) -> true
+    | Some (DataObj (Vec (SymVec _), _)) -> true
     | _ -> false
 
 let is_mem_conc_true : memref -> heap -> bool =

@@ -1,4 +1,6 @@
 
+(* cf p24: https://smtlib.github.io/jSMTLIB/SMTLIBTutorial.pdf *)
+
 type smtvar = string
 
 type smtsort =
@@ -8,11 +10,9 @@ type smtsort =
   | SortBool
   | SortVar of smtvar * smtsort list
 
-type smtcon = 
-  | SmtCon of smtvar * smtsort list
-
 type smtexpr =
   | SmtVar of smtvar
+  | SmtConst of string
 
   (* Equality comparison predicates *)
   | SmtGt of smtexpr * smtexpr
@@ -41,9 +41,22 @@ type smtexpr =
   | SmtArrGet of smtexpr * smtexpr
   | SmtArrSet of smtexpr * smtexpr
 
+  (* Function Calls *)
+  | SmtFunApp of smtvar * smtexpr list
+
+  (* Let expressions *)
+  | SmtLet of (smtvar * smtexpr) list * smtexpr
+
+  (* Quantifiers *)
+  | SmtForAll of (smtvar * smtsort) list * smtexpr
+  | SmtExists of (smtvar * smtsort) list * smtexpr
+
+
   (* Declarations *)
   | SmtDeclVar of smtvar * smtsort
-  | SmtDeclSort of smtvar * smtvar list * smtcon list
+  | SmtDeclFun of smtvar * smtvar list * smtexpr
+  | SmtDeclSort of smtvar * int
+  | SmtDefSort of smtvar * smtvar list * smtsort
 
   (* Assertions *)
   | SmtAssert of smtexpr
