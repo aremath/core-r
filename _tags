@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0f1d34b33e82d63f167fa6ae728aba89)
+# DO NOT EDIT (digest: 9d6972ea1a41721a08f749a55d4a1be8)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -21,23 +21,26 @@ true: annot, bin_annot
 # Executable absyn_generator
 "src/parser/absyn_generator.byte": use_parser
 <src/parser/*.ml{,i,y}>: use_parser
+# Library smt
+"src/smt/smt.cmxs": use_smt
+<src/smt/*.ml{,i,y}>: use_language
 # Library natives
 "src/natives/natives.cmxs": use_natives
 <src/natives/*.ml{,i,y}>: use_language
+<src/natives/*.ml{,i,y}>: use_smt
 # Library loader
 "src/preprocess/loader.cmxs": use_loader
 <src/preprocess/*.ml{,i,y}>: use_language
 <src/preprocess/*.ml{,i,y}>: use_natives
 <src/preprocess/*.ml{,i,y}>: use_parser
+<src/preprocess/*.ml{,i,y}>: use_smt
 # Library interpreter
 "src/interpreter/interpreter.cmxs": use_interpreter
 <src/interpreter/*.ml{,i,y}>: use_language
 <src/interpreter/*.ml{,i,y}>: use_loader
 <src/interpreter/*.ml{,i,y}>: use_natives
 <src/interpreter/*.ml{,i,y}>: use_parser
-# Library smt
-"src/smt/smt.cmxs": use_smt
-<src/smt/*.ml{,i,y}>: use_language
+<src/interpreter/*.ml{,i,y}>: use_smt
 # Executable main
 "src/main.byte": use_interpreter
 "src/main.byte": use_language
@@ -62,6 +65,7 @@ true: annot, bin_annot
 "test/test.byte": use_natives
 "test/test.byte": use_ounit
 "test/test.byte": use_parser
+"test/test.byte": use_smt
 <test/*.ml{,i,y}>: pkg_unix
 <test/*.ml{,i,y}>: use_interpreter
 <test/*.ml{,i,y}>: use_language
@@ -69,5 +73,6 @@ true: annot, bin_annot
 <test/*.ml{,i,y}>: use_natives
 <test/*.ml{,i,y}>: use_ounit
 <test/*.ml{,i,y}>: use_parser
+<test/*.ml{,i,y}>: use_smt
 # OASIS_STOP
 true: use_menhir
