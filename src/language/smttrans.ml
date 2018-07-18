@@ -1,3 +1,4 @@
+open Support
 open Smtsyntax
 
 (* Used at the top level as the variable quantified in ForAlls.
@@ -77,4 +78,8 @@ let ifelse: smtexpr -> smtexpr -> smtexpr -> smtexpr =
     SmtAnd (
         SmtImp (test, e1),
         SmtImp (SmtNeg test, e2))
+
+let state : state -> smtstmt list =
+  fun state ->
+    []   
 
