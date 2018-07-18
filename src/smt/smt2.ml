@@ -123,7 +123,7 @@ let smt2_of_smtstmt : smtstmt -> smt2 =
     | SmtPop -> "(pop)"
     | SmtExit -> "(exit)"
 
-let smt2_of_smtstmts : smtstmt list -> smt2 =
+let smt2_of_smtstmt_list : smtstmt list -> smt2 =
   fun stmts ->
     String.concat "\n" (map smt2_of_smtstmt stmts)
 

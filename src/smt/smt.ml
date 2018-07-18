@@ -1,9 +1,8 @@
 open Smtsyntax
-open Support
 open Smt2
 open Solver
 
-let test_smtstmts : unit -> smtstmt list =
+let test_smtstmt_list : unit -> smtstmt list =
   fun _ ->
     [SmtDeclVar ("x", SmtSortInt);
      SmtDeclVar ("y", SmtSortInt);
@@ -15,6 +14,6 @@ let test_smtstmts : unit -> smtstmt list =
 
 let test_z3 : unit -> string =
   fun _ ->
-    let smt2 = smt2_of_smtstmts (test_smtstmts ()) in
+    let smt2 = smt2_of_smtstmt_list (test_smtstmt_list ()) in
       run_z3 smt2
 
