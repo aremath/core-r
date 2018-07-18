@@ -229,6 +229,23 @@ let rec string_of_smtexpr : smtexpr -> string =
                           (string_of_smtvar, string_of_smtsort)) bs) ^ "," ^
                      string_of_smtexpr e ^ ")"
 
+let string_of_smtstmt : smtstmt -> string =
+  fun stmt ->
+    match stmt with
+    | SmtDeclVar (v, s) ->
+        "SmtDeclVar (" ^ string_of_smtvar v ^ "," ^ string_of_smtsort s ^ ")"
+    | SmtDeclFun (f, ps, e) ->
+        "SmtDeclFun (" ^
+            string_of_smtvar f ^ "," ^
+            string_of_list_comma (map string_of_smtvar ps) ^ "," ^
+            string_of_smtexpr e ^ ")"
+    | SmtDeclSort (s, i) ->
+        "SmtDeclSort (" ^ string_of_smtvar s ^ "," ^ string_of_int i ^ ")"
+    | SmtDefSort (s, vs, so) ->
+        "SmtDefSort (" ^
+            string_of_smtvar s ^ "," ^
+           (string_of_list_comma (map string_of_smtvar vs)) ^ "," ^
+           string_of_smtsort so ^ ")"
 
 
 let string_of_env: env -> string =
