@@ -268,7 +268,7 @@ let string_of_rtype : rtype -> string =
     | RInt -> "RInt"
     | RFloat -> "RFloat"
     | RComplex -> "RComplex"
-    | RChar -> "RChar"
+    | RString -> "RString"
 
 let string_of_pathcons : pathcons -> string =
   fun path ->

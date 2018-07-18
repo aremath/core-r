@@ -32,7 +32,7 @@ type rtype =
   | RInt
   | RFloat
   | RComplex
-  | RChar
+  | RString
 
 (* Memory reference Map *)
 module MemRef = struct

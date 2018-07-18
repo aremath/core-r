@@ -33,6 +33,13 @@ let smt_len_array: 'a. smtvar -> 'a array -> smtexpr =
         smt_len v,
         smt_int_const (Array.length a))
 
+(* Assert that lower <= var < upper *)
+let bounded: smtvar -> smtexpr -> smtexpr -> smtexpr =
+    fun var lower upper ->
+    SmtAnd (
+        SmtGe (SmtVar var, lower),
+        SmtLe (SmtVar var, upper))
+
 (* Assert expr across all valid indices of array_name.
   When using this, use forall_var to refer to the index. For example,
 
@@ -44,10 +51,8 @@ let smt_len_array: 'a. smtvar -> 'a array -> smtexpr =
 let all_elements: smtvar -> smtexpr -> smtexpr =
     fun array_name expr ->
     SmtForAll ([(forall_var, SortInt)],
-        (SmtImp ((SmtAnd (
-            SmtGe (SmtVar forall_var, smt_int_const 0),
-            SmtLt (SmtVar forall_var, smt_len array_name))),
-        expr)))
+        (* if var is bounded between 0 and the array len, then expr holds *)
+        (SmtImp (bounded forall_var (smt_int_const 0) (smt_len array_name), expr)))
 
 (* Assert a[i] = expr across all valid indices of array_name.
   When using this, use forall_var to refer to the index. For example,
@@ -62,4 +67,14 @@ let all_elements_eq: smtvar -> smtexpr -> smtexpr =
     (SmtEq (
         SmtArrGet (SmtVar array_name, SmtVar forall_var),
         expr))
+
+(* Ifelse t e1 e2 is two implications:
+    t -> e1
+    !t -> e2
+*)
+let ifelse: smtexpr -> smtexpr -> smtexpr -> smtexpr =
+    fun test e1 e2 ->
+    SmtAnd (
+        SmtImp (test, e1),
+        SmtImp (SmtNeg test, e2))
 

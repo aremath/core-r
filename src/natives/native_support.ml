@@ -111,8 +111,8 @@ let na_extend: S.rvector -> int -> S.rvector =
 (* let mk_len: 'a. 'a array -> smtexpr = *)
 
 (* Creates a new symbolic vector with the name var *)
-let vec_to_symvec: S.rvector -> smtvar -> S.rvector =
-    fun vec var ->
+let vec_to_symvec: smtvar -> S.rvector -> S.rvector =
+    fun var vec ->
     match vec with
     | S.IntVec i ->
         (* Enforce Get var i = x[i] for all relevant i *)
