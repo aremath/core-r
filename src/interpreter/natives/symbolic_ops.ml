@@ -103,7 +103,7 @@ let symbolic_bool_vec_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
     fun new_name smt_combo fail v1 v2 ->
     let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo v1 v2 in
     match op_ty with
-    | RBool -> (op_name, op_ty, op_pcs)
+    | S.RBool -> (op_name, op_ty, op_pcs)
     | _ -> fail ()
 
 let symbolic_andvec_failure = fun _ -> failwith "Non-boolean symbolic &"
@@ -141,6 +141,13 @@ let copy_symbolic: smtvar -> smtvec -> smtvec =
     let new_pathcons = List.map (replace name1 new_name) pc1.S.path_list in
     (new_name, ty1, { S.path_list = new_pathcons })
 
-(* Symbolic get: smtvec -> int -> smtvec maybe also smtvec -> smtvec -> smtvec *)
+(*
+(* Create a new symbolic vector which contains the ith element of name1 *)
+let symbolic_get_int: smtvar -> smtvec -> int -> smtvec =
+    fun new_name (name1, _, _) n ->
+        (* *)
 
+(* Create a new symbolic vector which contains name1[name2[0]] *)
+let symbolic_get: smtvar -> smtvec -> smtvec -> smtvec
+*)
 
