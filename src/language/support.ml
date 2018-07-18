@@ -86,7 +86,7 @@ type rvector =
   | ComplexVec of rcomplex array
   | StrVec of rstring array
   | BoolVec of rbool array
-  | SymVec of smtvar * rtype * pathcons
+  | SymVec of (smtvar * rtype * pathcons)
 
 type value =
   | Vec of rvector
@@ -299,6 +299,12 @@ let id_fresh : state -> ident * state =
     let count2 = state.fresh_count + 1 in
     let name = rstring_of_string ("fs$" ^ string_of_int count2) in
       (id_of_rstring name, { state with fresh_count = count2 })
+
+let name_fresh: state -> string * state =
+    fun state ->
+    let count2 = state.fresh_count + 1 in
+    let name = "fs$" ^ (string_of_int count2) in
+    (name, {state with fresh_count = count2})
 
 let rec id_fresh_list : int -> state -> (ident list) * state =
   fun n state ->
@@ -637,7 +643,15 @@ let state_default : state =
     pred_unique = 0;
     unique = 1 }
     
-    
+(* Bindings for e.g. heap_alloc that work on states. *)
+let state_alloc: heapobj -> state -> memref * state =
+    fun hobj state ->
+    let memref, heap = heap_alloc hobj state.heap in
+    (memref, { state with heap = heap })
+
+let state_find: memref -> state -> heapobj option =
+    fun mem state ->
+    heap_find mem state.heap
     
 (* Some SMT stuff *)
 

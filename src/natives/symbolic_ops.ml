@@ -134,4 +134,13 @@ let symbolic_bool_single_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
             (new_name, S.RBool, { S.path_list = [len; value] })
     | _ -> fail ()
 
+(* Copies a symbolic vector, introducing a new symbolic vector with a different name,
+  and the same path constraints induced over the new name. *)
+let copy_symbolic: smtvar -> smtvec -> smtvec =
+    fun new_name (name1, ty1, pc1) ->
+    let new_pathcons = List.map (replace name1 new_name) pc1.S.path_list in
+    (new_name, ty1, { S.path_list = new_pathcons })
+
+(* Symbolic get: smtvec -> int -> smtvec maybe also smtvec -> smtvec -> smtvec *)
+
 

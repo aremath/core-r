@@ -37,13 +37,11 @@ let do_rvector_bop: (rvector -> rvector -> rvector) -> memref list -> memref -> 
     fun op arg_mems c_env_mem state ->
     match arg_mems with
     | (v1 :: v2 :: []) ->
-        let (mem2, heap2) = vector_bop_mems op v1 v2 state.heap in
+        let (mem2, state2) = vector_bop_mems op v1 v2 state in
         let c_frame = { frame_default with
                             env_mem = c_env_mem;
                             slot = ReturnSlot mem2 } in
-        Some { state with
-                    heap = heap2;
-                    stack = stack_push c_frame state.stack }
+        Some { state2 with stack = stack_push c_frame state.stack }
     | _ -> None
 
 let native_call : ident -> memref list -> memref -> state -> state option =
@@ -52,13 +50,11 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     if id = native_vector_subscript_id then
       (match arg_mems with
       | (vec_mem :: sub_mem :: []) ->
-        let (mem2, heap2) = subscript_mems vec_mem sub_mem state.heap in
+        let (mem2, state2) = subscript_mems vec_mem sub_mem state in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with
-                   heap = heap2;
-                   stack = stack_push c_frame state.stack }
+          Some { state2 with stack = stack_push c_frame state.stack }
       | _ -> None)
 
     (* Vector subsetting *)
@@ -67,13 +63,11 @@ let native_call : ident -> memref list -> memref -> state -> state option =
       | (vec_mem :: var_mem :: []) ->
         (match heap_find var_mem state.heap with
         | Some (DataObj (RefArray refs, _)) ->
-          let (mem2, heap2) = subset_mems vec_mem refs state.heap in
+          let (mem2, state2) = subset_mems vec_mem refs state in
           let c_frame = { frame_default with
                             env_mem = c_env_mem;
                             slot = ReturnSlot mem2 } in
-            Some { state with
-                     heap = heap2;
-                     stack = stack_push c_frame state.stack }
+            Some { state2 with stack = stack_push c_frame state.stack }
         | _ -> None)
       | _ -> None)
 
@@ -83,14 +77,11 @@ let native_call : ident -> memref list -> memref -> state -> state option =
       | (var_mem :: []) ->
           (match heap_find var_mem state.heap with
           | Some (DataObj (RefArray refs, _)) ->
-            (* let (mem2, heap2) = make_vector_simple_mems refs state.heap in *)
-            let (mem2, heap2) = make_vector_mems var_mem state.heap in
+            let (mem2, state2) = make_vector_mems var_mem state in
             let c_frame = { frame_default with
                               env_mem = c_env_mem;
                               slot = ReturnSlot mem2 } in
-              Some { state with
-                       heap = heap2;
-                       stack = stack_push c_frame state.stack }
+              Some { state2 with stack = stack_push c_frame state.stack }
           | _ -> None)
       | _ -> None)
 
@@ -98,25 +89,21 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     else if id = native_vector_length_id then
       (match arg_mems with
       | (data_mem :: []) ->
-        let (mem2, heap2) = rvec_length_mem data_mem state.heap in
+        let (mem2, state2) = rvector_length_mem data_mem state in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with
-                   heap = heap2;
-                   stack = stack_push c_frame state.stack }
+          Some { state2 with stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_vector_colon_id then
       (match arg_mems with
       | (low_mem :: high_mem :: []) ->
-        let (mem2, heap2) = range_int_mems low_mem high_mem state.heap in
+        let (mem2, state2) = range_int_mems low_mem high_mem state in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with
-                   heap = heap2;
-                   stack = stack_push c_frame state.stack }
+          Some { state2 with stack = stack_push c_frame state.stack }
       | _ -> None)
 
     (* Vector binary operations *)

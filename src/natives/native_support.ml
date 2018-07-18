@@ -45,28 +45,28 @@ let value_to_int_array: S.value -> S.rint array =
     fun value -> let vec = value_to_rvector value in
     rvector_to_int_array vec
 
-let dereference_rvector: S.memref -> S.heap -> S.rvector =
-    fun mem heap ->
-    match S.heap_find mem heap with
+let dereference_rvector: S.memref -> S.state -> S.rvector =
+    fun mem state ->
+    match S.state_find mem state with
     | Some (S.DataObj (S.Vec v, _)) -> v
     | _ -> failwith "Vec expected in dereference"
 
-let dereference_rlist_attrs: S.memref -> S.heap -> S.memref list * S.attributes =
-    fun mem heap ->
-    match S.heap_find mem heap with
+let dereference_rlist_attrs: S.memref -> S.state -> S.memref list * S.attributes =
+    fun mem state ->
+    match S.state_find mem state with
     | Some (S.DataObj (S.RefArray l, a)) -> l, a
     | _ -> failwith "List expected in dereference"
 
 (* TODO: catch a dereference error somehow? *)
-let dereference: S.memref list -> S.heap -> S.heapobj list =
-    fun mems heap ->
-    List.map (fun mem -> S.MemRefMap.find mem heap.S.mem_map) mems
+let dereference: S.memref list -> S.state -> S.heapobj list =
+    fun mems state ->
+    List.map (fun mem -> S.MemRefMap.find mem state.S.heap.S.mem_map) mems
 
 (* Get a number from a memref. Fails if the memref does not point to an int vector
  Warns if the vector has length greater than 1. *)
-let get_single_rint: S.memref -> S.heap -> S.rint =
-    fun mem heap ->
-    let vec = dereference_rvector mem heap in
+let get_single_rint: S.memref -> S.state -> S.rint =
+    fun mem state ->
+    let vec = dereference_rvector mem state in
     let a = rvector_to_int_array vec in
     let _ = if (Array.length a) > 1 then Printf.printf
         "Warning: only the first element used of expression with %d elements" (Array.length a)
@@ -74,9 +74,9 @@ let get_single_rint: S.memref -> S.heap -> S.rint =
         () in
     a.(0)
 
-let get_single_rstr: S.memref -> S.heap -> S.rstring =
-    fun mem heap ->
-    let vec = dereference_rvector mem heap in
+let get_single_rstr: S.memref -> S.state -> S.rstring =
+    fun mem state ->
+    let vec = dereference_rvector mem state in
     let a = rvector_to_str_array vec in
     let _ = if (Array.length a) > 1 then Printf.printf
         "Warning: only the first element used of expression with %d elements" (Array.length a)

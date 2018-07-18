@@ -87,6 +87,7 @@ let rvector_slice: S.rvector -> int array -> int array list -> (S.rvector * S.rv
         S.StrVec sv, S.IntVec (C.unresolve_vec sd)
     | S.BoolVec b -> let bv, bd = do_subset (b, data_dims) subs in
         S.BoolVec bv, S.IntVec (C.unresolve_vec bd)
+    | S.SymVec s -> failwith "symbolic unimplemented"
 
 (* Assign assign_array to the correct slice of in_array. Checks that the assign_array is
  a multiple of the slice size. Quantified over 'a to allow
@@ -122,20 +123,20 @@ let rvector_subset_assign: S.rvector -> int array -> int array list -> S.rvector
 (* TODO: implicit defaults and negative indices *)
 (* convert the list of subset references to the actual list of integer arrays that will
  be used for the subset *)
-let sub_refs_to_subs: S.memref list -> S.heap -> int array list =
-    fun sub_refs heap ->
+let sub_refs_to_subs: S.memref list -> S.state -> int array list =
+    fun sub_refs state ->
     List.map (fun m ->
-        let rvec = C.dereference_rvector m heap in
+        let rvec = C.dereference_rvector m state in
         C.resolve_vec (C.rvector_to_int_array rvec)) sub_refs
 
-let get_dims: S.attributes -> S.heap -> int array =
-    fun attrs heap ->
+let get_dims: S.attributes -> S.state -> int array =
+    fun attrs state ->
     let data_dims_ref = begin match S.attrs_find (Some "dim") attrs with
         | Some (v)  -> v
         (* TODO: this can be valid, i.e. when the array is one-dimensional *)
         | None      -> failwith "data has no dim attribute" 
     end in
-    let data_dims = C.dereference_rvector data_dims_ref heap in
+    let data_dims = C.dereference_rvector data_dims_ref state in
     (* coerce it to an int array *)
     C.resolve_vec (C.rvector_to_int_array data_dims)
 
@@ -155,22 +156,22 @@ let get_dims: S.attributes -> S.heap -> int array =
  subscripting use "dimnames".
 *)
 (* v[x] *)
-let subset_mems: S.memref -> S.memref list -> S.heap -> (S.memref * S.heap) =
-    fun data_ref sub_refs heap ->
+let subset_mems: S.memref -> S.memref list -> S.state -> (S.memref * S.state) =
+    fun data_ref sub_refs state ->
     (* args is a list of memrefs to the constants we're using for the subset 
     we want to convert it to an rvector list for ease of use. *)
-    let subs = sub_refs_to_subs sub_refs heap in
-    match S.heap_find data_ref heap with
+    let subs = sub_refs_to_subs sub_refs state in
+    match S.state_find data_ref state with
     | Some (S.DataObj (S.Vec data_rvector, data_attributes)) ->
-        let data_dims = get_dims data_attributes heap in
+        let data_dims = get_dims data_attributes state in
         (* get data as an rvector *)
         let slice_rvec, slice_dims = rvector_slice data_rvector data_dims subs in
-        (* allocate dims on the heap, give it to data as dim *)
-        let slice_dims_mem, heap' = S.heap_alloc (S.DataObj (S.Vec (slice_dims), S.attrs_empty ())) heap in
+        (* allocate dims on the state, give it to data as dim *)
+        let slice_dims_mem, state' = S.state_alloc (S.DataObj (S.Vec (slice_dims), S.attrs_empty ())) state in
         let slice_attrs = S.attrs_empty () in
         let _ = S.attrs_add (Some "dim") slice_dims_mem in
-        (* allocate data on the heap *)
-        S.heap_alloc (S.DataObj (S.Vec (slice_rvec), slice_attrs)) heap'
+        (* allocate data on the state *)
+        S.state_alloc (S.DataObj (S.Vec (slice_rvec), slice_attrs)) state'
     | Some _ -> failwith "Data is a promise"
     | None   -> failwith "Data does not exist" 
 
@@ -188,16 +189,17 @@ let find_names_index: S.rstring array -> S.rstring array -> int =
     let sub = subscript_vec.(0) in
     find names sub 0
 
-let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.heap -> (S.memref * S.heap) = 
-    fun data_rvec names subscript_vec heap ->
+let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.state -> (S.memref * S.state) = 
+    fun data_rvec names subscript_vec state ->
     let idx = find_names_index names subscript_vec in
     let out_rvec = match data_rvec with
     | S.IntVec i -> S.IntVec (Array.make 1 i.(idx))
     | S.FloatVec f -> S.FloatVec (Array.make 1 f.(idx))
     | S.ComplexVec c -> S.ComplexVec (Array.make 1 c.(idx))
     | S.StrVec s -> S.StrVec (Array.make 1 s.(idx))
-    | S.BoolVec b -> S.BoolVec (Array.make 1 b.(idx)) in
-    S.heap_alloc (S.DataObj ((S.Vec out_rvec), S.attrs_empty ())) heap
+    | S.BoolVec b -> S.BoolVec (Array.make 1 b.(idx))
+    | S.SymVec s -> failwith "symbolic unimplemented" in
+    S.state_alloc (S.DataObj ((S.Vec out_rvec), S.attrs_empty ())) state
 
 (* Find the true index into the vector given an integer *)
 let find_int_index: int -> int array -> int =
@@ -208,9 +210,9 @@ let find_int_index: int -> int array -> int =
     let _ = if n = 0 then failwith "0 subscript" else () in
     if n < 0 then (data_length) + (n - 1) else n - 1
 
-let subscript_int: S.rvector -> int array -> S.heap -> (S.memref * S.heap) =
-    fun data_rvec subscript_vec heap ->
-    let true_n = find_int_index (V.rvec_length data_rvec) subscript_vec in
+let subscript_int: S.rvector -> int array -> S.state -> (S.memref * S.state) =
+    fun data_rvec subscript_vec state ->
+    let true_n = find_int_index (V.rvector_length data_rvec) subscript_vec in
     let sub_rvec = begin match data_rvec with
     | S.IntVec i -> let v = i.(true_n) in
         S.IntVec (Array.make 1 v)
@@ -222,27 +224,28 @@ let subscript_int: S.rvector -> int array -> S.heap -> (S.memref * S.heap) =
         S.StrVec (Array.make 1 v)
     | S.BoolVec b -> let v = b.(true_n) in
         S.BoolVec (Array.make 1 v)
+    | S.SymVec s -> failwith "symbolic unimplemented!"
     end in
-    (* allocate it as a data object on the heap *)
-    S.heap_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty ())) heap
+    (* allocate it as a data object on the state *)
+    S.state_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty ())) state
 
 (* v[[x]] *)
-let subscript_mems: S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
-    fun data_ref subscript_ref heap ->
-    match S.heap_find data_ref heap with
+let subscript_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
+    fun data_ref subscript_ref state ->
+    match S.state_find data_ref state with
     | Some (S.DataObj (S.Vec data_rvec, data_attrs)) ->
         (* If it's a string, we're supposed to lookup in the names attribute *)
-        begin match C.dereference_rvector subscript_ref heap with
+        begin match C.dereference_rvector subscript_ref state with
         | S.StrVec subscript_vec -> let names_ref = begin
                 match S.attrs_find (Some "names") data_attrs with
                 | Some r -> r
                 | None -> failwith "Cannot string subscript a vector with no names attribute"
                 end in
             (* get the names attribute *)
-            let names = C.rvector_to_str_array (C.dereference_rvector names_ref heap) in
-            subscript_str data_rvec names subscript_vec heap
+            let names = C.rvector_to_str_array (C.dereference_rvector names_ref state) in
+            subscript_str data_rvec names subscript_vec state
         | rvec -> let subscript_vec = C.rvector_to_int_array rvec in
-            subscript_int data_rvec (C.resolve_vec subscript_vec) heap
+            subscript_int data_rvec (C.resolve_vec subscript_vec) state
         end
     | _ -> failwith "Vector expected"
 
@@ -261,44 +264,44 @@ let do_replace: S.rvector -> (int * S.rvector) -> unit =
 
 
 (* v[x] <- y *)
-let subset_assign_mems: S.memref -> S.memref list -> S.memref -> S.heap -> (S.memref * S.heap) =
-    fun data_ref sub_refs assign_ref heap ->
+let subset_assign_mems: S.memref -> S.memref list -> S.memref -> S.state -> (S.memref * S.state) =
+    fun data_ref sub_refs assign_ref state ->
     (* First, copy data, since we're going to edit it *)
-    let data_ref', heap' = Copy.deep_copy data_ref heap in
-    let assign_vec = C.dereference_rvector assign_ref heap' in
-    let subs = sub_refs_to_subs sub_refs heap' in
-    match S.heap_find data_ref' heap' with
+    let data_ref', state' = Copy.deep_copy data_ref state in
+    let assign_vec = C.dereference_rvector assign_ref state' in
+    let subs = sub_refs_to_subs sub_refs state' in
+    match S.state_find data_ref' state' with
     | Some (S.DataObj (S.Vec data_rvector, data_attributes)) ->
-        let data_dims = get_dims data_attributes heap' in
+        let data_dims = get_dims data_attributes state' in
         (* Changes the (copied) data rvector in-place *)
         let _ = rvector_subset_assign data_rvector data_dims subs assign_vec in
-        (data_ref', heap')
+        (data_ref', state')
     | _ -> failwith "Data is not a vector"
 
 (* v[[x]] <- y *)
-let subscript_assign_mems: S.memref -> S.memref -> S.memref -> S.heap -> (S.memref * S.heap) =
-    fun data_ref subscript_ref assign_ref heap ->
-    let (data_ref', heap') = Copy.deep_copy data_ref heap in
-    let assign_vec = C.dereference_rvector assign_ref heap' in
-    match S.heap_find data_ref' heap' with
+let subscript_assign_mems: S.memref -> S.memref -> S.memref -> S.state -> (S.memref * S.state) =
+    fun data_ref subscript_ref assign_ref state ->
+    let (data_ref', state') = Copy.deep_copy data_ref state in
+    let assign_vec = C.dereference_rvector assign_ref state' in
+    match S.state_find data_ref' state' with
     | Some (S.DataObj (S.Vec data_rvec, data_attrs)) ->
-        begin match C.dereference_rvector subscript_ref heap' with
+        begin match C.dereference_rvector subscript_ref state' with
         (* If the subscript is a string, need to look at names *)
         | S.StrVec subscript_vec -> let names_ref = begin
                 match S.attrs_find (Some "names") data_attrs with
                 | Some r -> r
                 | None -> failwith "Cannot string subscript a vector with no names attribute"
                 end in
-            let names = C.rvector_to_str_array (C.dereference_rvector names_ref heap') in
+            let names = C.rvector_to_str_array (C.dereference_rvector names_ref state') in
             let idx = find_names_index names subscript_vec in
             let _ = do_replace data_rvec (idx, assign_vec) in
-            (* No need to allocate - the copy already lives on the heap *)
-            (data_ref', heap')
+            (* No need to allocate - the copy already lives on the state *)
+            (data_ref', state')
         (* If it's not a string, assume it's an int, and do normal integer subscripting *)
         | rvec -> let subscript_vec = C.rvector_to_int_array rvec in
-            let idx = find_int_index (V.rvec_length data_rvec) (C.resolve_vec subscript_vec) in
+            let idx = find_int_index (V.rvector_length data_rvec) (C.resolve_vec subscript_vec) in
             let _ = do_replace data_rvec (idx, assign_vec) in
-            (data_ref', heap')
+            (data_ref', state')
         end
     | _ -> failwith "Vector expected"
 
