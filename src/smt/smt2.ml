@@ -2,24 +2,26 @@ open Smtsyntax
 
 open List
 
-let smt2_of_smtvar : smtvar -> string =
+type smt2 = string
+
+let smt2_of_smtvar : smtvar -> smt2 =
   fun var -> var
 
-let smt2_of_smtconst : smtconst -> string =
+let smt2_of_smtconst : smtconst -> smt2 =
   fun const -> const
 
-let rec smt2_of_smtsort : smtsort -> string =
+let rec smt2_of_smtsort : smtsort -> smt2 =
   fun sort ->
     match sort with
-    | SortInt -> "Int"
-    | SortFloat -> "Float"
-    | SortDouble -> "Double"
-    | SortBool -> "Bool"
-    | SortVar (v, ss) ->
+    | SmtSortInt -> "Int"
+    | SmtSortFloat -> "Float"
+    | SmtSortDouble -> "Double"
+    | SmtSortBool -> "Bool"
+    | SmtSortVar (v, ss) ->
         "(" ^ smt2_of_smtvar v ^ " " ^
               (String.concat " " (map smt2_of_smtsort ss)) ^ ")"
 
-let rec smt2_of_smtexpr : smtexpr -> string =
+let rec smt2_of_smtexpr : smtexpr -> smt2 =
   fun smtexpr ->
     match smtexpr with
     | SmtVar v -> smt2_of_smtvar v
@@ -98,7 +100,7 @@ let rec smt2_of_smtexpr : smtexpr -> string =
                     smt2_of_smtsort s ^ ")") bs)) ^ ") " ^
           smt2_of_smtexpr e ^ ")"
 
-let smt2_of_smtstmt : smtstmt -> string =
+let smt2_of_smtstmt : smtstmt -> smt2 =
   fun stmt ->
     match stmt with
     | SmtDeclVar (v, s) ->
@@ -114,10 +116,17 @@ let smt2_of_smtstmt : smtstmt -> string =
       "(define-sort " ^ smt2_of_smtvar v ^
           "(" ^ (String.concat " " (map smt2_of_smtvar vs)) ^ ")" ^
           smt2_of_smtsort s ^ ")"
-    | SmtAssert e ->
-      "(assert " ^ smt2_of_smtexpr e ^ ")"
+    | SmtAssert e -> "(assert " ^ smt2_of_smtexpr e ^ ")"
+    | SmtCheckSat -> "(check-sat)"
+    | SmtGetModel -> "(get-model)"
+    | SmtPush -> "(push)"
+    | SmtPop -> "(pop)"
+    | SmtExit -> "(exit)"
 
-let smt2_of_smtstmts : smtstmt list -> string =
+let smt2_of_smtstmts : smtstmt list -> smt2 =
   fun stmts ->
     String.concat "\n" (map smt2_of_smtstmt stmts)
+
+let string_of_smt2 : smt2 -> string =
+  fun smt2 -> smt2
 

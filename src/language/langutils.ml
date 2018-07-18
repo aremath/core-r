@@ -144,13 +144,13 @@ let string_of_smtconst : smtconst -> string =
 let rec string_of_smtsort : smtsort -> string =
   fun sort ->
     match sort with
-    | SortInt -> "SortInt"
-    | SortFloat -> "SortFloat"
-    | SortDouble -> "SortDouble"
-    | SortBool -> "SortBool"
-    | SortVar (v, ss) ->
-        "SortVar (" ^ string_of_smtvar v ^ "," ^
-                      string_of_list_comma (map string_of_smtsort ss) ^ ")"
+    | SmtSortInt -> "SmtSortInt"
+    | SmtSortFloat -> "SmtSortFloat"
+    | SmtSortDouble -> "SmtSortDouble"
+    | SmtSortBool -> "SmtSortBool"
+    | SmtSortVar (v, ss) ->
+        "SmtSortVar (" ^ string_of_smtvar v ^ "," ^
+                         string_of_list_comma (map string_of_smtsort ss) ^ ")"
 
 let rec string_of_smtexpr : smtexpr -> string =
   fun smtexpr ->
@@ -248,7 +248,11 @@ let string_of_smtstmt : smtstmt -> string =
            string_of_smtsort so ^ ")"
     | SmtAssert e ->
         "SmtAssert (" ^ string_of_smtexpr e ^ ")"
-
+    | SmtCheckSat -> "SmtCheckSat"
+    | SmtGetModel -> "SmtGetModel"
+    | SmtPush -> "SmtPush"
+    | SmtPop -> "SmtPop"
+    | SmtExit -> "SmtExit"
 
 let string_of_env: env -> string =
   fun env ->

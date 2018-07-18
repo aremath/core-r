@@ -6,11 +6,11 @@ type smtvar = string
 type smtconst = string
 
 type smtsort =
-  | SortInt
-  | SortFloat
-  | SortDouble
-  | SortBool
-  | SortVar of smtvar * smtsort list
+  | SmtSortInt
+  | SmtSortFloat
+  | SmtSortDouble
+  | SmtSortBool
+  | SmtSortVar of smtvar * smtsort list
 
 type smtexpr =
   | SmtVar of smtvar
@@ -64,5 +64,12 @@ type smtstmt =
 
   (* Assertions *)
   | SmtAssert of smtexpr
+
+  (* Model querying *)
+  | SmtCheckSat
+  | SmtGetModel
+  | SmtPush
+  | SmtPop
+  | SmtExit
 
 

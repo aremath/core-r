@@ -44,7 +44,7 @@ Library "loader"
 
 Library "smt"
   Path: src/smt
-  Modules: Smt2, Smt
+  Modules: Smt2, Solver, Smt
   BuildDepends: language
 
 Library "ounit"
