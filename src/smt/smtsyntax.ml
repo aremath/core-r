@@ -1,6 +1,15 @@
 
 (* cf p24: https://smtlib.github.io/jSMTLIB/SMTLIBTutorial.pdf *)
 
+type smtlogic =
+  | SmtALL
+  | SmtQFLIA
+  | SmtQFLRA
+  | SmtQFNIA
+  | SmtQFNRA
+  | SmtQFLIRA
+  | SmtQFNIRA
+
 type smtvar = string
 
 type smtconst = string
@@ -55,10 +64,13 @@ type smtexpr =
   | SmtExists of (smtvar * smtsort) list * smtexpr
 
 
-type smtstmt =
+type smtcmd =
+  (* Set logic *)
+  | SmtSegLogic of smtlogic
+
   (* Declarations *)
-  | SmtDeclVar of smtvar * smtsort
   | SmtDeclFun of smtvar * smtvar list * smtsort
+  | SmtDefFun of smtvar
   | SmtDeclSort of smtvar * int
   | SmtDefSort of smtvar * smtvar list * smtsort
 

@@ -13,14 +13,39 @@ Executable "main"
   MainIs: main.ml
   BuildDepends: language, interpreter, loader, natives, smt
 
-Library "interpreter"
-  Path: src/interpreter
-  Modules: Rules, Interputils, Engine
-  BuildDepends: language, natives, loader, smt
-
 Library "language"
   Path: src/language
-  Modules: Syntax, Support, Annotations, Langutils, Smtsyntax, Smttrans
+  Modules: Syntax, Annotations, Langutils
+
+Library "smt"
+  Path: src/smt
+  Modules: Smtsyntax, Smt2, Solver, Smtutils, Smt
+
+Library "interp-commons"
+  Path: src/interpreter/interp-commons
+  Modules: Rules, Support, Natives, Smttrans, Interputils
+  BuildDepends: language, smt
+
+Library "natives"
+  Path: src/interpreter/natives
+  Modules: Constants, Copy, Vector, Native_support, Subscript,
+           Native_calls, Arithmetic, Symbolic_ops
+  BuildDepends: language, interp-commons
+
+Library "loader"
+  Path: src/interpreter/preprocess
+  Modules: Loader, Rast_to_language
+  BuildDepends: language, parser, natives
+
+Library "stepper"
+  Path: src/interpreter/stepper
+  Modules: Stepper
+  BuildDepends: language, smt, interp-commons, natives
+
+Library "interpreter"
+  Path: src/interpreter
+  Modules: Engine
+  BuildDepends: language, smt, interp-commons, natives, loader, stepper
 
 Library "parser"
   Path: src/parser
@@ -31,22 +56,6 @@ Executable "absyn_generator"
   MainIs: absyn_generator.ml
   BuildDepends: parser
 
-Library "natives"
-  Path: src/natives
-  Modules: Natives, Constants, Copy, Vector, Native_support, Subscript,
-           Native_calls, Arithmetic, Symbolic_ops
-  BuildDepends: language
-
-Library "loader"
-  Path: src/preprocess
-  Modules: Loader, Rast_to_language
-  BuildDepends: language, parser, natives
-
-Library "smt"
-  Path: src/smt
-  Modules: Smt2, Solver, Smt
-  BuildDepends: language
-
 Library "ounit"
   Path: test/ounit
   Modules: OUnit, OUnitTypes, OUnitUtils, OUnitLogger, OUnitChooser
@@ -55,7 +64,8 @@ Library "ounit"
 Executable "testytesty"
   Path: test
   MainIs: test.ml
-  BuildDepends: interpreter, language, parser, natives, loader, ounit
+  BuildDepends: language, smt, inter-commons, natives, loader,
+                interpreter, ounit
 
 Test "testytesty"
   TestTools: testytesty

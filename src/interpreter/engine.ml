@@ -9,6 +9,8 @@ open Smt2
 open Solver
 open Smt
 
+open Stepper
+
 open List
 open Printf
 open Sys
@@ -46,10 +48,6 @@ let is_state_complete : state -> bool =
 let is_state_not_complete : state -> bool =
   fun state -> not (is_state_complete state)
 
-type passresult =
-  (rule list * state) list *
-  (rule list * state) list *
-  (rule list * state) list
 
 let run_pass : (rule list * state) list -> passresult =
   fun states ->
@@ -151,8 +149,8 @@ let load_run_n_first_result : string -> int -> (value * attributes) option =
 
 let solve_state : state -> string =
   fun state ->
-    let stmts = smtstmt_list_of_state state in
-    let smt2 = smt2_of_smtstmt_list stmts in
+    let stmts = smtcmd_list_of_state state in
+    let smt2 = smt2_of_smtcmd_list stmts in
       run_z3 smt2
 
 let rw_perms : unit -> int =

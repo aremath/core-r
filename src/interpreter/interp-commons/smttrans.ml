@@ -1,7 +1,62 @@
-open Support
 open Smtsyntax
+open Support
 
 open List
+
+
+let string_of_smtvar : smtvar -> string =
+  fun var -> var
+
+let smtvar_of_string : string -> smtvar =
+  fun str -> str
+
+let smtconst_of_const : const -> smtconst =
+  fun const ->
+    match const with
+    | R.Num rnum ->
+      (match rnum with
+      | R.Int rint ->
+        (match int_of_rint rint with
+        | Some i -> string_of_int i
+        | None -> "Na_int_")
+      | R.Float rfloat ->
+        (match float_of_rfloat rfloat with
+        | Some f -> string_of_float f
+        | None -> "Na_float_")
+      | R.Complex rcomplex ->
+        failwith "smtconst_of_const: dropping support for complex for now")
+        (*
+        (match complex_of_rcomplex rcomplex with
+        | Some c -> string_of_complex c
+        | None -> "Na_complex_"))
+        *)
+    | R.Str rstr ->
+      (match string_of_rstring rstr with
+      | Some str -> "\"" ^ str ^ "\""
+      | None -> "Na_string_")
+    | R.Bool rbool ->
+      (match bool_of_rbool rbool with
+      | Some b -> string_of_int b
+      | None -> "Na_bool_")
+    | R.Nil -> "nil"
+
+let smtvar_of_mem : memref -> smtvar =
+  fun mem ->
+    smtvar_of_string ("mem$" ^ string_of_int mem.R.addr)
+
+let smtvar_of_id : ident -> smtvar =
+  fun id ->
+    match string_of_rstring id.R.name with
+    | Some str -> smtvar_of_string str
+    | None -> smtvar_of_string "Na_string_"
+
+let rec smtexpr_of_langexpr : expr -> state -> smtexpr =
+  fun expr state -> match expr with
+    | R.Ident id -> S.SmtVar (smtvar_of_id id)
+    | R.MemRef mem -> S.SmtVar (smtvar_of_mem mem)
+    | R.Const const -> S.SmtConst (smtconst_of_const const)
+    | _ -> S.SmtVar "boo"
+
 
 (* Used at the top level as the variable quantified in ForAlls.
   Because multiple ForAlls can be across the same identifier without conflict,
@@ -83,11 +138,10 @@ let ifelse: smtexpr -> smtexpr -> smtexpr -> smtexpr =
 
 (* Return a copy of the smtexpr with all instances of var1 replaced with var2 *)
 let rec replace: smtvar -> smtvar -> smtexpr -> smtexpr =
-    fun var1 var2 e ->
+  fun var1 var2 e ->
     let vreplace = replace var1 var2 in
     match e with
-    | SmtVar var1 -> SmtVar var2
-    | SmtVar a -> SmtVar a
+    | SmtVar v -> if v = var1 then SmtVar var2 else SmtVar v
     | SmtConst s -> SmtConst s
 
     | SmtGt (e1, e2) -> SmtGt ((vreplace e1), (vreplace e2))
@@ -108,15 +162,16 @@ let rec replace: smtvar -> smtvar -> smtexpr -> smtexpr =
     | SmtMult (e1, e2) -> SmtMult ((vreplace e1), (vreplace e2))
     | SmtDiv (e1, e2) -> SmtDiv ((vreplace e1), (vreplace e2))
     | SmtExp (e1, e2) -> SmtExp ((vreplace e1), (vreplace e2))
-    | SmtMod (e1, e2) -> SmtRem ((vreplace e1), (vreplace e2))
+    | SmtMod (e1, e2) -> SmtMod ((vreplace e1), (vreplace e2))
+    | SmtRem (e1, e2) -> SmtRem ((vreplace e1), (vreplace e2))
 
     | SmtArrGet (e1, e2) -> SmtArrGet ((vreplace e1), (vreplace e2))
     | SmtArrSet (e1, e2, e3) -> SmtArrSet ((vreplace e1),
             (vreplace e2),
             (vreplace e3))
 
-    | SmtFunApp (var1, es) -> SmtFunApp (var2, List.map (vreplace) es)
-    | SmtFunApp (a, es) -> SmtFunApp (a, List.map (vreplace) es)
+    | SmtFunApp (a, es) -> SmtFunApp ((if a = var1 then var2 else a),
+                                      List.map (vreplace) es)
 
     | SmtLet (lets, e1) -> SmtLet (
         (List.map (replace_let var1 var2) lets),
@@ -158,15 +213,15 @@ let get_mem_pathcons_list : memref -> heap -> pathcons list =
     | Some (DataObj (Vec (SymVec (_, _, pc)), _)) -> [pc]
     | _ -> []
 
-let smtstmt_list_of_pathcons : pathcons -> smtstmt list =
+let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
 
-let smtstmt_list_of_state : state -> smtstmt list =
+let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
     let smems = state.sym_mems in
     let heap = state.heap in
     let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
-    let asserts = concat (map smtstmt_list_of_pathcons paths) in
+    let asserts = concat (map smtcmd_list_of_pathcons paths) in
       asserts
 

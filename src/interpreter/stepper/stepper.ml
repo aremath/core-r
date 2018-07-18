@@ -1,11 +1,14 @@
 
-open List
 open Syntax
+open Langutils
 open Smtsyntax
 open Support
+open Rules
+open Smttrans
 open Native_calls
 open Copy
-open Langutils
+
+open List
 
 let pair_first : 'a * 'b -> 'a =
   fun (a, b) -> a
@@ -376,16 +379,16 @@ let rule_Seq : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (Seq exprs), c_env_mem, c_stack2) ->
-      if List.length exprs = 0 then
+      if length exprs = 0 then
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot (mem_null ()); } in
           [{ state with
                stack = stack_push c_frame c_stack2 }]
       else
-        let c_frames = List.map (fun e -> { frame_default with
-                                              env_mem = c_env_mem;
-                                              slot = EvalSlot e }) exprs in
+        let c_frames = map (fun e -> { frame_default with
+                                         env_mem = c_env_mem;
+                                         slot = EvalSlot e }) exprs in
           [{ state with
                     stack = stack_push_list c_frames c_stack2 }]
     | _ -> []
@@ -816,38 +819,6 @@ let rule_Blank : state -> state list =
   fun state -> []
 
 (***********************)
-
-type rule =
-  | ERuleIdent
-  | ERuleMemRef
-  | ERuleConst
-  | ERuleSeq
-  | ERuleLambdaAbs
-  | ERuleLambdaAppEval
-  | ERuleLambdaAppFuncRet
-  | ERuleLambdaAppArgsEval
-  | ERuleLambdaAppArgsRet
-  | ERuleLambdaAppEnter
-  | ERuleLambdaAppComplete
-  | ERuleNativeLambdaApp
-  | ERuleAssignIdEval
-  | ERuleAssignStrEval
-  | ERuleAssignRet
-  | ERuleIfEval
-  | ERuleIfRet
-  | ERuleIfRetSym
-  | ERuleWhileEval
-  | ERuleWhileCondTrue
-  | ERuleWhileCondFalse
-  | ERuleWhileCondSym
-  | ERuleWhileBodyDone
-  | ERuleBreak
-  | ERuleNext
-  | ERuleReturn
-  | ERuleDiscard
-  | ERuleBlank
-
-
 let rule_table : (rule * (state -> state list)) list =
   [ (ERuleIdent, rule_Ident);
     (ERuleMemRef, rule_MemRef);

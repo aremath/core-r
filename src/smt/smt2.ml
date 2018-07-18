@@ -100,15 +100,13 @@ let rec smt2_of_smtexpr : smtexpr -> smt2 =
                     smt2_of_smtsort s ^ ")") bs)) ^ ") " ^
           smt2_of_smtexpr e ^ ")"
 
-let smt2_of_smtstmt : smtstmt -> smt2 =
+let smt2_of_smtcmd : smtcmd -> smt2 =
   fun stmt ->
     match stmt with
-    | SmtDeclVar (v, s) ->
-      "(declare-fun " ^ smt2_of_smtvar v ^ " () " ^
-        smt2_of_smtsort s ^ ")"
     | SmtDeclFun (v, vs, s) ->
-      "(declare-fun (" ^
-          (String.concat " " (map smt2_of_smtvar vs)) ^ ") " ^
+      "(declare-fun " ^
+          smt2_of_smtvar v ^
+          "(" ^ (String.concat " " (map smt2_of_smtvar vs)) ^ ") " ^
           smt2_of_smtsort s ^ ")"
     | SmtDeclSort (v, i) ->
       "(declare-sort " ^ smt2_of_smtvar v ^ " " ^ string_of_int i ^ ")"
@@ -123,9 +121,9 @@ let smt2_of_smtstmt : smtstmt -> smt2 =
     | SmtPop -> "(pop)"
     | SmtExit -> "(exit)"
 
-let smt2_of_smtstmt_list : smtstmt list -> smt2 =
+let smt2_of_smtcmd_list : smtcmd list -> smt2 =
   fun stmts ->
-    String.concat "\n" (map smt2_of_smtstmt stmts)
+    String.concat "\n" (map smt2_of_smtcmd stmts)
 
 let string_of_smt2 : smt2 -> string =
   fun smt2 -> smt2
