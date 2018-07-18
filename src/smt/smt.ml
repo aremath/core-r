@@ -9,7 +9,9 @@ let test_smtstmts : unit -> smtstmt list =
      SmtDeclVar ("y", SmtSortInt);
      SmtAssert (SmtEq (SmtVar "x", SmtVar "y"));
      SmtCheckSat;
-     SmtGetModel; ]
+     SmtGetModel;
+     SmtExit;
+    ]
 
 let test_z3 : unit -> string =
   fun _ ->

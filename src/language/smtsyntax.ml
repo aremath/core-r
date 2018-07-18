@@ -68,5 +68,8 @@ type smtstmt =
   (* Model querying *)
   | SmtCheckSat
   | SmtGetModel
+  | SmtPush
+  | SmtPop
+  | SmtExit
 
 

@@ -250,6 +250,9 @@ let string_of_smtstmt : smtstmt -> string =
         "SmtAssert (" ^ string_of_smtexpr e ^ ")"
     | SmtCheckSat -> "SmtCheckSat"
     | SmtGetModel -> "SmtGetModel"
+    | SmtPush -> "SmtPush"
+    | SmtPop -> "SmtPop"
+    | SmtExit -> "SmtExit"
 
 let string_of_env: env -> string =
   fun env ->

@@ -119,6 +119,9 @@ let smt2_of_smtstmt : smtstmt -> smt2 =
     | SmtAssert e -> "(assert " ^ smt2_of_smtexpr e ^ ")"
     | SmtCheckSat -> "(check-sat)"
     | SmtGetModel -> "(get-model)"
+    | SmtPush -> "(push)"
+    | SmtPop -> "(pop)"
+    | SmtExit -> "(exit)"
 
 let smt2_of_smtstmts : smtstmt list -> smt2 =
   fun stmts ->
