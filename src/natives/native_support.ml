@@ -108,8 +108,6 @@ let na_extend: S.rvector -> int -> S.rvector =
     | S.StrVec s -> S.StrVec (na_extend_array s len)
     | S.BoolVec b -> S.BoolVec (na_extend_array b len)
 
-(* let mk_len: 'a. 'a array -> smtexpr = *)
-
 (* Creates a new symbolic vector with the name var *)
 let vec_to_symvec: smtvar -> S.rvector -> S.rvector =
     fun var vec ->

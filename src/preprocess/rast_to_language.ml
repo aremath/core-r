@@ -27,12 +27,12 @@ let uop_to_ident: R.unop -> 'a L.ident =
 let bop_to_ident : R.binop -> 'a L.ident =
   fun b ->
     match b with
-    | Plus -> native_vector_add_id
-    | Mult -> native_vector_mul_id
-    | Div -> native_vector_div_id
-    | Minus -> native_vector_sub_id
-    | Mod -> native_vector_mod_id
-    | Pow -> native_vector_exp_id
+    | R.Plus -> native_vector_add_id
+    | R.Mult -> native_vector_mul_id
+    | R.Div -> native_vector_div_id
+    | R.Minus -> native_vector_sub_id
+    | R.Mod -> native_vector_mod_id
+    | R.Pow -> native_vector_exp_id
     (*
     | IntDiv
     | MatrixMult
@@ -40,16 +40,16 @@ let bop_to_ident : R.binop -> 'a L.ident =
     | KronProd
     | Match
     *)
-    | Gt -> native_vector_gt_id
-    | Ge -> native_vector_geq_id
-    | Lt -> native_vector_lt_id
-    | Le -> native_vector_leq_id
-    | Eq -> native_vector_eq_id
-    | Neq -> native_vector_neq_id
-    | AndVec -> native_vector_andvec_id
-    | And -> native_vector_and_id
-    | OrVec -> native_vector_orvec_id
-    | Or -> native_vector_or_id
+    | R.Gt -> native_vector_gt_id
+    | R.Ge -> native_vector_geq_id
+    | R.Lt -> native_vector_lt_id
+    | R.Le -> native_vector_leq_id
+    | R.Eq -> native_vector_eq_id
+    | R.Neq -> native_vector_neq_id
+    | R.AndVec -> native_vector_andvec_id
+    | R.And -> native_vector_and_id
+    | R.OrVec -> native_vector_orvec_id
+    | R.Or -> native_vector_or_id
     (*
     | Form
     | Help
@@ -130,7 +130,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 L.Assign (L.Const (L.Str (T.rstring_of_string str)),
                                           convert_expr rhs)
     | R.Bop (R.Range, e1, e2) ->
-                              LambdaApp (L.Ident native_vector_colon_id,
+                              L.LambdaApp (L.Ident native_vector_colon_id,
                                  map convert_arg [R.ExprArg e1; R.ExprArg e2])
                                       
     | R.Bop (op, e1, e2)    -> let b_ident = bop_to_ident op in
@@ -138,16 +138,16 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 let c_e2 = convert_expr e2 in
                                 L.LambdaApp (L.Ident b_ident,
                                 [L.Arg c_e1; L.Arg c_e2])
-    | R.FuncCall (Ident { name = "return" }, []) ->
-                                L.Return (Const Nil)
-    | R.FuncCall (Ident { name = "return" }, arg :: []) ->
+    | R.FuncCall (R.Ident { R.name = "return" }, []) ->
+                                L.Return (L.Const L.Nil)
+    | R.FuncCall (R.Ident { R.name = "return" }, arg :: []) ->
                                 (match convert_arg arg with
-                                | Arg e -> Return e
+                                | L.Arg e -> L.Return e
                                 | _ -> failwith "default or variadic return")
-    | R.FuncCall (Ident { name = "return" }, a :: b :: _) ->
+    | R.FuncCall (R.Ident { R.name = "return" }, a :: b :: _) ->
                                 failwith "too many arguments passed to return"
-    | R.FuncCall (Ident { name = "c" }, args) ->
-                                LambdaApp (L.Ident native_vector_make_id,
+    | R.FuncCall (R.Ident { R.name = "c" }, args) ->
+                                L.LambdaApp (L.Ident native_vector_make_id,
                                            map convert_arg args)
     | R.FuncCall (e, args)  -> let c_args = map convert_arg args in
                                 let c_e = convert_expr e in
@@ -161,8 +161,10 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 | hd :: tl  -> L.Seq (map convert_expr es)
                                 | []        -> convert_expr R.Null (* TODO: is this really what R does? *)
                                 end
-    | R.ListProj (e, args)  -> LambdaApp (Ident (native_vector_subscript_id), Arg (convert_expr e) :: (map convert_arg args))
-    | R.ListSub (e, args)  -> LambdaApp (Ident (native_vector_subset_id), Arg (convert_expr e) :: (map convert_arg args))
+    | R.ListProj (e, args)  -> L.LambdaApp (L.Ident (native_vector_subscript_id),
+            L.Arg (convert_expr e) :: (map convert_arg args))
+    | R.ListSub (e, args)  -> L.LambdaApp (L.Ident (native_vector_subset_id),
+            L.Arg (convert_expr e) :: (map convert_arg args))
     (* | R.ListSub (e, args)   -> failwith "TODO: translate ListSub" *)
                               (* L.ArraySub (convert_expr e, map convert_arg args) *)
     | R.If (e1, e2)         -> L.If (convert_expr e1, convert_expr e2, convert_expr R.Null) (* TODO ^ *)
@@ -196,7 +198,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
 and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     function
     | R.EmptyArg            -> L.Arg (L.Const L.Nil)
-    | R.ExprArg (Ident { name = "..." }) -> L.VarArg
+    | R.ExprArg (R.Ident { R.name = "..." }) -> L.VarArg
     | R.ExprArg e           -> let c_expr = convert_expr e in
                                 L.Arg c_expr
     | R.IdentAssignEmpty i  -> failwith "Empty Assign not part of Core R!" (* TODO: what the heck *)
