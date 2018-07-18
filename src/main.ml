@@ -37,6 +37,10 @@ let main () =
 
 
   print_endline "SimpleR: done!";
+
+  print_endline "\n\n\n*** Z3 TEST ***\n\n\n";
+  print_endline (test_z3 ())
+
   ;;
   
 

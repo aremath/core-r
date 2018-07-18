@@ -53,7 +53,7 @@ let bounded: smtvar -> smtexpr -> smtexpr -> smtexpr =
 *)
 let all_elements: smtvar -> smtexpr -> smtexpr =
     fun array_name expr ->
-    SmtForAll ([(forall_var, SortInt)],
+    SmtForAll ([(forall_var, SmtSortInt)],
         (* if var is bounded between 0 and the array len, then expr holds *)
         (SmtImp (bounded forall_var (smt_int_const 0) (smt_len array_name), expr)))
 
