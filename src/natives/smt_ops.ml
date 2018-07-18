@@ -1,6 +1,6 @@
 module S = Support
 open Smtsyntax
-open Smtutils
+open Smttrans
 
 type smtvec = (smtvar * S.rtype * S.pathcons)
 

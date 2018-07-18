@@ -20,7 +20,7 @@ Library "interpreter"
 
 Library "language"
   Path: src/language
-  Modules: Syntax, Support, Annotations, Langutils, Smtsyntax, Smtutils
+  Modules: Syntax, Support, Annotations, Langutils, Smtsyntax, Smttrans
 
 Library "parser"
   Path: src/parser
