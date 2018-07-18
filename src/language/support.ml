@@ -679,11 +679,11 @@ let smtconst_of_const : const -> smtconst =
 
 let smtvar_of_mem : memref -> smtvar =
   fun mem ->
-    smtvar_of_string ("mem$" ^ string_of_int mem.addr)
+    smtvar_of_string ("mem$" ^ string_of_int mem.R.addr)
 
 let smtvar_of_id : ident -> smtvar =
   fun id ->
-    match string_of_rstring id.name with
+    match string_of_rstring id.R.name with
     | Some str -> smtvar_of_string str
     | None -> smtvar_of_string "Na_string_"
 

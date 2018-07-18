@@ -97,3 +97,27 @@ let rec smt2_of_smtexpr : smtexpr -> string =
               "(" ^ smt2_of_smtvar v ^ " " ^
                     smt2_of_smtsort s ^ ")") bs)) ^ ") " ^
           smt2_of_smtexpr e ^ ")"
+
+let smt2_of_smtstmt : smtstmt -> string =
+  fun stmt ->
+    match stmt with
+    | SmtDeclVar (v, s) ->
+      "(declare-fun " ^ smt2_of_smtvar v ^ " () " ^
+        smt2_of_smtsort s ^ ")"
+    | SmtDeclFun (v, vs, s) ->
+      "(declare-fun (" ^
+          (String.concat " " (map smt2_of_smtvar vs)) ^ ") " ^
+          smt2_of_smtsort s ^ ")"
+    | SmtDeclSort (v, i) ->
+      "(declare-sort " ^ smt2_of_smtvar v ^ " " ^ string_of_int i ^ ")"
+    | SmtDefSort (v, vs, s) ->
+      "(define-sort " ^ smt2_of_smtvar v ^
+          "(" ^ (String.concat " " (map smt2_of_smtvar vs)) ^ ")" ^
+          smt2_of_smtsort s ^ ")"
+    | SmtAssert e ->
+      "(assert " ^ smt2_of_smtexpr e ^ ")"
+
+let smt2_of_smtstmts : smtstmt list -> string =
+  fun stmts ->
+    String.concat "\n" (map smt2_of_smtstmt stmts)
+
