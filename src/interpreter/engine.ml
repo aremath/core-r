@@ -4,8 +4,14 @@ open Support
 open Rules
 open Native_calls
 open Loader
+open Smttrans
+open Smt2
+open Solver
+open Smt
 
 open List
+open Printf
+open Sys
 
 type redresult =
   | ReductionOkay of rule * state list
@@ -142,5 +148,55 @@ let load_run_n_first_result : string -> int -> (value * attributes) option =
   fun file n ->
     let state = load_file_guess file in
       run_n_first_result n [state]
+
+let solve_state : state -> string =
+  fun state ->
+    let stmts = smtstmt_list_of_state state in
+    let smt2 = smt2_of_smtstmt_list stmts in
+      run_z3 smt2
+
+let rw_perms : unit -> int =
+  fun _ -> 0o666
+
+(* Assumes a canonicalized directory *)
+let dump_solve_state : string -> state -> unit =
+  fun dir state ->
+    let res = solve_state state in
+    (* let _ = if file_exists dir then mkdir dir (rw_perms ()) in *)
+    let _ = if file_exists dir then command ("mkdir " ^ dir) else -1 in
+    let dump_file = dir ^ "/state-" ^ string_of_int state.unique in
+    let dump_out = open_out dump_file in
+    let _ = fprintf dump_out "%s" res in
+    let _ = close_out dump_out in
+      ()
+
+(* Assumes a canonicalized directory *)
+let dump_solve_passresult : string -> passresult -> unit =
+  fun dir (comps, errs, incomps) ->
+    (* let _ = if not (file_exists dir) then
+                  mkdir dir (rw_perms ()) in *)
+    let _ = if not (file_exists dir) then command ("mkdir " ^ dir) else -1 in
+
+    let comps_dir = dir ^ "/comps" in
+    (* let _ = if not (file_exists comps_dir) then
+                  mkdir comps_dir (rw_perms ()) in *)
+    let _ = if not (file_exists comps_dir) then
+              command ("mkdir " ^ comps_dir) else -1 in
+    let _ = map (fun (_, s) -> dump_solve_state comps_dir s) comps in
+
+    let errs_dir = dir ^ "/errs" in
+    (* let _ = if not (file_exists errs_dir) then
+                  mkdir errs_dir (rw_perms ()) in *)
+    let _ = if not (file_exists errs_dir) then
+              command ("mkdir " ^ errs_dir) else -1 in
+    let _ = map (fun (_, s) -> dump_solve_state errs_dir s) errs in
+
+    let incomps_dir = dir ^ "/incomps" in
+    (* let _ = if not (file_exists incomps_dir) then
+                  mkdir incomps_dir (rw_perms ()) in *)
+    let _ = if not (file_exists incomps_dir) then
+              command ("mkdir " ^ incomps_dir) else -1 in
+    let _ = map (fun (_, s) -> dump_solve_state incomps_dir s) incomps in
+      ()
 
 

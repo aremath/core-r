@@ -152,7 +152,7 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
         if vsort = var1 then SmtSortVar (var2, vsorts')
             else SmtSortVar (vsort, vsorts')
 
-let get_mem_pathcons : memref -> heap -> pathcons list =
+let get_mem_pathcons_list : memref -> heap -> pathcons list =
   fun mem heap ->
     match heap_find mem heap with
     | Some (DataObj (Vec (SymVec (_, _, pc)), _)) -> [pc]
@@ -162,10 +162,11 @@ let smtstmt_list_of_pathcons : pathcons -> smtstmt list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
 
-let state : state -> smtstmt list =
+let smtstmt_list_of_state : state -> smtstmt list =
   fun state ->
     let smems = state.sym_mems in
-    let paths = concat (map (fun m -> get_mem_pathcons m state.heap) smems) in
+    let heap = state.heap in
+    let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
     let asserts = concat (map smtstmt_list_of_pathcons paths) in
       asserts
 

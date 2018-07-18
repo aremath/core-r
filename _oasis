@@ -16,7 +16,7 @@ Executable "main"
 Library "interpreter"
   Path: src/interpreter
   Modules: Rules, Interputils, Engine
-  BuildDepends: language, natives, loader
+  BuildDepends: language, natives, loader, smt
 
 Library "language"
   Path: src/language
