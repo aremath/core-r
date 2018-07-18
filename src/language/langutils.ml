@@ -195,11 +195,15 @@ let rec string_of_smtexpr : smtexpr -> string =
         "Exp (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
     | SmtMod (e1, e2) ->
         "Mod (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtRem (e1, e2) ->
+        "Rem (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
 
     | SmtArrGet (e1, e2) ->
         "ArrGet (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
-    | SmtArrSet (e1, e2) ->
-        "ArrSet (" ^ string_of_smtexpr e1 ^ "," ^ string_of_smtexpr e2 ^ ")"
+    | SmtArrSet (e1, e2, e3) ->
+        "ArrSet (" ^ string_of_smtexpr e1 ^ "," ^
+                     string_of_smtexpr e2 ^ "," ^
+                     string_of_smtexpr e3 ^ ")"
 
     | SmtFunApp (f, es) ->
         "FunApp (" ^ string_of_smtvar f ^ "," ^
