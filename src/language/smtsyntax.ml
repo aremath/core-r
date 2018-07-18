@@ -58,7 +58,7 @@ type smtexpr =
 type smtstmt =
   (* Declarations *)
   | SmtDeclVar of smtvar * smtsort
-  | SmtDeclFun of smtvar * smtvar list * smtexpr
+  | SmtDeclFun of smtvar * smtvar list * smtsort
   | SmtDeclSort of smtvar * int
   | SmtDefSort of smtvar * smtvar list * smtsort
 

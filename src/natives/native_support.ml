@@ -1,7 +1,7 @@
 module S = Support
 (* open Support *)
 open Smtsyntax
-open Smtutils
+open Smttrans
 
 (* TODO: Array.map2 introduced in 4.03 but for dumb reasons we're in 4.01.
  This is my best shot at conciseness *)
