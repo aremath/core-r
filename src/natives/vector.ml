@@ -3,6 +3,8 @@ module S = Support
 module C = Native_support (* was Coerce *)
 module Copy = Copy
 module L = Langutils
+open Smtsyntax
+open Smttrans
 
 (* Need to do this pattern matching because of how rvector is defined *)
 let rvector_length: S.rvector -> int =
@@ -15,21 +17,32 @@ let rvector_length: S.rvector -> int =
     | S.BoolVec b -> Array.length b
     | S.SymVec s -> failwith "Can't get integer length for symbolic vector!"
 
-let rvector_length_vec: S.rvector -> S.rvector =
-    function
-    | S.IntVec i -> S.IntVec (Array.make 1 (Some (Array.length i)))
-    | S.FloatVec f -> S.IntVec (Array.make 1 (Some (Array.length f)))
-    | S.ComplexVec c -> S.IntVec (Array.make 1 (Some (Array.length c)))
-    | S.StrVec s -> S.IntVec (Array.make 1 (Some (Array.length s)))
-    | S.BoolVec b -> S.IntVec (Array.make 1 (Some (Array.length b)))
-    | S.SymVec s -> failwith "symbolic unimplemented"
+let rvector_length_vec: S.rvector -> S.state -> S.rvector * S.state =
+    fun vec state ->
+    match vec with
+    | S.IntVec i -> (S.IntVec (Array.make 1 (Some (Array.length i))), state)
+    | S.FloatVec f -> (S.IntVec (Array.make 1 (Some (Array.length f))), state)
+    | S.ComplexVec c -> (S.IntVec (Array.make 1 (Some (Array.length c))), state)
+    | S.StrVec s -> (S.IntVec (Array.make 1 (Some (Array.length s))), state)
+    | S.BoolVec b -> (S.IntVec (Array.make 1 (Some (Array.length b))), state)
+    | S.SymVec (n, _, _) -> let new_name, state' = S.name_fresh state in
+        (* out has length 1 *)
+        let len = SmtEq (
+            smt_len new_name,
+            smt_int_const 1) in
+        (* out[0] = len(in) *)
+        let value = SmtEq (
+            SmtArrGet (SmtVar new_name, smt_int_const 0),
+            smt_len n) in
+        let vec = S.SymVec (new_name, S.RInt, { S.path_list = [len; value] }) in
+        vec, state'
 
 let rvector_length_mem: S.memref -> S.state -> (S.memref * S.state) =
     fun data_ref state ->
     let data_rvec = C.dereference_rvector data_ref state in
-    let len_vec = rvector_length_vec data_rvec in
+    let len_vec, state' = rvector_length_vec data_rvec state in
     (* allocate the length *)
-    S.state_alloc (S.DataObj (S.Vec len_vec, S.attrs_empty ())) state
+    S.state_alloc (S.DataObj (S.Vec len_vec, S.attrs_empty ())) state'
 
 (* Returns a memref because of ex.
     y = (dim(x) <- c(1,5))  # y = [1, 5]
@@ -210,6 +223,7 @@ let rvector_wrap: S.rvector -> int -> S.rvector =
     | S.ComplexVec c -> S.ComplexVec (array_wrap c n)
     | S.StrVec s -> S.StrVec (array_wrap s n)
     | S.BoolVec b -> S.BoolVec (array_wrap b n)
+    | S.SymVec s -> failwith "symbolic unimplemented"
 
 (* Vector binary operations - suitable functions to pass found in arithmetic.ml *)
 (* TODO: does this function need to copy the arguments? *)
@@ -295,6 +309,7 @@ let rvec_length_assign: S.rvector -> int -> S.rvector =
     | S.ComplexVec c -> S.ComplexVec (array_length_assign c len)
     | S.StrVec s -> S.StrVec (array_length_assign s len)
     | S.BoolVec b -> S.BoolVec (array_length_assign b len)
+    | S.SymVec s -> failwith "symbolic unimplemented"
     
 (* TODO: for this to work properly, the preprocessor needs to translate 
  length(x) = 12 as x = length<-(x, 12) rather than just length<-(x,12) *)
@@ -381,6 +396,47 @@ let vector_dimnames_assign_mems: S.memref -> S.memref -> S.state -> (S.memref * 
         end
     | _ -> failwith "Missing data or data not a vec in dimnames assignment"
     end
+
+(* Create a symbolic vector whose length is constrained.
+  Can only be used with symbolic int vectors or actual int vectors *)
+let make_symbolic_vector: S.rvector -> S.rtype -> S.state -> (S.rvector * S.state) =
+    fun vec ty state ->
+    let new_name, state' = S.name_fresh state in
+    match vec with
+    (* TODO: 0-length is ok? *)
+    | S.IntVec [| Some i |] when (i >= 0) -> let len = SmtEq (
+            smt_len new_name,
+            smt_int_const i) in
+        (S.SymVec (new_name, ty, { path_list = [len] }), state')
+    | S.SymVec (n,S.RInt,_) -> let  len = SmtEq (
+            smt_len new_name,
+            SmtArrGet (SmtVar n, smt_int_const 0)) in
+        (S.SymVec (new_name, ty, { path_list = [len] }), state')
+    | _ -> failwith "Bad call to make_symbolic"
+
+let get_ty: S.rvector -> S.rtype =
+    function
+    | S.StrVec [| Some s |] -> match s with
+        | "int" -> S.RInt
+        | "double" -> S.RFloat
+        | "complex" -> failwith "Symbolic complex vectors unimplemented"
+        | "string" ->  failwith "Symbolic string vectors unimplemented"
+        | "logical" -> S.RBool
+        | _ -> failwith "Unknown type in get_ty"
+    | _ -> failwith "Bad call to get_ty"
+
+(* Make a symbolic vector with length equal to the first element of the input.
+  Input can be symbolic. Invoke as e.g.
+    x = symbolic(12, "int")
+  to make symbolic vector of length 12. *)
+let make_symbolic_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
+    fun len_ref ty_ref state ->
+    (* First, find the type that the user wants *)
+    let ty_vec = C.dereference_rvector ty_ref state in
+    let rty = get_ty ty_vec in
+    let len_vec = C.dereference_rvector len_ref state in
+    let sym_vec, state' = make_symbolic_vector len_vec rty state in
+    S.state_alloc (S.DataObj (S.Vec sym_vec, S.attrs_empty ())) state'
 
 (*
 (* Given n, make a1, a2, ..., an *)
