@@ -1,5 +1,7 @@
 open Smtsyntax
 
+open List
+
 let smt2_of_smtvar : smtvar -> string =
   fun var -> var
 
@@ -14,8 +16,8 @@ let rec smt2_of_smtsort : smtsort -> string =
     | SortDouble -> "Double"
     | SortBool -> "Bool"
     | SortVar (v, ss) ->
-        "(" ^ smt2_of_var v ^ " " ^
-              (String.concat " " (map smt2_of_sort ss)) ^ ")"
+        "(" ^ smt2_of_smtvar v ^ " " ^
+              (String.concat " " (map smt2_of_smtsort ss)) ^ ")"
 
 let rec smt2_of_smtexpr : smtexpr -> string =
   fun smtexpr ->
@@ -56,7 +58,7 @@ let rec smt2_of_smtexpr : smtexpr -> string =
         "(* " ^ smt2_of_smtexpr e1 ^ " " ^ smt2_of_smtexpr e2 ^ ")"
     | SmtDiv (e1, e2) ->
         "(/ " ^ smt2_of_smtexpr e1 ^ " " ^ smt2_of_smtexpr e2 ^ ")"
-    | SmtExp (e1, e2) -> failwwith "smt2_of_expr: exponential not supported"
+    | SmtExp (e1, e2) -> failwith "smt2_of_expr: exponential not supported"
     | SmtMod (e1, e2) ->
         "(mod " ^ smt2_of_smtexpr e1 ^ " " ^ smt2_of_smtexpr e2 ^ ")"
     | SmtRem (e1, e2) ->
