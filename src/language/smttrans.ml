@@ -1,6 +1,8 @@
 open Support
 open Smtsyntax
 
+open List
+
 (* Used at the top level as the variable quantified in ForAlls.
   Because multiple ForAlls can be across the same identifier without conflict,
   we choose a ForAll identifier to avoid introducing a new identifier every
@@ -79,7 +81,20 @@ let ifelse: smtexpr -> smtexpr -> smtexpr -> smtexpr =
         SmtImp (test, e1),
         SmtImp (SmtNeg test, e2))
 
+let get_mem_pathcons : memref -> heap -> pathcons list =
+  fun mem heap ->
+    match heap_find mem heap with
+    | Some (DataObj (Vec (SymVec (_, _, pc)), _)) -> [pc]
+    | _ -> []
+
+let smtstmt_list_of_pathcons : pathcons -> smtstmt list =
+  fun path ->
+    map (fun e -> SmtAssert e) path.path_list
+
 let state : state -> smtstmt list =
   fun state ->
-    []   
+    let smems = state.sym_mems in
+    let paths = concat (map (fun m -> get_mem_pathcons m state.heap) smems) in
+    let asserts = concat (map smtstmt_list_of_pathcons paths) in
+      asserts
 
