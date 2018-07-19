@@ -79,6 +79,9 @@ type env =
 type pathcons =
   { path_list : smtexpr list }
 
+(* Named type for symbolic definition *)
+type symvec = (smtvar * rtype * pathcons)
+
 (* Values *)
 type rvector =
   | IntVec of rint array
@@ -86,7 +89,7 @@ type rvector =
   | ComplexVec of rcomplex array
   | StrVec of rstring array
   | BoolVec of rbool array
-  | SymVec of (smtvar * rtype * pathcons)
+  | SymVec of symvec
 
 type value =
   | Vec of rvector

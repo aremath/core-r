@@ -33,7 +33,8 @@ let extract_native_name : ident -> string option =
  expect two arguments only, and put the result in a ReturnSlot.
  The only difference here is which op to do (possible ops in arithmetic.ml) *)
 (* TODO: a little ugly to need to pass the env_mem and the state... *)
-let do_rvector_bop: (rvector -> rvector -> rvector) -> memref list -> memref -> state -> state option =
+let do_rvector_bop: (rvector -> rvector -> state -> rvector * state) -> 
+        memref list -> memref -> state -> state option =
     fun op arg_mems c_env_mem state ->
     match arg_mems with
     | (v1 :: v2 :: []) ->
@@ -44,6 +45,12 @@ let do_rvector_bop: (rvector -> rvector -> rvector) -> memref list -> memref -> 
         Some { state2 with stack = stack_push c_frame state.stack }
     | _ -> None
 
+(* Matches the identifier used for the call to determine which native mems call it needs to perform
+  and matches the memory addresses passed in to the arguments expected. Called when the evaluator sees
+  a NativeLambdaApp. Fails when it can't recognize the identifier for the NativeLambdaApp - the function
+  requested either doesn't exist or hasn't been registered (see interpreter/interp-commons/natives.ml),
+  or when a different number of arguments are passed from expected. Notably does not dereference
+  the arguments. *)
 let native_call : ident -> memref list -> memref -> state -> state option =
   fun id arg_mems c_env_mem state ->
     (* Vector subscripting *)
@@ -99,7 +106,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     else if id = native_vector_colon_id then
       (match arg_mems with
       | (low_mem :: high_mem :: []) ->
-        let (mem2, state2) = range_int_mems low_mem high_mem state in
+        let (mem2, state2) = range_mems low_mem high_mem state in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
@@ -142,6 +149,16 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     else if id = native_vector_xor_id then
         do_rvector_bop rvector_xor arg_mems c_env_mem state
 
+    else if id = native_vector_symbolic_id then
+      (match arg_mems with
+      | (len_mem :: type_mem :: []) ->
+        let (mem2, state2) =  make_symbolic_mems len_mem type_mem state in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state2 with stack = stack_push c_frame state.stack }
+      | _ -> None)
+        
     (* Oh no! *)
     else
       None

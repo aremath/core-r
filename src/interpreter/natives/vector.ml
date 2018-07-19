@@ -96,12 +96,12 @@ let concat_rvectors: S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) 
     (* If they're not both symbolic, we should convert one *)
     | (S.SymVec sy1, vec) -> let name1, state' = S.name_fresh state in
         let name2, state'' = S.name_fresh state' in
-        let sy2 = Sym.vec_to_symvec name1 vec in
+        let sy2 = Sym.vec_to_named_sym name1 vec in
         let symconcat = S.SymVec (Sym.symbolic_concat name2 sy1 sy2) in
         (symconcat, state'')
     | (vec, S.SymVec sy2) -> let name1, state' = S.name_fresh state in
         let name2, state'' = S.name_fresh state' in
-        let sy1 = Sym.vec_to_symvec name1 vec in
+        let sy1 = Sym.vec_to_named_sym name1 vec in
         let symconcat = S.SymVec (Sym.symbolic_concat name2 sy1 sy2) in
         (symconcat, state'')
     | _ -> failwith "Can't concatenate incompatible vectors"
@@ -237,8 +237,8 @@ let mk_range_vec: S.rtype -> smtexpr -> smtexpr -> S.state -> (S.rvector * S.sta
     let vec = S.SymVec (name, ty, { S.path_list = [len;vals] }) in
     (vec, state')
 
-(* Handles 1:5 and 5:-5. TODO: 1.3:2.6 *)
-let range_int_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
+(* Handles 1:5 and 5:-5, etc, as well as symbolic ex. x:3 *)
+let range_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     fun start_index_ref end_index_ref state ->
     (* Dereference the vectors down to rvectors *)
     let start_rvec = C.dereference_rvector start_index_ref state in
@@ -289,33 +289,45 @@ let rvector_wrap: S.rvector -> int -> S.rvector =
     | S.BoolVec b -> S.BoolVec (array_wrap b n)
     | S.SymVec s -> failwith "symbolic unimplemented"
 
+(* Helper for vector_bop_mems. Extends the shorter rvector to the length
+  of the longer one if their lengths are compatible. Only succeeds for
+  non-symbolic vectors *)
+let compatify_lengths: S.rvector -> S.rvector -> (S.rvector * S.rvector) =
+    fun lhs rhs ->
+    let l_length = rvector_length lhs in
+    let r_length = rvector_length rhs in
+    (* If their lengths match, then no extension is necessary *)
+    if l_length = r_length then (lhs, rhs)
+    (* Otherwise, check that their lengths are compatible
+    (one is a multiple of the other) *)
+    else if (l_length < r_length) && (r_length mod l_length = 0) then
+        let n = r_length / l_length in
+        (rvector_wrap lhs n, rhs)
+    else if (l_length > r_length) && (l_length mod r_length = 0) then
+        let n = l_length / r_length in
+        (lhs, rvector_wrap rhs n)
+    else failwith "Can't add vectors with incompatible lengths"
+
 (* Vector binary operations - suitable functions to pass found in arithmetic.ml *)
 (* TODO: does this function need to copy the arguments? *)
-let vector_bop_mems: (S.rvector -> S.rvector -> S.rvector) ->
+let vector_bop_mems: (S.rvector -> S.rvector -> S.state -> (S.rvector * S.state)) ->
                      S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     fun binop lhs_ref rhs_ref state ->
     let lhs = C.dereference_rvector lhs_ref state in
     let rhs = C.dereference_rvector rhs_ref state in
-    (* Multiply out the shorter rvector, if appropriate *)
-    let (true_rhs, true_lhs) = let l_length = rvector_length lhs in
-        let r_length = rvector_length rhs in
-        (* If their lengths match, then no extension is necessary *)
-        if l_length = r_length then (lhs, rhs)
-        (* Otherwise, check that their lengths are compatible
-        (one is a multiple of the other) *)
-        else if (l_length < r_length) && (r_length mod l_length = 0) then
-            let n = r_length / l_length in
-            (rvector_wrap lhs n, rhs)
-        else if (l_length > r_length) && (l_length mod r_length = 0) then
-            let n = l_length / r_length in
-            (lhs, rvector_wrap rhs n)
-        else failwith "Can't add vectors with incompatible lengths"
-    in
+    let (true_rhs, true_lhs), state' = match lhs, rhs with
+    | S.SymVec sy1, S.SymVec sy2 -> (S.SymVec sy1, S.SymVec sy2), state
+    | S.SymVec sy1, vec2 -> let syv2, state' = Sym.vec_to_symvec vec2 state in
+        (S.SymVec sy1, syv2), state'
+    | vec1, S.SymVec sy2 -> let syv1, state' = Sym.vec_to_symvec vec1 state in
+        (syv1, S.SymVec sy2), state'
+    (* If they're concrete, multiply out the shorter rvector, if appropriate *)
+    | vec1, vec2 -> (compatify_lengths vec1 vec2), state in
     (* Do the operation on the (possibly wrapped) vectors *)
-    let new_vec = binop true_rhs true_lhs in
+    let new_vec, state'' = binop true_rhs true_lhs state' in
     (* Allocate the result! *)
     (* TODO: is attrs_empty () appropriate? *)
-    S.state_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty ())) state
+    S.state_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty ())) state''
 
 (* Inefficient, but works *)
 let array_filter: ('a -> bool) -> 'a array -> 'a array =
