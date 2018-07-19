@@ -79,6 +79,9 @@ type env =
 type pathcons =
   { path_list : smtexpr list }
 
+(* Named type for symbolic definition *)
+type symvec = (smtvar * rtype * pathcons)
+
 (* Values *)
 type rvector =
   | IntVec of rint array
@@ -86,7 +89,7 @@ type rvector =
   | ComplexVec of rcomplex array
   | StrVec of rstring array
   | BoolVec of rbool array
-  | SymVec of (smtvar * rtype * pathcons)
+  | SymVec of symvec
 
 type value =
   | Vec of rvector
@@ -133,12 +136,15 @@ type heap =
   { mem_map : heapobj MemRefMap.t;
     next_mem : memref }
 
+type sym_mems =
+  { mem_list : memref list }
+
 (* Execution state *)
 type state =
   { stack : stack;
     heap : heap;
     global_env_mem : memref;
-    sym_mems : memref list;
+    sym_mems : sym_mems;
     fresh_count : int;
     pred_unique : int;
     unique : int }
@@ -297,19 +303,21 @@ let id_of_string : string -> ident =
 let id_fresh : state -> ident * state =
   fun state ->
     let count2 = state.fresh_count + 1 in
-    let name = rstring_of_string ("fs$" ^ string_of_int count2) in
+    let name = rstring_of_string ("fs" ^ string_of_int count2) in
       (id_of_rstring name, { state with fresh_count = count2 })
 
 let name_fresh: state -> string * state =
     fun state ->
     let count2 = state.fresh_count + 1 in
-    let name = "fs$" ^ (string_of_int count2) in
+    let name = "fs" ^ (string_of_int count2) in
     (name, {state with fresh_count = count2})
 
-(* List.map for states, but doing the operation so that the new state produced from the first
-  operation is used in the second, and so on. Used for ex. allocating a list of vectors. *)
-let rec state_map: ('a -> state -> ('b * state)) -> 'a list -> state -> ('b list * state) =
-    fun f alist state ->
+(* List.map for states, but doing the operation so that the new state
+   produced from the first operation is used in the second, and so on.
+   Used for ex. allocating a list of vectors. *)
+let rec state_map:
+  ('a -> state -> ('b * state)) -> 'a list -> state -> ('b list * state) =
+  fun f alist state ->
     match alist with
     | hd :: tl -> let b, state' = f hd state in
         let bs, state'' = state_map f tl state' in
@@ -317,10 +325,12 @@ let rec state_map: ('a -> state -> ('b * state)) -> 'a list -> state -> ('b list
     | [] -> ([], state)
 
 (* List.fold_left that preserves changes in the state during the operation. *)
-let rec state_fold_left: ('a -> 'b -> state -> ('a * state)) -> 'a -> 'b list -> state -> ('a * state) =
-    fun f init bs state ->
+let rec state_fold_left:
+  ('a -> 'b -> state -> ('a * state)) -> 'a -> 'b list -> state ->
+    ('a * state) =
+  fun f init bs state ->
     match bs with
-    | hd::tl -> let a, state' = f init hd state in
+    | (hd :: tl) -> let a, state' = f init hd state in
         state_fold_left f a tl state'
     | [] -> (init, state)
 
@@ -350,8 +360,9 @@ let attrs_find : rstring -> attributes -> memref option =
     with
       Not_found -> None
 
-(* Replaces because Hashtbls can have multiple bindings of the same key that shadow each other.
- In our case, R attributes should not be able to do the same thing. *)
+(* Replaces because Hashtbls can have multiple bindings of the same key
+   that shadow each other.
+   In our case, R attributes should not be able to do the same thing. *)
 let attrs_add : rstring -> memref -> attributes -> unit =
   fun rstr mem attrs ->
     Hashtbl.replace attrs.rstr_map rstr mem;;
@@ -625,6 +636,18 @@ let add_pathcons : smtexpr -> pathcons -> pathcons =
   fun smtexpr pathcons ->
     { pathcons with path_list = pathcons.path_list @ [smtexpr] }
 
+(* Register sym mems *)
+let empty_sym_mems : unit -> sym_mems =
+  fun _ ->
+    { mem_list = [] }
+
+let add_sym_mems : memref -> sym_mems -> sym_mems =
+  fun mem syms ->
+    { syms with mem_list = syms.mem_list @ [mem] }
+
+let mem_list_of_sym_mems : sym_mems -> memref list =
+  fun syms ->
+    syms.mem_list
 
 (* Value detection *)
 let is_mem_symval : memref -> heap -> bool =
@@ -656,18 +679,46 @@ let state_default : state =
   { stack = stack_empty ();
     heap = heap_empty ();
     global_env_mem = mem_null ();
-    sym_mems = [];
+    sym_mems = empty_sym_mems ();
     fresh_count = 1;
     pred_unique = 0;
     unique = 1 }
     
-(* Bindings for e.g. heap_alloc that work on states. *)
+(* Bindings for e.g. heap_alloc that work on states. The state alloc-er will
+  automatically register symbolic values with its sym_mems list. *)
 let state_alloc : heapobj -> state -> memref * state =
-    fun hobj state ->
-    let memref, heap = heap_alloc hobj state.heap in
-    (memref, { state with heap = heap })
+  fun hobj state ->
+    match hobj with
+    | DataObj (Vec (SymVec _), _) as symobj ->
+      let (memref, heap2) = heap_alloc symobj state.heap in
+        (memref, { state with
+                    heap = heap2;
+                    sym_mems = add_sym_mems memref state.sym_mems })
+    | _ -> let (memref, heap2) = heap_alloc hobj state.heap in
+        (memref, { state with heap = heap2 })
 
 let state_find : memref -> state -> heapobj option =
     fun mem state ->
     heap_find mem state.heap
+
+(* Allocates a symbolic vector and adds its mem address to the list of 
+  symbolic mem addresses. Note that this returns an rvector, and the
+  memory address of the new symbolic vector is implicitly dropped.
+  When doing this, there's no way
+  to refer back to the symbolic vector that this creates.
+  This function is here for 
+  creating SymVecs that are used implicitly in function calls,
+  and are never returned.
+  Other symvecs might refer to this vec by name via the path constraints,
+  but it can't otherwise be accessed. *)
+let alloc_implicit_symvec: symvec -> state -> state =
+  fun sy state ->
+    let obj = DataObj (Vec (SymVec sy), attrs_empty ()) in
+    let (_, state') = state_alloc obj state in
+      state'
+
+let mk_implicit_symrvec: symvec -> state -> rvector * state =
+  fun sy state ->
+    let state' = alloc_implicit_symvec sy state in
+    (SymVec sy, state')
 

@@ -1,6 +1,7 @@
 
 open Syntax
 open Smtsyntax
+open Smtutils
 open Support
 open Rules
 open Native_calls
@@ -159,7 +160,12 @@ let solve_state : state -> smtprog =
   fun state ->
     let stmts = smtcmd_list_of_state state in
     let smt2 = smt2_of_smtcmd_list stmts in
-      run_z3 smt2
+    let _ = print_endline "querying z3 with:" in
+    let _ = print_endline smt2 in
+    let res = run_z3 smt2 in
+    let _ = print_endline "z3 result:" in
+    let _ = print_endline (string_of_smtprog res) in
+      res
 
 let rw_perms : unit -> int =
   fun _ -> 0o666
@@ -177,7 +183,15 @@ let dump_solve_state : string -> state -> unit =
     let _ = fprintf dump_out "%s" res in
     let _ = close_out dump_out in
       ()
+*)
 
+let solve_comps_passresult : passresult -> smtprog list =
+  fun pass ->
+    let progs = map (fun (_, s) -> solve_state s) pass.pass_comps in
+      progs
+
+
+(*
 (* Assumes a canonicalized directory *)
 let dump_solve_passresult : string -> passresult -> unit =
   fun dir (comps, errs, incomps) ->

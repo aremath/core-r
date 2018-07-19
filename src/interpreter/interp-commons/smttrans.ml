@@ -229,7 +229,7 @@ let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
 
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
-    let smems = state.sym_mems in
+    let smems = mem_list_of_sym_mems state.sym_mems in
     let heap = state.heap in
     let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
     let asserts = concat (map smtcmd_list_of_pathcons paths) in

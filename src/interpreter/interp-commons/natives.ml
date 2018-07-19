@@ -112,6 +112,13 @@ let nw_fun_vec_or = vec_binop (native_vector_or_id)
 let native_vector_xor_id = native_id_of_string "vector.xor"
 let nw_fun_vec_xor = vec_binop (native_vector_xor_id)
 
+let native_vector_symbolic_id = id_of_rstring (Some "make.symbolic")
+let nw_fun_vec_sym: (param list * expr) =
+    ([Param (id_of_string "length"); Param (id_of_string "type")],
+    NativeLambdaApp
+        (native_vector_symbolic_id,
+        [id_of_string "length"; id_of_string "type"]))
+
 
 (* Pairs to inject with *)
 let native_injection_pairs : (ident * (param list * expr)) list =
@@ -139,5 +146,7 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_orvec_id, nw_fun_vec_orvec);
     (native_vector_or_id, nw_fun_vec_or);
     (native_vector_xor_id, nw_fun_vec_xor);
+
+    (native_vector_symbolic_id, nw_fun_vec_sym);
   ]
 

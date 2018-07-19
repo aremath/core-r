@@ -1,5 +1,6 @@
 module S = Support
 module C = Native_support
+module Sym = Symbolic_ops
 
 (* Perform a non-optional binary operation on options *)
 let opt_bop: ('a -> 'b -> 'c) -> ('a option -> 'b option -> 'c option) =
@@ -7,7 +8,6 @@ let opt_bop: ('a -> 'b -> 'c) -> ('a option -> 'b option -> 'c option) =
     match (lo, ro) with
     | (Some l, Some r) -> Some (f l r)
     | _ -> None
-
 
 (* Applies five functions to rvectors as cases for each type of rvector.
  Reuses code nicely, but not general in the sense that the operation
@@ -18,14 +18,17 @@ let bop_rvectors: (S.rint -> S.rint -> S.rint) ->
                   (S.rcomplex -> S.rcomplex -> S.rcomplex) ->
                   (S.rstring -> S.rstring -> S.rstring) ->
                   (S.rbool -> S.rbool -> S.rbool) ->
-                  S.rvector -> S.rvector -> S.rvector =
-    fun fi ff fc fs fb lhs rhs ->
+                  (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
+                  S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
+    fun fi ff fc fs fb fsy lhs rhs state ->
     match (lhs, rhs) with
-    | (S.IntVec l, S.IntVec r) -> S.IntVec (C.array_map2 fi l r)
-    | (S.FloatVec l, S.FloatVec r) -> S.FloatVec (C.array_map2 ff l r)
-    | (S.ComplexVec l, S.ComplexVec r) -> S.ComplexVec (C.array_map2 fc l r)
-    | (S.StrVec l, S.StrVec r) -> S.StrVec (C.array_map2 fs l r)
-    | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (C.array_map2 fb l r)
+    | (S.IntVec l, S.IntVec r) -> (S.IntVec (C.array_map2 fi l r), state)
+    | (S.FloatVec l, S.FloatVec r) -> (S.FloatVec (C.array_map2 ff l r), state)
+    | (S.ComplexVec l, S.ComplexVec r) -> (S.ComplexVec (C.array_map2 fc l r), state)
+    | (S.StrVec l, S.StrVec r) -> (S.StrVec (C.array_map2 fs l r), state)
+    | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
+    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
+        S.SymVec (Sym.symbolic_op name fsy syl syr), state'
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Addition *)
@@ -41,6 +44,7 @@ let rvector_add = bop_rvectors
     add_rcomplex
     add_rstr
     add_rbool
+    Sym.symbolic_plus
 
 (* Multiplication *)
 let mul_rint = opt_bop ( * )
@@ -55,6 +59,7 @@ let rvector_mul = bop_rvectors
     mul_rcomplex
     mul_rstr
     mul_rbool
+    Sym.symbolic_mul
 
 (* Division *)
 let div_rint = opt_bop ( / )
@@ -69,6 +74,7 @@ let rvector_div = bop_rvectors
     div_rcomplex
     div_rstr
     div_rbool
+    Sym.symbolic_div
 
 (* Subtraction *)
 let sub_rint = opt_bop ( - )
@@ -83,6 +89,7 @@ let rvector_sub = bop_rvectors
     sub_rcomplex
     sub_rstr
     sub_rbool
+    Sym.symbolic_sub
 
 (* Modulus *)
 let mod_rint = opt_bop ( mod )
@@ -97,6 +104,7 @@ let rvector_mod = bop_rvectors
     mod_rcomplex
     mod_rstr
     mod_rbool
+    Sym.symbolic_mod
 
 (* Exponentiation *)
 (* ocaml has no int exponentiation. This works, but is prone to overflow and
@@ -115,6 +123,7 @@ let rvector_exp = bop_rvectors
     exp_rcomplex
     exp_rstr
     exp_rbool
+    Sym.symbolic_exp
 
 (* Comparison. Like bop_rvectors, but always produces a BoolVec *)
 let cmp_rvectors: (S.rint -> S.rint -> S.rbool) ->
@@ -122,14 +131,17 @@ let cmp_rvectors: (S.rint -> S.rint -> S.rbool) ->
                   (S.rcomplex -> S.rcomplex -> S.rbool) ->
                   (S.rstring -> S.rstring -> S.rbool) ->
                   (S.rbool -> S.rbool -> S.rbool) ->
-                  S.rvector -> S.rvector -> S.rvector =
-    fun fi ff fc fs fb lhs rhs ->
+                  (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
+                  S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
+    fun fi ff fc fs fb fsy lhs rhs state ->
     match (lhs, rhs) with
-    | (S.IntVec l, S.IntVec r) -> S.BoolVec (C.array_map2 fi l r)
-    | (S.FloatVec l, S.FloatVec r) -> S.BoolVec (C.array_map2 ff l r)
-    | (S.ComplexVec l, S.ComplexVec r) -> S.BoolVec (C.array_map2 fc l r)
-    | (S.StrVec l, S.StrVec r) -> S.BoolVec (C.array_map2 fs l r)
-    | (S.BoolVec l, S.BoolVec r) -> S.BoolVec (C.array_map2 fb l r)
+    | (S.IntVec l, S.IntVec r) -> (S.BoolVec (C.array_map2 fi l r), state)
+    | (S.FloatVec l, S.FloatVec r) -> (S.BoolVec (C.array_map2 ff l r), state)
+    | (S.ComplexVec l, S.ComplexVec r) -> (S.BoolVec (C.array_map2 fc l r), state)
+    | (S.StrVec l, S.StrVec r) -> (S.BoolVec (C.array_map2 fs l r), state)
+    | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
+    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
+        (S.SymVec (Sym.symbolic_cmp name fsy syl syr), state')
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Error behavior when comparing two complex numbers *)
@@ -157,6 +169,7 @@ let rvector_lt = cmp_rvectors
     lt_rcomplex
     lt_rstr
     lt_rbool
+    Sym.symbolic_lt
 
 (* Greater Than *)
 let gt_rint = opt_bop (rbool_wrap (>))
@@ -171,6 +184,7 @@ let rvector_gt = cmp_rvectors
     gt_rcomplex
     gt_rstr
     gt_rbool
+    Sym.symbolic_gt
 
 (* Equality. Thankfully R does not have NA == NA *)
 (* I could define it once and pass the same function to cmp_rvectors five times
@@ -189,6 +203,7 @@ let rvector_eq = cmp_rvectors
     eq_rcomplex
     eq_rstr
     eq_rbool
+    Sym.symbolic_eq
 
 (* Inequality *)
 let neq_rint = opt_bop (rbool_wrap (<>))
@@ -203,6 +218,7 @@ let rvector_neq = cmp_rvectors
     neq_rcomplex
     neq_rstr
     neq_rbool
+    Sym.symbolic_neq
 
 (* Greater Than or Equal To *)
 let geq_rint = opt_bop (rbool_wrap (>=))
@@ -217,6 +233,7 @@ let rvector_geq = cmp_rvectors
     geq_rcomplex
     geq_rstr
     geq_rbool
+    Sym.symbolic_geq
 
 (* Less Than or Equal To *)
 let leq_rint = opt_bop (rbool_wrap (<=))
@@ -231,8 +248,29 @@ let rvector_leq = cmp_rvectors
     leq_rcomplex
     leq_rstr
     leq_rbool
+    Sym.symbolic_leq
 
 (* Logic *)
+
+(* Comparison. Like cmp_rvectors, but always produces a bool, and only works
+  on boolean vectors. Requires both cfail and symfail because ocaml's type system
+  will complain if it takes fail as (unit -> 'a) and uses it in two different places
+  with two different types. Thanks ocaml. *)
+let logic_vec_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
+                    (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
+                    (unit -> (S.rvector * S.state)) ->
+                    (unit -> (S.symvec)) ->
+                    S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
+    fun fb fsy cfail symfail lhs rhs state ->
+    match (lhs, rhs) with
+    | (S.IntVec l, S.IntVec r) -> cfail ()
+    | (S.FloatVec l, S.FloatVec r) -> cfail ()
+    | (S.ComplexVec l, S.ComplexVec r) -> cfail ()
+    | (S.StrVec l, S.StrVec r) -> cfail ()
+    | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
+    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
+        ((S.SymVec (Sym.symbolic_logic_vec_op name fsy symfail syl syr)), state')
+    | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* convert an ocaml bool function to an R bool function *)
 let rboolize: (bool -> bool -> bool) -> (int -> int -> int) =
@@ -243,77 +281,67 @@ let rboolize: (bool -> bool -> bool) -> (int -> int -> int) =
 
 (* & - vectorized and *)
 (* Does not do coercion for now *)
-let andvec_failure = (fun _ _ -> failwith "Non-boolean &")
-
-let and_rint = andvec_failure
-let and_rfloat = andvec_failure
-let and_rcomplex = andvec_failure
-let and_rstr = andvec_failure
+let andvec_failure = (fun _ -> failwith "Non-boolean &")
 let and_rbool = opt_bop (rboolize (&&))
-
-let rvector_andvec = cmp_rvectors
-    and_rint
-    and_rfloat
-    and_rcomplex
-    and_rstr
+let rvector_andvec = logic_vec_rvectors
     and_rbool
+    Sym.symbolic_and
+    andvec_failure
+    Sym.symbolic_orvec_failure
+
+(* | - vectorized or *)
+let orvec_failure = (fun _ -> failwith "Non-boolean |")
+let or_rbool = opt_bop (rboolize (||))
+let rvector_orvec = logic_vec_rvectors
+    or_rbool
+    Sym.symbolic_or
+    orvec_failure
+    Sym.symbolic_orvec_failure
+
+(* Like logic_vec_rvectors but only does the operation on the first elements of each
+  vector, and produces a vector with length 1. *)
+let logic_single_rvectors: (S.rbool -> S.rbool -> S.rbool) -> 
+        (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
+        (unit -> (S.rvector * S.state)) -> 
+        (unit -> S.symvec) ->
+        S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
+    fun fb fsy cfail symfail lhs rhs state ->
+    match (lhs, rhs) with
+    | (S.IntVec l, S.IntVec r) -> cfail ()
+    | (S.FloatVec l, S.FloatVec r) -> cfail ()
+    | (S.ComplexVec l, S.ComplexVec r) -> cfail ()
+    | (S.StrVec l, S.StrVec r) -> cfail ()
+    | (S.BoolVec l, S.BoolVec r) -> 
+        let v = Array.make 1 None in
+        v.(0) <- fb l.(0) r.(0);
+        (S.BoolVec v, state)
+    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
+        (S.SymVec (Sym.symbolic_logic_single_op name fsy symfail syl syr), state')
+    | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* && - non-vectorized only compares first two elements *)
 let and_failure = (fun _ -> failwith "Non-boolean &&")
-
-(* *)
-let bool_op_rvectors: (S.rbool -> S.rbool -> S.rbool) -> 
-        (unit -> S.rvector) -> (* The failure expression. It will not actually produce an rvector *) 
-        S.rvector -> S.rvector -> S.rvector =
-    fun op fail lhs rhs ->
-    match (lhs, rhs) with
-    | (S.IntVec l, S.IntVec r) -> fail ()
-    | (S.FloatVec l, S.FloatVec r) -> fail ()
-    | (S.ComplexVec l, S.ComplexVec r) -> fail ()
-    | (S.StrVec l, S.StrVec r) -> fail ()
-    | (S.BoolVec l, S.BoolVec r) -> 
-        let v = Array.make 1 None in
-        v.(0) <- op l.(0) r.(0);
-        S.BoolVec v
-    | _ -> failwith "Can't bop vectors with incompatible types"
-
-let rvector_and = bool_op_rvectors (opt_bop (rboolize (&&))) and_failure
-
-(* | - vectorized or *)
-let orvec_failure = (fun _ _ -> failwith "Non-boolean |")
-
-let or_rint = orvec_failure
-let or_rfloat = orvec_failure
-let or_rcomplex = orvec_failure
-let or_rstr = orvec_failure
-let or_rbool = opt_bop (rboolize (||))
-
-let rvector_orvec = cmp_rvectors
-    or_rint
-    or_rfloat
-    or_rcomplex
-    or_rstr
-    or_rbool
+let rvector_and = logic_single_rvectors
+    (opt_bop (rboolize (&&)))
+    Sym.symbolic_and
+    and_failure
+    Sym.symbolic_and_failure
 
 (* || - non-vectorized only compares the first two elements *)
 let or_failure = (fun _ -> failwith "Non-boolean ||")
-
-let rvector_or = bool_op_rvectors (opt_bop (rboolize (||))) or_failure
+let rvector_or = logic_single_rvectors
+    (opt_bop (rboolize (||)))
+    Sym.symbolic_or
+    or_failure
+    Sym.symbolic_or_failure
 
 (* xor *)
 (* For some reason it seems like R only has vectorized xor *)
-let xor_failure = (fun _ _ -> failwith "Non-boolean xor")
-
-let rint_xor = xor_failure
-let rfloat_xor = xor_failure
-let rcomplex_xor = xor_failure
-let rstr_xor = xor_failure
+let xor_failure = (fun _ -> failwith "Non-boolean xor")
 let rbool_xor = opt_bop (rbool_wrap (<>))
-
-let rvector_xor = cmp_rvectors
-    rint_xor
-    rfloat_xor
-    rcomplex_xor
-    rstr_xor
+let rvector_xor = logic_vec_rvectors
     rbool_xor
+    Sym.symbolic_xor
+    xor_failure
+    Sym.symbolic_xor_failure
 

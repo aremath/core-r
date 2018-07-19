@@ -6,6 +6,7 @@ open Engine
 open Interputils
 
 open Sys
+open List
 
 let default_steps : int = 100
 
@@ -15,14 +16,25 @@ let main () =
   (* dump_file_ast "/home/celery/foo/harvard/r-test/tutorial/Rdemo/Notes.R" *)
   (* dumpTokens "/home/celery/Desktop/base/R/aperm.R"; *)
   (* parseFile "/home/celery/Desktop/base/R/aperm.R" *)
+
   let state = load_file_guess Sys.argv.(1) in
   let n = if Array.length Sys.argv < 3 then
             default_steps
           else
             int_of_string Sys.argv.(2) in
-
   let ress = run_n_hist n [state] in
-  print_endline (string_of_passresult_list ress);
+
+  let _ = solve_comps_passresult (hd (rev ress)) in
+
+
+  (* print_endline (string_of_passresult_list ress); *)
+
+  (*
+  let solns = match List.hd (List.rev ress) with
+  | (complete_list, _, _) -> List.map (fun (_, state) ->
+    solve_state state) complete_list in
+  List.iter (print_endline) solns;
+  *)
   (*
 
   let res = run_n n [state] in
@@ -36,8 +48,6 @@ let main () =
 
 
   print_endline "SimpleR: done!";
-
-
 
   ;;
   
