@@ -13,13 +13,22 @@ Executable "main"
   MainIs: main.ml
   BuildDepends: language, interpreter, loader, natives, smt
 
-Library "language"
-  Path: src/language
-  Modules: Syntax, Annotations, Langutils
+Library "parser"
+  Path: src/parser
+  Modules: Parser, Rast
+
+Executable "absyn_generator"
+  Path: src/parser
+  MainIs: absyn_generator.ml
+  BuildDepends: parser
 
 Library "smt"
   Path: src/smt
-  Modules: Smtsyntax, Smt2, Solver, Smtutils, Smt
+  Modules: Smtsyntax, Smt2, Solver, Smtparser, Smtutils, Smt
+
+Library "language"
+  Path: src/language
+  Modules: Syntax, Annotations, Langutils
 
 Library "interp-commons"
   Path: src/interpreter/interp-commons
@@ -46,15 +55,6 @@ Library "interpreter"
   Path: src/interpreter
   Modules: Engine
   BuildDepends: language, smt, interp-commons, natives, loader, stepper
-
-Library "parser"
-  Path: src/parser
-  Modules: Parser, Rast
-
-Executable "absyn_generator"
-  Path: src/parser
-  MainIs: absyn_generator.ml
-  BuildDepends: parser
 
 Library "ounit"
   Path: test/ounit

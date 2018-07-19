@@ -4,6 +4,7 @@
 %}
 
 %token         END_OF_INPUT
+%token         NEWLINE
 %token<int>    INT_CONST
 %token<float>  FLOAT_CONST
 %token<string> STRING_CONST
@@ -12,7 +13,10 @@
 %token         UNDERSCORE
 
 
-%token LPAREN RPAREN LBRACE RBRACE LBRACK RBRACK
+%token LPAREN RPAREN
+(*
+%token LBRACE RBRACE LBRACK RBRACK
+*)
 
 %token LOGIC_ALL
 %token LOGIC_QFUF
@@ -33,6 +37,9 @@
 %token GET_INFO SET_INFO
 %token EXIT SAT UNSAT
 
+
+%start prog
+%type <Smtsyntax.prog> prog
 %%
 
 logic:
@@ -45,8 +52,13 @@ logic:
   | LOGIC_QFLIRA { SmtLogQFLIRA }
   | LOGIC_QFNIRA { SmtLogQFNIRA }
 
+numq:
+  |                { [] }
+  | INT_CONST numq { $1 :: $2 }
+
 nums:
-  | INT_CONST nums_tail { $1 :: $2 }
+  | INT_CONST      { [$1] }
+  | INT_CONST numq { $1 :: $2 }
 
 symbq:
   |              { [] }
@@ -105,11 +117,11 @@ expr:
   | STRING_CONST  { SmtConst ("\"" ^ $1 ^ "\"") }
   | SYMBOL        { SmtVar ($1) }
   | ident         { $1 }
-  | LPAREN ident exprs RPAREN { SmtFunApp ($2, $3) }
+  | LPAREN SYMBOL exprs RPAREN { SmtFunApp ($2, $3) }
   | LPAREN FORALL LPAREN symbsorts RPAREN expr RPAREN { SmtForAll ($4, $6) }
   | LPAREN EXISTS LPAREN symbsorts RPAREN expr RPAREN { SmtExists ($4, $6) }
   | LPAREN LET LPAREN symbexprs RPAREN expr RPAREN    { SmtLet ($4, $6) }
-  | LPAREN BANG expr KEYWORD symbol RPAREN { $3 } (* Ignored *)
+  | LPAREN BANG expr KEYWORD SYMBOL RPAREN { $3 } (* Ignored *)
 
 exprq:
   |            { [] }
@@ -125,7 +137,7 @@ cmd:
   | LPAREN DECLARE_FUN SYMBOL LPAREN sortq RPAREN sort RPAREN         { SmtDeclFun ($3, $5, $7) }
   | LPAREN DEFINE_FUN SYMBOL LPAREN symbsortq RPAREN sort expr RPAREN { SmtDefFun ($3, $5, $7, $8) }
   | LPAREN DECLARE_SORT SYMBOL INT_CONST RPAREN                       { SmtDeclSort ($3, $4) }
-  | LPAREN DEFINE_SORT SYMBOL LPAREN symbs RPAREN sort RPAREN         { SmtDefFun ($3, $5, $7) }
+  | LPAREN DEFINE_SORT SYMBOL LPAREN symbs RPAREN sort RPAREN         { SmtDefSort ($3, $5, $7) }
 
   | LPAREN ASSERT expr RPAREN { SmtAssert ($3) }
   | LPAREN GET_ASSERTS RPAREN { SmtGetAsserts }
@@ -135,18 +147,18 @@ cmd:
   | LPAREN GET_PROOF RPAREN       { SmtGetProof }
   | LPAREN GET_UNSAT_CORE RPAREN  { SmtGetUnsatCore }
   | LPAREN GET_ASSIGNMENT RPAREN  { SmtGetAssignment }
-  | LPAREN GET_VALUE exprs RPAREN { SmtGetValue exprs }
+  | LPAREN GET_VALUE exprs RPAREN { SmtGetValue ($3) }
 
   | LPAREN PUSH RPAREN           { SmtPush (1) }
   | LPAREN PUSH INT_CONST RPAREN { SmtPush ($3) }
   | LPAREN POP RPAREN            { SmtPop (1) }
-  | LPAREN POP INT_CONST RPAREN  { SMtPop ($3) }
+  | LPAREN POP INT_CONST RPAREN  { SmtPop ($3) }
 
   (* Hacking around with <symbol> instead of <attr-value> *)
-  | LPAREN GET_OPTION KEYWORD LPAREN       { SmtGetOption ($3) }
-  | LPAREN SET_OPTION KEYWORD SYMBL RPAREN { SmtSetOption ($3, $4) }
-  | LPAREN GET_INFO KEYWORD LPAREN         { SmtGetInfo ($3) }
-  | LPAREN SET_INFO KEYWORD SYMBOL RPAREN  { SmtSetInfo ($3, $4) }
+  | LPAREN GET_OPTION KEYWORD LPAREN        { SmtGetOption ($3) }
+  | LPAREN SET_OPTION KEYWORD SYMBOL RPAREN { SmtSetOption ($3, $4) }
+  | LPAREN GET_INFO KEYWORD LPAREN          { SmtGetInfo ($3) }
+  | LPAREN SET_INFO KEYWORD SYMBOL RPAREN   { SmtSetInfo ($3, $4) }
 
   | LPAREN EXIT RPAREN  { SmtExit }
   | LPAREN SAT RPAREN   { SmtSat }
@@ -157,7 +169,7 @@ cmd:
 prog:
     END_OF_INPUT { [] }
   | NEWLINE prog { $2 }
-  | cmd prog    { $1 :: $2 }
+  | cmd prog     { $1 :: $2 }
   ;
 
 

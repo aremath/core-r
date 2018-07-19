@@ -77,10 +77,12 @@ let keyword =
 rule tokenize context = parse
   | "(" { LPAREN }
   | ")" { RPAREN }
+  (*
   | "{" { LBRACE }
   | "}" { RBRACE }
   | "[" { LBRACK }
   | "]" { RBRACK }
+  *)
   | "_" { UNDERSCORE }
 
   | "ALL"     { LOGIC_ALL }

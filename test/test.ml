@@ -53,9 +53,11 @@ let test_test = "Proto" >:::
     "foo2" >:: (fun _ -> assert_equal 1 2);
   ]
 
-let test_dir : string = "/mnt/c/Users/Ross/Documents/Research_18/core-r/test"
 (*
+let test_dir : string = "/mnt/c/Users/Ross/Documents/Research_18/core-r/test"
+*)
 let test_dir : string = "/home/celery/foo/harvard/core-r/test"
+(*
 let test_dir : string = "/mnt/c/Users/Ross/Documents/Research_18/core-r/test"
 *)
 
