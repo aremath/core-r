@@ -4,9 +4,10 @@ open Support
 open Engine
 open Langutils
 open Interputils
+open OUnit
 
 open List
-open OUnit
+open Sys
 
 type expr = Support.expr
 
@@ -53,14 +54,8 @@ let test_test = "Proto" >:::
     "foo2" >:: (fun _ -> assert_equal 1 2);
   ]
 
-let test_dir : unit -> string =
-  fun _ ->
-    (* "/mnt/c/Users/Ross/Documents/Research_18/core-r/test" *)
-    "/home/celery/foo/harvard/core-r/test"
-    (* "/mnt/c/Users/Ross/Documents/Research_18/core-r/test" *)
-
 let test_simple_dir : unit -> string =
-  fun _ -> test_dir () ^ "/simple"
+  fun _ -> getcwd () ^ "/simple"
 
 let test_simple = "Simple" >:::
   [
