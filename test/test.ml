@@ -55,9 +55,8 @@ let test_test = "Proto" >:::
 
 let test_dir : unit -> string =
   fun _ ->
-    (* "/mnt/c/Users/Ross/Documents/Research_18/core-r/test" *)
-    "/home/celery/foo/harvard/core-r/test"
-    (* "/mnt/c/Users/Ross/Documents/Research_18/core-r/test" *)
+    "/mnt/c/Users/Ross/Documents/Research_18/core-r/test"
+    (* "/home/celery/foo/harvard/core-r/test" *)
 
 let test_simple_dir : unit -> string =
   fun _ -> test_dir () ^ "/simple"
