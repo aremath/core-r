@@ -644,69 +644,12 @@ let state_default : state =
     unique = 1 }
     
 (* Bindings for e.g. heap_alloc that work on states. *)
-let state_alloc: heapobj -> state -> memref * state =
+let state_alloc : heapobj -> state -> memref * state =
     fun hobj state ->
     let memref, heap = heap_alloc hobj state.heap in
     (memref, { state with heap = heap })
 
-let state_find: memref -> state -> heapobj option =
+let state_find : memref -> state -> heapobj option =
     fun mem state ->
     heap_find mem state.heap
-    
-(* Some SMT stuff *)
-
-let string_of_smtvar : smtvar -> string =
-  fun var -> var
-
-let smtvar_of_string : string -> smtvar =
-  fun str -> str
-
-let smtconst_of_const : const -> smtconst =
-  fun const ->
-    match const with
-    | R.Num rnum ->
-      (match rnum with
-      | R.Int rint ->
-        (match int_of_rint rint with
-        | Some i -> string_of_int i
-        | None -> "Na_int_")
-      | R.Float rfloat ->
-        (match float_of_rfloat rfloat with
-        | Some f -> string_of_float f
-        | None -> "Na_float_")
-      | R.Complex rcomplex ->
-        failwith "smtconst_of_const: dropping support for complex for now")
-        (*
-        (match complex_of_rcomplex rcomplex with
-        | Some c -> string_of_complex c
-        | None -> "Na_complex_"))
-        *)
-    | R.Str rstr ->
-      (match string_of_rstring rstr with
-      | Some str -> "\"" ^ str ^ "\""
-      | None -> "Na_string_")
-    | R.Bool rbool ->
-      (match bool_of_rbool rbool with
-      | Some b -> string_of_int b
-      | None -> "Na_bool_")
-    | R.Nil -> "nil"
-
-let smtvar_of_mem : memref -> smtvar =
-  fun mem ->
-    smtvar_of_string ("mem$" ^ string_of_int mem.R.addr)
-
-let smtvar_of_id : ident -> smtvar =
-  fun id ->
-    match string_of_rstring id.R.name with
-    | Some str -> smtvar_of_string str
-    | None -> smtvar_of_string "Na_string_"
-
-let rec smtexpr_of_langexpr : expr -> state -> smtexpr =
-  fun expr state -> match expr with
-    | R.Ident id -> S.SmtVar (smtvar_of_id id)
-    | R.MemRef mem -> S.SmtVar (smtvar_of_mem mem)
-    | R.Const const -> S.SmtConst (smtconst_of_const const)
-    | _ -> S.SmtVar "boo"
-  
-
 

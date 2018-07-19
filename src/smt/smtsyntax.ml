@@ -1,6 +1,15 @@
 
 (* cf p24: https://smtlib.github.io/jSMTLIB/SMTLIBTutorial.pdf *)
 
+type smtlogic =
+  | SmtALL
+  | SmtQFLIA
+  | SmtQFLRA
+  | SmtQFNIA
+  | SmtQFNRA
+  | SmtQFLIRA
+  | SmtQFNIRA
+
 type smtvar = string
 
 type smtconst = string
@@ -10,7 +19,7 @@ type smtsort =
   | SmtSortFloat
   | SmtSortDouble
   | SmtSortBool
-  | SmtSortVar of smtvar * smtsort list
+  | SmtSortApp of smtvar * smtsort list
 
 type smtexpr =
   | SmtVar of smtvar
@@ -55,21 +64,46 @@ type smtexpr =
   | SmtExists of (smtvar * smtsort) list * smtexpr
 
 
-type smtstmt =
+type smtcmd =
+  (* Set logic *)
+  | SmtSetLogic of smtlogic
+
   (* Declarations *)
-  | SmtDeclVar of smtvar * smtsort
-  | SmtDeclFun of smtvar * smtvar list * smtsort
+  | SmtDeclFun of smtvar * smtsort list * smtsort
+  | SmtDefFun of smtvar * (smtvar * smtsort) list * smtsort * smtexpr
   | SmtDeclSort of smtvar * int
   | SmtDefSort of smtvar * smtvar list * smtsort
 
   (* Assertions *)
   | SmtAssert of smtexpr
+  | SmtGetAsserts
 
-  (* Model querying *)
+  (* Satisfiability *)
   | SmtCheckSat
   | SmtGetModel
-  | SmtPush
-  | SmtPop
+  | SmtGetProof
+  | SmtGetUnsatCore
+
+  (* Value *)
+  | SmtGetValue of smtexpr list
+  | SmtGetAssign
+
+  (* Push / pop *)
+  | SmtPush of int
+  | SmtPop of int
+
+  (* Options *)
+  | SmtGetOption of smtvar
+  | SmtSetOption of smtvar * smtconst
+
+  (* Info *)
+  | SmtGetInfo of smtvar
+  | SmtSetInfo of smtvar * smtconst
+
+  (* Exit *)
   | SmtExit
 
+  (* Responses *)
+  | SmtSat
+  | SmtUnsat
 

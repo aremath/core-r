@@ -352,7 +352,7 @@ Tokens that do not have a match do not go onto the context stack.*)
             let x = to_push tok in
             context_ref := x @ !context_ref
 
-let strip_string_quots : string -> string =
+let strip_string_quotes : string -> string =
   fun str -> String.sub str 1 (String.length str - 2)
 }
 
@@ -432,7 +432,7 @@ let comment =
 (* spaces, tabs, form feeds *)
 (* TODO: others? *)
 let whitespace =
-  [' ' '\t' '\x0c' ]
+  [' ' '\t' '\x0c']
 
 
 (* For matching elses that occur after an if inside an if-context *)
@@ -546,8 +546,8 @@ rule tokenize context = parse
                     SYMBOL str }
   | user_op     { step (USER_OP (Lexing.lexeme lexbuf)) context;
                     USER_OP (Lexing.lexeme lexbuf) }
-  | string      { step (STRING_CONST (strip_string_quots (Lexing.lexeme lexbuf))) context;
-                    STRING_CONST (strip_string_quots (Lexing.lexeme lexbuf)) }
+  | string      { step (STRING_CONST (strip_string_quotes (Lexing.lexeme lexbuf))) context;
+                    STRING_CONST (strip_string_quotes (Lexing.lexeme lexbuf)) }
   | hex         { step (INT_CONST 0) context;
                     INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
   | int         { step (INT_CONST 0) context;
