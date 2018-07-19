@@ -31,7 +31,13 @@ type rule =
   | ERuleBlank
 
 type passresult =
-  (rule list * state) list *
-  (rule list * state) list *
-  (rule list * state) list
+  { pass_comps : (rule list * state) list;
+    pass_errs : (rule list * state) list;
+    pass_incomps : (rule list * state) list }
+
+let fresh_passresult : unit -> passresult =
+  fun _ ->
+    { pass_comps = [];
+      pass_errs = [];
+      pass_incomps = [] }
 

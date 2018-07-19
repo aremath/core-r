@@ -3,6 +3,8 @@
 
 {
 
+  open Smtparser
+
   let incr_line_count : Lexing.lexbuf -> unit =
     fun lexbuf ->
       let
@@ -137,8 +139,8 @@ rule tokenize context = parse
   | decimal  { FLOAT_CONST (float_of_string (Lexing.lexeme lexbuf)) }
   | string   { STRING_CONST (strip_string_quotes (Lexing.lexeme lexbuf)) }
 
-  | symbol  { SYMBOL (Lexeme.lexeme lexbuf) }
-  | keyword { KEYWORD (strip_string_colon (Lexeme.lexeme lexbuf) ) }
+  | symbol  { SYMBOL (Lexing.lexeme lexbuf) }
+  | keyword { KEYWORD (strip_string_colon (Lexing.lexeme lexbuf) ) }
 
   | comment    { tokenize context lexbuf }
   | whitespace { tokenize context lexbuf }

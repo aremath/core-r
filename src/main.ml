@@ -4,7 +4,6 @@ open Absyn_generator
 open Loader
 open Engine
 open Interputils
-open Smt
 
 open Sys
 
@@ -28,7 +27,7 @@ let main () =
 
   let res = run_n n [state] in
   print_endline (string_of_passresult res);
-  *)
+  *) 
 
   (*
   let res = get_first_completed_after_n n [state] in
@@ -38,12 +37,7 @@ let main () =
 
   print_endline "SimpleR: done!";
 
-  print_endline "\n\n\n*** Z3 TEST ***\n\n\n";
-  print_endline (test_z3 ());
 
-  print_endline "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$";
-
-  dump_solve_state "hello" state;
 
   ;;
   

@@ -4,23 +4,22 @@ let parseFile filename =
   let channel = open_in filename in
   let lexbuf = Lexing.from_channel channel in
   let absyn =
-     try
-       Parser.prog (Lexer.tokenize (ref [])) lexbuf
-     with _ ->
-          let pos = lexbuf.Lexing.lex_curr_p in
-            begin
-
-              print_string "Syntax error detected at line ";
-              print_string (string_of_int pos.Lexing.pos_lnum );
-              print_string " column ";
-              print_string (string_of_int (pos.Lexing.pos_cnum -
-                                           pos.Lexing.pos_bol ) );
-              print_endline ".";
-              failwith "Syntax error"
-            end in
-  let _ = close_in channel in
-  print_endline ("parseFile: parsed okay " ^ filename);
-  absyn;;
+   try
+     Parser.prog (Lexer.tokenize (ref [])) lexbuf
+   with _ ->
+      let pos = lexbuf.Lexing.lex_curr_p in
+      begin
+        print_string "Syntax error detected at line ";
+        print_string (string_of_int pos.Lexing.pos_lnum);
+        print_string " column ";
+        print_string (string_of_int (pos.Lexing.pos_cnum -
+                                     pos.Lexing.pos_bol));
+        print_endline ".";
+        failwith "Syntax error"
+      end in
+      let _ = close_in channel in
+      print_endline ("parseFile: parsed okay " ^ filename);
+      absyn;;
 
 let dumpTokens : string -> unit =
   fun filename ->

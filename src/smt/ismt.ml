@@ -3,6 +3,9 @@ open Smt2
 open Solver
 open Smtutils
 
+open List
+open String
+
 let test_smtcmd_list : unit -> smtcmd list =
   fun _ ->
     [SmtDeclFun ("x", [], SmtSortInt);
@@ -16,5 +19,6 @@ let test_smtcmd_list : unit -> smtcmd list =
 let test_z3 : unit -> string =
   fun _ ->
     let smt2 = smt2_of_smtcmd_list (test_smtcmd_list ()) in
-      run_z3 smt2
+    let prog = run_z3 smt2 in
+      string_of_smtprog prog
 

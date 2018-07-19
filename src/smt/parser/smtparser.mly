@@ -39,7 +39,8 @@
 
 
 %start prog
-%type <Smtsyntax.prog> prog
+%type <Smtsyntax.smtprog> prog
+
 %%
 
 logic:
