@@ -9,19 +9,19 @@ let z3_eof : unit -> string =
   fun _ -> "Z3_END_OF_INPUT"
 
 let tmp_file : unit -> string =
-  fun _ -> "~z3-tmp.swp"
+  fun _ -> getcwd () ^ "/~z3-tmp.swp"
 
 let z3_cmd_of_smt2 : smt2 -> string =
   fun smt2 ->
     "z3 -smt2 -in <<" ^
     z3_eof () ^ "\n" ^
     string_of_smt2 smt2 ^ "\n" ^
-    z3_eof ()
+    z3_eof () ^ "\n"
 
 let run_z3 : smt2 -> smtprog =
   fun smt2 ->
-    let cmd = z3_cmd_of_smt2 smt2 in
-    let _ = command (cmd ^ " > " ^ tmp_file ()) in
+    let cmd = (z3_cmd_of_smt2 smt2) ^ " > " ^ tmp_file () in
+    let _ = command cmd in
     let tmp_in = open_in (tmp_file ()) in
     let lexbuf = Lexing.from_channel tmp_in in
     let prog =

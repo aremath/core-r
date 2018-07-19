@@ -81,7 +81,7 @@ let smt_rbool_const: int -> smtexpr =
 
 (* Refer to the length of v *)
 let smt_len: smtvar -> smtexpr =
-    fun v -> SmtFunApp ("len", [SmtVar v])
+    fun v -> SmtFunApp ("sym_vec_len", [SmtVar v])
 
 (* Assert that the length of the symbolic array var is
  equal to the actual length of a *)
@@ -217,21 +217,35 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
           if vsort = var1 then SmtSortApp (var2, vsorts')
               else SmtSortApp (vsort, vsorts')
 
-let get_mem_pathcons_list : memref -> heap -> pathcons list =
+let get_mem_pathcons_list : memref -> heap -> (smtvar * rtype * pathcons) list =
   fun mem heap ->
     match heap_find mem heap with
-    | Some (DataObj (Vec (SymVec (_, _, pc)), _)) -> [pc]
+    | Some (DataObj (Vec (SymVec (sid, rty, pc)), _)) -> [(sid, rty, pc)]
     | _ -> []
 
 let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
 
+let smtsort_of_rtype : rtype -> smtsort =
+  fun ty ->
+    match ty with
+    | RBool -> SmtSortBool
+    | RInt -> SmtSortInt
+    | RFloat -> SmtSortFloat
+    | t -> failwith ("smtsort_of_rtype: no support for complex and string")
+
+let smtdecl_of_symvec: smtvar -> rtype -> smtcmd =
+  fun var ty ->
+    SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty))
+
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
     let smems = mem_list_of_sym_mems state.sym_mems in
     let heap = state.heap in
     let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
-    let asserts = concat (map smtcmd_list_of_pathcons paths) in
-      asserts
+    let decls = map (fun (s, t, _) -> smtdecl_of_symvec s t) paths in
+    let asserts = concat (map (fun (_, _, p) ->
+                            smtcmd_list_of_pathcons p) paths) in
+      decls @ asserts
 

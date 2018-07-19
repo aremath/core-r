@@ -49,7 +49,6 @@ let is_state_complete : state -> bool =
 let is_state_not_complete : state -> bool =
   fun state -> not (is_state_complete state)
 
-
 let run_pass : (rule list * state) list -> passresult =
   fun states ->
     let comps = filter (fun (a, b) -> is_state_complete b) states in
