@@ -16,6 +16,9 @@
 
   let strip_string_quotes : string -> string =
     fun str -> String.sub str 1 (String.length str - 2)
+
+  let strip_string_colon : string -> string =
+    fun str -> String.sub str 1 (String.length str - 1)
 }
 
 let numeral =
@@ -51,6 +54,9 @@ let esc =
 let string =
     '"' (esc | [^ '\\' '"'])* '"'
 
+let comment =
+  ';' [^ '\n' '\r']*
+
 let parts = 
    ['~' '!' '@' '$' '%' '^' '&' '*' '_' '+' '=' '<' '>' '.' '?' '/' '-']
 
@@ -75,22 +81,53 @@ rule tokenize context = parse
   | "}" { RBRACE }
   | "[" { LBRACK }
   | "]" { RBRACK }
+  | "_" { UNDERSCORE }
+
+  | "ALL"     { LOGIC_ALL }
+  | "QF_UF"   { LOGIC_QFUF }
+  | "QF_LIA"  { LOGIC_QFLIA }
+  | "QF_LRA"  { LOGIC_QFLRA }
+  | "QF_NIA"  { LOGIC_QFNIA }
+  | "QF_NRA"  { LOGIC_QFNRA }
+  | "QF_LIRA" { LOGIC_QFLIRA }
+  | "QF_NIRA" { LOGIC_QFNIRA }
 
   | "forall" { FORALL }
   | "exists" { EXISTS }
   | "let"    { LET }
   | "as"     { AS }
 
+  | "BitVec" { SORT_BITVEC }
+  | "Array"  { SORT_ARRAY }
+  | "Real"   { SORT_FLOAT }
+  | "Int"    { SORT_INT }
+  | "Bool"   { SORT_BOOL }
+
   | "set-logic"    { SET_LOGIC }
   | "declare-fun"  { DECLARE_FUN }
   | "define-fun"   { DEFINE_FUN }
   | "declare-sort" { DECLARE_SORT }
   | "define-sort"  { DEFINE_SORT }
-  | "assert"       { ASSERT }
-  | "check-sat"    { CHECK_SAT }
-  | "push"         { PUSH }
-  | "pop"          { POP }
-  | "exit"         { EXIT }
+
+  | "assert"         { ASSERT }
+  | "get-assertions" { GET_ASSERTS }
+  | "check-sat"      { CHECK_SAT }
+  | "get-model"      { GET_MODEL }
+  | "get-proof"      { GET_PROOF }
+  | "get-unsat-core" { GET_UNSAT_CORE }
+  | "get-assignment" { GET_ASSIGNMENT }
+  | "get-value"      { GET_VALUE }
+
+  | "get-option" { GET_OPTION }
+  | "set-option" { SET_OPTION }
+  | "get-info"   { GET_INFO }
+  | "set-info"   { SET_INFO }
+
+  | "push"  { PUSH }
+  | "pop"   { POP }
+  | "exit"  { EXIT }
+  | "unsat" { UNSAT }
+  | "sat"   { SAT }
 
   | binary   { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
   | hex      { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
@@ -98,9 +135,12 @@ rule tokenize context = parse
   | decimal  { FLOAT_CONST (float_of_string (Lexing.lexeme lexbuf)) }
   | string   { STRING_CONST (strip_string_quotes (Lexing.lexeme lexbuf)) }
 
-  | symbol { SYMBOL (Lexeme.lexeme lexbuf) }
+  | symbol  { SYMBOL (Lexeme.lexeme lexbuf) }
+  | keyword { KEYWORD (strip_string_colon (Lexeme.lexeme lexbuf) ) }
 
-  | newline { incr_line_count lexbuf; NEWLINE }
-  | eof     { END_OF_INPUT }
+  | comment    { tokenize context lexbuf }
+  | whitespace { tokenize context lexbuf }
+  | newline    { incr_line_count lexbuf; NEWLINE }
+  | eof        { END_OF_INPUT }
 
 

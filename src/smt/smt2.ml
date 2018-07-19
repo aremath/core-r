@@ -13,20 +13,24 @@ let smt2_of_smtconst : smtconst -> smt2 =
 let smt2_of_smtlogic : smtlogic -> smt2 =
   fun logic ->
     match logic with
-    | SmtALL -> "ALL"
-    | SmtQFLIA -> "QF_LIA"
-    | SmtQFLRA -> "QF_LRA"
-    | SmtQFNIA -> "QF_NIA"
-    | SmtQFNRA -> "QF_NRA"
-    | SmtQFLIRA -> "QF_LIRA"
-    | SmtQFNIRA -> "QF_NIRA"
+    | SmtLogALL -> "ALL"
+    | SmtLogQFUF -> "QF_UF"
+    | SmtLogQFLIA -> "QF_LIA"
+    | SmtLogQFLRA -> "QF_LRA"
+    | SmtLogQFNIA -> "QF_NIA"
+    | SmtLogQFNRA -> "QF_NRA"
+    | SmtLogQFLIRA -> "QF_LIRA"
+    | SmtLogQFNIRA -> "QF_NIRA"
 
 let rec smt2_of_smtsort : smtsort -> smt2 =
   fun sort ->
     match sort with
     | SmtSortInt -> "Int"
-    | SmtSortFloat -> "Float"
-    | SmtSortDouble -> "Double"
+    | SmtSortFloat -> "Real"
+    | SmtSortBitVec i -> "(_ BitVec " ^ string_of_int i ^ ")"
+    | SmtSortArray (is, o) ->
+        "(Array " ^ (String.concat " " (map smt2_of_smtsort is)) ^ " " ^
+                    smt2_of_smtsort o ^ ")"
     | SmtSortBool -> "Bool"
     | SmtSortApp (v, ss) ->
         "(" ^ smt2_of_smtvar v ^ " " ^
@@ -36,6 +40,11 @@ let rec smt2_of_smtexpr : smtexpr -> smt2 =
   fun smtexpr ->
     match smtexpr with
     | SmtVar v -> smt2_of_smtvar v
+    | SmtIndVar (v, is) ->
+        "(_ " ^ smt2_of_smtvar v ^ " " ^
+          (String.concat " " (map string_of_int is)) ^ ")"
+    | SmtQualVar (v, s) ->
+        "(as " ^ smt2_of_smtvar v ^ " " ^ smt2_of_smtsort s ^ ")"
     | SmtConst c -> smt2_of_smtconst c
 
     | SmtGt (e1, e2) ->
@@ -149,7 +158,7 @@ let smt2_of_smtcmd : smtcmd -> smt2 =
 
     | SmtGetValue es ->
       "(get-value " ^ (String.concat " " (map smt2_of_smtexpr es)) ^ ")"
-    | SmtGetAssign -> "(get-assignment)"
+    | SmtGetAssignment -> "(get-assignment)"
 
     | SmtPush i -> "(push " ^ string_of_int i ^ ")"
     | SmtPop i -> "(pop " ^ string_of_int i ^ ")"

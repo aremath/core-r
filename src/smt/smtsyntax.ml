@@ -2,13 +2,14 @@
 (* cf p24: https://smtlib.github.io/jSMTLIB/SMTLIBTutorial.pdf *)
 
 type smtlogic =
-  | SmtALL
-  | SmtQFLIA
-  | SmtQFLRA
-  | SmtQFNIA
-  | SmtQFNRA
-  | SmtQFLIRA
-  | SmtQFNIRA
+  | SmtLogALL
+  | SmtLogQFUF
+  | SmtLogQFLIA
+  | SmtLogQFLRA
+  | SmtLogQFNIA
+  | SmtLogQFNRA
+  | SmtLogQFLIRA
+  | SmtLogQFNIRA
 
 type smtvar = string
 
@@ -17,12 +18,15 @@ type smtconst = string
 type smtsort =
   | SmtSortInt
   | SmtSortFloat
-  | SmtSortDouble
   | SmtSortBool
+  | SmtSortBitVec of int
+  | SmtSortArray of smtsort list * smtsort
   | SmtSortApp of smtvar * smtsort list
 
 type smtexpr =
   | SmtVar of smtvar
+  | SmtIndVar of smtvar * int list
+  | SmtQualVar of smtvar * smtsort
   | SmtConst of smtconst
 
   (* Equality comparison predicates *)
@@ -86,7 +90,7 @@ type smtcmd =
 
   (* Value *)
   | SmtGetValue of smtexpr list
-  | SmtGetAssign
+  | SmtGetAssignment
 
   (* Push / pop *)
   | SmtPush of int
