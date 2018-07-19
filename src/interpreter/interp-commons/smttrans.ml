@@ -81,7 +81,7 @@ let smt_rbool_const: int -> smtexpr =
 
 (* Refer to the length of v *)
 let smt_len: smtvar -> smtexpr =
-    fun v -> SmtFunApp ("sym_vec_len", [SmtVar v])
+    fun v -> SmtFunApp ("sym_vec_length_int", [SmtVar v])
 
 (* Assert that the length of the symbolic array var is
  equal to the actual length of a *)
@@ -239,6 +239,14 @@ let smtdecl_of_symvec: smtvar -> rtype -> smtcmd =
   fun var ty ->
     SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty))
 
+let custom_decls : unit -> smtcmd list =
+  fun _ ->
+    (* ONLY HANDLES INTEGERS FOR NOW *)
+    [SmtDeclFun ("sym_vec_length_int",
+                [SmtSortArray ([SmtSortInt], SmtSortInt)],
+                SmtSortInt)]
+
+
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
     let smems = mem_list_of_sym_mems state.sym_mems in
@@ -247,5 +255,5 @@ let smtcmd_list_of_state : state -> smtcmd list =
     let decls = map (fun (s, t, _) -> smtdecl_of_symvec s t) paths in
     let asserts = concat (map (fun (_, _, p) ->
                             smtcmd_list_of_pathcons p) paths) in
-      decls @ asserts
+      custom_decls () @ decls @ asserts
 
