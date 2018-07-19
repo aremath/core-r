@@ -10,6 +10,17 @@ let smt2_of_smtvar : smtvar -> smt2 =
 let smt2_of_smtconst : smtconst -> smt2 =
   fun const -> const
 
+let smt2_of_smtlogic : smtlogic -> smt2 =
+  fun logic ->
+    match logic with
+    | SmtALL -> "ALL"
+    | SmtQFLIA -> "QF_LIA"
+    | SmtQFLRA -> "QF_LRA"
+    | SmtQFNIA -> "QF_NIA"
+    | SmtQFNRA -> "QF_NRA"
+    | SmtQFLIRA -> "QF_LIRA"
+    | SmtQFNIRA -> "QF_NIRA"
+
 let rec smt2_of_smtsort : smtsort -> smt2 =
   fun sort ->
     match sort with
@@ -17,7 +28,7 @@ let rec smt2_of_smtsort : smtsort -> smt2 =
     | SmtSortFloat -> "Float"
     | SmtSortDouble -> "Double"
     | SmtSortBool -> "Bool"
-    | SmtSortVar (v, ss) ->
+    | SmtSortApp (v, ss) ->
         "(" ^ smt2_of_smtvar v ^ " " ^
               (String.concat " " (map smt2_of_smtsort ss)) ^ ")"
 
@@ -28,7 +39,7 @@ let rec smt2_of_smtexpr : smtexpr -> smt2 =
     | SmtConst c -> smt2_of_smtconst c
 
     | SmtGt (e1, e2) ->
-        "(>" ^ smt2_of_smtexpr e1 ^ " " ^ smt2_of_smtexpr e2 ^ ")"
+        "(> " ^ smt2_of_smtexpr e1 ^ " " ^ smt2_of_smtexpr e2 ^ ")"
 
     | SmtGe (e1, e2) ->
         "(>= " ^ smt2_of_smtexpr e1 ^ " " ^ smt2_of_smtexpr e2 ^ ")"
@@ -103,23 +114,60 @@ let rec smt2_of_smtexpr : smtexpr -> smt2 =
 let smt2_of_smtcmd : smtcmd -> smt2 =
   fun stmt ->
     match stmt with
+    | SmtSetLogic l ->
+      "(set-logic " ^ smt2_of_smtlogic l ^ ")"
+
     | SmtDeclFun (v, vs, s) ->
       "(declare-fun " ^
-          smt2_of_smtvar v ^
-          "(" ^ (String.concat " " (map smt2_of_smtvar vs)) ^ ") " ^
+          smt2_of_smtvar v ^ " " ^
+          "(" ^ (String.concat " " (map smt2_of_smtsort vs)) ^ ") " ^
           smt2_of_smtsort s ^ ")"
+    | SmtDefFun (v, vs, s, e) ->
+      "(define-fun " ^
+        smt2_of_smtvar v ^ " " ^
+        "(" ^ (String.concat " "
+              (map (fun (n, s) ->
+                "(" ^ smt2_of_smtvar n ^ " " ^ smt2_of_smtsort s ^ ")")
+                vs)) ^ ") " ^
+        smt2_of_smtsort s ^ " " ^
+        "(" ^ smt2_of_smtexpr e ^ "))"
+
     | SmtDeclSort (v, i) ->
       "(declare-sort " ^ smt2_of_smtvar v ^ " " ^ string_of_int i ^ ")"
     | SmtDefSort (v, vs, s) ->
-      "(define-sort " ^ smt2_of_smtvar v ^
-          "(" ^ (String.concat " " (map smt2_of_smtvar vs)) ^ ")" ^
+      "(define-sort " ^ smt2_of_smtvar v ^ " " ^
+          "(" ^ (String.concat " " (map smt2_of_smtvar vs)) ^ ") " ^
           smt2_of_smtsort s ^ ")"
+
     | SmtAssert e -> "(assert " ^ smt2_of_smtexpr e ^ ")"
+    | SmtGetAsserts -> "(get-assertions)"
+
     | SmtCheckSat -> "(check-sat)"
     | SmtGetModel -> "(get-model)"
-    | SmtPush -> "(push)"
-    | SmtPop -> "(pop)"
+    | SmtGetProof -> "(get-proof)"
+    | SmtGetUnsatCore -> "(get-unsat-core)"
+
+    | SmtGetValue es ->
+      "(get-value " ^ (String.concat " " (map smt2_of_smtexpr es)) ^ ")"
+    | SmtGetAssign -> "(get-assignment)"
+
+    | SmtPush i -> "(push " ^ string_of_int i ^ ")"
+    | SmtPop i -> "(pop " ^ string_of_int i ^ ")"
+
+    | SmtGetOption v ->
+      "(get-option :" ^ smt2_of_smtvar v ^ ")"
+    | SmtSetOption (v, a) ->
+      "(set-option :" ^ smt2_of_smtvar v ^ " " ^ smt2_of_smtconst a ^ ")"
+
+    | SmtGetInfo v ->
+      "(get-info :" ^ smt2_of_smtvar v ^ ")"
+    | SmtSetInfo (v, a) ->
+      "(set-info :" ^ smt2_of_smtvar v ^ " " ^ smt2_of_smtconst a ^ ")"
+
     | SmtExit -> "(exit)"
+
+    | SmtSat -> "sat"
+    | SmtUnsat -> "unsat"
 
 let smt2_of_smtcmd_list : smtcmd list -> smt2 =
   fun stmts ->

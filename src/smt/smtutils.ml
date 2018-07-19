@@ -19,6 +19,17 @@ let string_of_list : ('a -> string) -> 'a list -> string =
   fun f xs ->
     "[" ^ String.concat "," (List.map f xs) ^ "]"
 
+let string_of_smtlogic : smtlogic -> string =
+  fun logic ->
+    match logic with
+    | SmtALL -> "SmtAll"
+    | SmtQFLIA -> "SmtQFLIA"
+    | SmtQFLRA -> "SmtQFLRA"
+    | SmtQFNIA -> "SmtQFNIA"
+    | SmtQFNRA -> "SmtQFNRA"
+    | SmtQFLIRA -> "SmtQFLIRA"
+    | SmtQFNIRA -> "SmtQFNIRA"
+
 let string_of_smtvar : smtvar -> string =
   fun var -> var
 
@@ -32,8 +43,8 @@ let rec string_of_smtsort : smtsort -> string =
     | SmtSortFloat -> "SmtSortFloat"
     | SmtSortDouble -> "SmtSortDouble"
     | SmtSortBool -> "SmtSortBool"
-    | SmtSortVar (v, ss) ->
-        "SmtSortVar (" ^ string_of_smtvar v ^ "," ^
+    | SmtSortApp (v, ss) ->
+        "SmtSortApp (" ^ string_of_smtvar v ^ "," ^
                          string_of_list_comma (map string_of_smtsort ss) ^ ")"
 
 let rec string_of_smtexpr : smtexpr -> string =
@@ -116,11 +127,23 @@ let rec string_of_smtexpr : smtexpr -> string =
 let string_of_smtcmd : smtcmd -> string =
   fun stmt ->
     match stmt with
+    | SmtSetLogic l ->
+        "SmtSetLogic (" ^ string_of_smtlogic l ^ ")"
+
     | SmtDeclFun (f, ps, s) ->
         "SmtDeclFun (" ^
             string_of_smtvar f ^ "," ^
-            string_of_list_comma (map string_of_smtvar ps) ^ "," ^
+            string_of_list_comma (map string_of_smtsort ps) ^ "," ^
             string_of_smtsort s ^ ")"
+    | SmtDefFun (f, ps, s, e) ->
+        "SmtDefFun (" ^
+            string_of_smtvar f ^ "," ^
+            string_of_list_comma
+              (map (fun (p, t) ->
+                string_of_pair (p, t)
+                  (string_of_smtvar, string_of_smtsort)) ps) ^ "," ^
+            string_of_smtsort s ^ "," ^
+            string_of_smtexpr e ^ ")"
     | SmtDeclSort (s, i) ->
         "SmtDeclSort (" ^ string_of_smtvar s ^ "," ^ string_of_int i ^ ")"
     | SmtDefSort (s, vs, so) ->
@@ -128,11 +151,36 @@ let string_of_smtcmd : smtcmd -> string =
             string_of_smtvar s ^ "," ^
            (string_of_list_comma (map string_of_smtvar vs)) ^ "," ^
            string_of_smtsort so ^ ")"
+
     | SmtAssert e ->
         "SmtAssert (" ^ string_of_smtexpr e ^ ")"
+    | SmtGetAsserts ->
+        "SmtGetAsserts"
+
     | SmtCheckSat -> "SmtCheckSat"
     | SmtGetModel -> "SmtGetModel"
-    | SmtPush -> "SmtPush"
-    | SmtPop -> "SmtPop"
+    | SmtGetProof -> "SmtGetProof"
+    | SmtGetUnsatCore -> "SmtGetUnsatCore"
+
+    | SmtGetValue es ->
+      "SmtGetValue (" ^ string_of_list_comma (map string_of_smtexpr es) ^ ")"
+    | SmtGetAssign -> "SmtGetAssign"
+
+    | SmtPush i -> "SmtPush (" ^ string_of_int i ^ ")"
+    | SmtPop i -> "SmtPop (" ^ string_of_int i ^ ")"
+
+    | SmtGetOption v -> "SmtGetOption (" ^ string_of_smtvar v ^ ")"
+    | SmtSetOption (v, c) ->
+        "SmtSetOption (" ^ string_of_smtvar v ^ "," ^
+                           string_of_smtconst c ^ ")"
+
+    | SmtGetInfo v -> "SmtGetInfo (" ^ string_of_smtvar v ^ ")"
+    | SmtSetInfo (v, c) ->
+        "SmtSetInfo(" ^ string_of_smtvar v ^ "," ^
+                           string_of_smtconst c ^ ")"
+
+
     | SmtExit -> "SmtExit"
+    | SmtSat -> "SmtSat"
+    | SmtUnsat -> "SmtUnsat"
 

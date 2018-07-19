@@ -203,9 +203,10 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
     | SmtSortFloat -> SmtSortFloat
     | SmtSortDouble -> SmtSortDouble
     | SmtSortBool -> SmtSortBool
-    | SmtSortVar (vsort, vsorts) -> let vsorts' = List.map (replace_sort var1 var2) vsorts in
-        if vsort = var1 then SmtSortVar (var2, vsorts')
-            else SmtSortVar (vsort, vsorts')
+    | SmtSortApp (vsort, vsorts) ->
+        let vsorts' = List.map (replace_sort var1 var2) vsorts in
+          if vsort = var1 then SmtSortApp (var2, vsorts')
+              else SmtSortApp (vsort, vsorts')
 
 let get_mem_pathcons_list : memref -> heap -> pathcons list =
   fun mem heap ->
