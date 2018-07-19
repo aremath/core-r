@@ -306,6 +306,24 @@ let name_fresh: state -> string * state =
     let name = "fs$" ^ (string_of_int count2) in
     (name, {state with fresh_count = count2})
 
+(* List.map for states, but doing the operation so that the new state produced from the first
+  operation is used in the second, and so on. Used for ex. allocating a list of vectors. *)
+let rec state_map: ('a -> state -> ('b * state)) -> 'a list -> state -> ('b list * state) =
+    fun f alist state ->
+    match alist with
+    | hd :: tl -> let b, state' = f hd state in
+        let bs, state'' = state_map f tl state' in
+        (b::bs, state'')
+    | [] -> ([], state)
+
+(* List.fold_left that preserves changes in the state during the operation. *)
+let rec state_fold_left: ('a -> 'b -> state -> ('a * state)) -> 'a -> 'b list -> state -> ('a * state) =
+    fun f init bs state ->
+    match bs with
+    | hd::tl -> let a, state' = f init hd state in
+        state_fold_left f a tl state'
+    | [] -> (init, state)
+
 let rec id_fresh_list : int -> state -> (ident list) * state =
   fun n state ->
     if n < 1 then

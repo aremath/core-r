@@ -3,6 +3,7 @@ module S = Support
 module C = Native_support (* was Coerce *)
 module Copy = Copy
 module L = Langutils
+module Sym = Symbolic_ops
 open Smtsyntax
 open Smttrans
 
@@ -32,7 +33,7 @@ let rvector_length_vec: S.rvector -> S.state -> S.rvector * S.state =
             smt_int_const 1) in
         (* out[0] = len(in) *)
         let value = SmtEq (
-            SmtArrGet (SmtVar new_name, smt_int_const 0),
+            smt_getn new_name 0,
             smt_len n) in
         let vec = S.SymVec (new_name, S.RInt, { S.path_list = [len; value] }) in
         vec, state'
@@ -71,32 +72,55 @@ let mk_empty_floatvec: unit -> S.rvector = fun _ -> S.FloatVec (Array.make 0 (So
 let mk_empty_complexvec: unit -> S.rvector = fun _ -> S.ComplexVec (Array.make 0 (Some Complex.zero))
 let mk_empty_strvec: unit -> S.rvector = fun _ -> S.StrVec (Array.make 0 (Some ""))
 let mk_empty_boolvec: unit -> S.rvector = fun _ -> S.BoolVec (Array.make 0 (Some 0))
+let mk_empty_symvec: smtvar -> S.rtype -> S.rvector =
+    fun name ty ->
+    (* Length zero *)
+    let len = SmtEq (
+        smt_len name,
+        smt_int_const 0) in
+    S.SymVec (name, ty, { S.path_list = [len] })
 
-(* Concatenate two vectors - For now does not do type coercion *)
-let concat_rvectors: S.rvector -> S.rvector -> S.rvector =
-    fun v1 v2 ->
+(* Concatenate two vectors - For now does not do type coercion. *)
+let concat_rvectors: S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
+    fun v1 v2 state ->
     match (v1, v2) with
-    | (S.IntVec i1, S.IntVec i2) -> S.IntVec (Array.concat [i1;i2])
-    | (S.FloatVec f1, S.FloatVec f2) -> S.FloatVec (Array.concat [f1;f2])
-    | (S.ComplexVec c1, S.ComplexVec c2) -> S.ComplexVec (Array.concat [c1;c2])
-    | (S.StrVec s1, S.StrVec s2) -> S.StrVec (Array.concat [s1;s2])
-    | (S.BoolVec b1, S.BoolVec b2) -> S.BoolVec (Array.concat [b1;b2])
-    (* | (S.SymVec s, pcs, S.IntVec i) -> S.SymVec (s', pcs') *)
+    | (S.IntVec i1, S.IntVec i2) -> (S.IntVec (Array.concat [i1;i2]), state)
+    | (S.FloatVec f1, S.FloatVec f2) -> (S.FloatVec (Array.concat [f1;f2]), state)
+    | (S.ComplexVec c1, S.ComplexVec c2) -> (S.ComplexVec (Array.concat [c1;c2]), state)
+    | (S.StrVec s1, S.StrVec s2) -> (S.StrVec (Array.concat [s1;s2]), state)
+    | (S.BoolVec b1, S.BoolVec b2) -> (S.BoolVec (Array.concat [b1;b2]), state)
+    (* In the case where they're both symbolic, no conversion is necessary *)
+    | (S.SymVec sy1, S.SymVec sy2) -> let name, state' = S.name_fresh state in
+        let symconcat = S.SymVec (Sym.symbolic_concat name sy1 sy2) in
+        (symconcat, state')
+    (* If they're not both symbolic, we should convert one *)
+    | (S.SymVec sy1, vec) -> let name1, state' = S.name_fresh state in
+        let name2, state'' = S.name_fresh state' in
+        let sy2 = Sym.vec_to_symvec name1 vec in
+        let symconcat = S.SymVec (Sym.symbolic_concat name2 sy1 sy2) in
+        (symconcat, state'')
+    | (vec, S.SymVec sy2) -> let name1, state' = S.name_fresh state in
+        let name2, state'' = S.name_fresh state' in
+        let sy1 = Sym.vec_to_symvec name1 vec in
+        let symconcat = S.SymVec (Sym.symbolic_concat name2 sy1 sy2) in
+        (symconcat, state'')
     | _ -> failwith "Can't concatenate incompatible vectors"
 
-let fold_rvectors: S.rvector list -> S.rvector =
-    fun vlist ->
+(* Folds rvectors together with concat *)
+let fold_rvectors: S.rvector list -> S.state -> (S.rvector * S.state) =
+    fun vlist state ->
     match vlist with
     | [] -> failwith "Cannot fold empty rvectors list - type unknown"
     (* Determine the type based on the head. 
     concat_rvectors will throw an error if the types do not reconcile. *)
     | hd::tl -> begin match hd with
-        | S.IntVec _ -> List.fold_left concat_rvectors (mk_empty_intvec ()) vlist
-        | S.FloatVec _ -> List.fold_left concat_rvectors (mk_empty_floatvec ()) vlist
-        | S.ComplexVec _ -> List.fold_left concat_rvectors (mk_empty_complexvec ()) vlist
-        | S.StrVec _ -> List.fold_left concat_rvectors (mk_empty_strvec ()) vlist
-        | S.BoolVec _ -> List.fold_left concat_rvectors (mk_empty_boolvec ()) vlist
-        | S.SymVec _ -> failwith "symbolic unimplemented"
+        | S.IntVec _ -> S.state_fold_left concat_rvectors (mk_empty_intvec ()) vlist state
+        | S.FloatVec _ -> S.state_fold_left concat_rvectors (mk_empty_floatvec ()) vlist state
+        | S.ComplexVec _ -> S.state_fold_left concat_rvectors (mk_empty_complexvec ()) vlist state
+        | S.StrVec _ -> S.state_fold_left concat_rvectors (mk_empty_strvec ()) vlist state
+        | S.BoolVec _ -> S.state_fold_left concat_rvectors (mk_empty_boolvec ()) vlist state
+        | S.SymVec (_, t, _) -> let name, state' = S.name_fresh state in
+            S.state_fold_left concat_rvectors (mk_empty_symvec name t) vlist state'
         end
 
 let alloc_fold_vectors: S.rvector list -> S.state -> (S.memref * S.state) =
@@ -107,9 +131,9 @@ let alloc_fold_vectors: S.rvector list -> S.state -> (S.memref * S.state) =
     since there's no actual object. On the other hand, just Array.makeing a 0-length vector
     also doesn't have the right behavior *)
     (* Fold them with concat *)
-    | _ -> let new_vec = fold_rvectors vecs in
+    | _ -> let new_vec, state' = fold_rvectors vecs state in
         (* Allocate the new vector and return a reference to it *)
-        S.state_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty ())) state
+        S.state_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty ())) state'
 
 (* Vector creation - R's "c" function *)
 (* Does not support ex. c(a=c(1,2)) *)
@@ -186,6 +210,33 @@ let float_range: float -> float -> float array =
     let step = if startf < endf then 1.0 else -1.0 in
     Array.init n (fun i -> startf +. ((float_of_int i) *. step))
 
+(* Helper for range: constrains the length of x:y based on expressions for x[0] and y[0] *)
+let mk_range_len: smtvar -> smtexpr -> smtexpr -> smtexpr =
+    fun range_name x0 y0 ->
+    ifelse (SmtGt (x0, y0))
+        (SmtEq (smt_len range_name,
+            SmtPlus (SmtSub (x0,y0),
+                smt_int_const 1)))
+        (SmtEq (smt_len range_name,
+            SmtPlus (SmtSub (y0,x0),
+                smt_int_const 1)))
+
+(* Helper for range: constrains the values of x:y based on expressions for x[0] and y[0] *)
+let mk_range_vals: smtvar -> smtexpr -> smtexpr -> smtexpr =
+    fun range_name x0 y0 ->
+    all_elements_eq range_name (ifelse (SmtGt (x0, y0))
+        (SmtSub (y0, SmtVar forall_var))
+        (SmtPlus (y0, SmtVar forall_var)))
+
+(* Helper for range: builds an rvector for x:y based on expressions for x[0] and y[0] *)
+let mk_range_vec: S.rtype -> smtexpr -> smtexpr -> S.state -> (S.rvector * S.state) =
+    fun ty x0 y0 state ->
+    let name, state' = S.name_fresh state in
+    let len = mk_range_len name x0 y0 in
+    let vals = mk_range_vals name x0 y0 in
+    let vec = S.SymVec (name, ty, { S.path_list = [len;vals] }) in
+    (vec, state')
+
 (* Handles 1:5 and 5:-5. TODO: 1.3:2.6 *)
 let range_int_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     fun start_index_ref end_index_ref state ->
@@ -193,13 +244,26 @@ let range_int_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     let start_rvec = C.dereference_rvector start_index_ref state in
     let end_rvec = C.dereference_rvector end_index_ref state in
     (* Match to determine output vector type *)
-    let out_rvec = match start_rvec, end_rvec with
+    let out_rvec, state' = match start_rvec, end_rvec with
     | (S.IntVec [|Some si|], S.IntVec [|Some ei|]) -> let irange = int_range si ei in
-        S.IntVec (C.unresolve_vec irange)
+        (S.IntVec (C.unresolve_vec irange), state)
     | (S.FloatVec [|Some sf|], S.FloatVec [|Some ef|]) -> let frange = float_range sf ef in
-        S.FloatVec (C.unresolve_vec frange)
+        (S.FloatVec (C.unresolve_vec frange), state)
+    (* Symbolic ops *)
+    | (S.SymVec (n1, S.RInt, _), S.SymVec (n2, S.RInt, _)) ->
+        mk_range_vec S.RInt (smt_getn n1 0) (smt_getn n2 0) state
+    | (S.SymVec (n1, S.RFloat, _), S.SymVec (n2, S.RFloat, _)) ->
+        mk_range_vec S.RFloat (smt_getn n1 0) (smt_getn n2 0) state
+    | (S.SymVec (n1, S.RInt, _), S.IntVec [|Some ei|]) ->
+        mk_range_vec S.RInt (smt_getn n1 0) (smt_int_const ei) state
+    | (S.IntVec [|Some si|], S.SymVec (n2, S.RInt, _)) ->
+        mk_range_vec S.RInt (smt_int_const si) (smt_getn n2 0) state
+    | (S.SymVec (n1, S.RFloat, _), S.FloatVec [|Some ef|]) ->
+        mk_range_vec S.RFloat (smt_getn n1 0) (smt_float_const ef) state
+    | (S.FloatVec [|Some sf|], S.SymVec (n2, S.RFloat, _)) ->
+        mk_range_vec S.RFloat (smt_float_const sf) (smt_getn n2 0) state
     | _ -> failwith "Bad range call" in (* TODO: better error messaging *)
-    S.state_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty ())) state
+    S.state_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty ())) state'
 
 (* makes an array which is a copied n times *)
 let rec array_wrap: 'a array -> int -> 'a array =
@@ -300,8 +364,8 @@ let array_length_assign: 'a option array -> int -> 'a option array =
     Array.init n (fun i -> if i < Array.length a then a.(i) else None)
 
 (* Return an rvector with length len. If len is longer than vec, fills with NA,
-if len is shorter than vec, only uses the first len values *)
-let rvec_length_assign: S.rvector -> int -> S.rvector =
+  if len is shorter than vec, only uses the first len values *)
+let rvector_length_int_assign: S.rvector -> int -> S.rvector =
     fun vec len ->
     match vec with
     | S.IntVec i -> S.IntVec (array_length_assign i len)
@@ -320,7 +384,7 @@ let vector_length_assign_mems: S.memref -> S.memref -> S.state -> (S.memref * S.
     let len = match C.get_single_rint len_ref state with
     | Some i -> i (* TODO: R fails with length<-c(2,2), but this will merely warning *)
     | None -> failwith "NA invalid in length<-" in
-    let new_rvec = rvec_length_assign data_vec len in
+    let new_rvec = rvector_length_int_assign data_vec len in
     (* Allocate it *)
     S.state_alloc (S.DataObj (S.Vec (new_rvec), S.attrs_empty ())) state
 
@@ -410,7 +474,7 @@ let make_symbolic_vector: S.rvector -> S.rtype -> S.state -> (S.rvector * S.stat
         (S.SymVec (new_name, ty, { path_list = [len] }), state')
     | S.SymVec (n,S.RInt,_) -> let  len = SmtEq (
             smt_len new_name,
-            SmtArrGet (SmtVar n, smt_int_const 0)) in
+            smt_getn n 0) in
         (S.SymVec (new_name, ty, { path_list = [len] }), state')
     | _ -> failwith "Bad call to make_symbolic"
 

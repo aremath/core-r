@@ -136,6 +136,11 @@ let ifelse: smtexpr -> smtexpr -> smtexpr -> smtexpr =
         SmtImp (test, e1),
         SmtImp (SmtNeg test, e2))
 
+(* SMT expression for a[i] *)
+let smt_getn: smtvar -> int -> smtexpr =
+    fun a i ->
+    SmtArrGet (SmtVar a, smt_int_const i)
+
 (* Return a copy of the smtexpr with all instances of var1 replaced with var2 *)
 let rec replace: smtvar -> smtvar -> smtexpr -> smtexpr =
   fun var1 var2 e ->

@@ -1,7 +1,8 @@
 module S = Support
 (* open Support *)
-open Smtsyntax
+(* open Smtsyntax
 open Smttrans
+*)
 
 (* TODO: Array.map2 introduced in 4.03 but for dumb reasons we're in 4.01.
  This is my best shot at conciseness *)
@@ -107,37 +108,6 @@ let na_extend: S.rvector -> int -> S.rvector =
     | S.ComplexVec c -> S.ComplexVec (na_extend_array c len)
     | S.StrVec s -> S.StrVec (na_extend_array s len)
     | S.BoolVec b -> S.BoolVec (na_extend_array b len)
-
-(* Creates a new symbolic vector with the name var *)
-let vec_to_symvec: smtvar -> S.rvector -> S.rvector =
-    fun var vec ->
-    match vec with
-    | S.IntVec i ->
-        (* Enforce Get var i = x[i] for all relevant i *)
-        let gets = Array.to_list (Array.mapi (fun index n -> 
-            SmtEq (
-                SmtArrGet (SmtVar var, smt_int_const index),
-                smt_int_const n)) (resolve_vec i)) in
-        (* len(var) = length(x) *)
-        let len_constraint = smt_len_array var i in
-        SymVec (var, S.RInt, { S.path_list = [len_constraint] @ gets })
-    | S.FloatVec f ->
-        let gets = Array.to_list (Array.mapi (fun index n ->
-            SmtEq (
-                SmtArrGet (SmtVar var, smt_int_const index),
-                smt_float_const n)) (resolve_vec f)) in
-        let len_constraint = smt_len_array var f in
-        SymVec (var, S.RFloat, { S.path_list = [len_constraint] @ gets })
-    | S.ComplexVec c -> failwith "Symbolic complex vectors not implemented"
-    | S.StrVec s -> failwith "Symbolic string vectors not implemented"
-    | S.BoolVec b ->
-        let gets = Array.to_list (Array.mapi (fun index n ->
-            SmtEq (
-                SmtArrGet (SmtVar var, smt_int_const index),
-                smt_rbool_const n)) (resolve_vec b)) in
-        let len_constraint = smt_len_array var b in
-        SymVec (var, S.RBool, { S.path_list = [len_constraint] @ gets })
-    | S.SymVec (name, ty, pcs) -> failwith "Vector is already symbolic"
 
 (* Type conversion *)
 

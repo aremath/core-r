@@ -55,6 +55,7 @@ let copy_rvector: S.state -> S.rvector -> (S.rvector * S.state) =
     | S.SymVec s -> let name, state' = S.name_fresh state in
         (S.SymVec (Sym.copy_symbolic name s), state')
 
+(*
 (* recursively copy the elements of a reference list *)
 let rec copy_ref_array: S.memref list -> S.state -> (S.memref list * S.state) =
     fun mems state ->
@@ -63,6 +64,10 @@ let rec copy_ref_array: S.memref list -> S.state -> (S.memref list * S.state) =
         let (ms, s'') = copy_ref_array tl s' in
         (m'::ms, s'')
     | []        -> ([], state)
+*)
+let rec copy_ref_array: S.memref list -> S.state -> (S.memref list * S.state) =
+    fun mems state ->
+    S.state_map deep_copy mems state
 
 (* copy an associative list of keys to memory references *)
 and copy_alist:'a. ('a * S.memref) list -> S.state -> ('a * S.memref) list * S.state =

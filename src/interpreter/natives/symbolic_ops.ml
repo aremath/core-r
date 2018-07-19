@@ -1,8 +1,40 @@
 module S = Support
+module C = Native_support
 open Smtsyntax
 open Smttrans
 
 type smtvec = (smtvar * S.rtype * S.pathcons)
+
+(* Creates a new symbolic vector with the name var *)
+let vec_to_symvec: smtvar -> S.rvector ->  smtvec =
+    fun var vec ->
+    match vec with
+    | S.IntVec i ->
+        (* Enforce Get var i = x[i] for all relevant i *)
+        let gets = Array.to_list (Array.mapi (fun index n -> 
+            SmtEq (
+                smt_getn var index,
+                smt_int_const n)) (C.resolve_vec i)) in
+        (* len(var) = length(x) *)
+        let len_constraint = smt_len_array var i in
+        (var, S.RInt, { S.path_list = [len_constraint] @ gets })
+    | S.FloatVec f ->
+        let gets = Array.to_list (Array.mapi (fun index n ->
+            SmtEq (
+                smt_getn var index,
+                smt_float_const n)) (C.resolve_vec f)) in
+        let len_constraint = smt_len_array var f in
+        (var, S.RFloat, { S.path_list = [len_constraint] @ gets })
+    | S.ComplexVec c -> failwith "Symbolic complex vectors not implemented"
+    | S.StrVec s -> failwith "Symbolic string vectors not implemented"
+    | S.BoolVec b ->
+        let gets = Array.to_list (Array.mapi (fun index n ->
+            SmtEq (
+                smt_getn var index,
+                smt_rbool_const n)) (C.resolve_vec b)) in
+        let len_constraint = smt_len_array var b in
+        (var, S.RBool, { S.path_list = [len_constraint] @ gets })
+    | S.SymVec (name, ty, pcs) -> failwith "Vector is already symbolic"
 
 let match_tys: S.rtype -> S.rtype -> S.rtype =
     fun ty1 ty2 ->
@@ -34,6 +66,15 @@ let symbolic_concat: smtvar -> smtvec -> smtvec -> smtvec =
             SmtArrGet (SmtVar new_name, (SmtPlus (SmtVar forall_var, smt_len name2))),
             SmtArrGet (SmtVar name2, SmtVar forall_var))) in
     (new_name, new_ty, { S.path_list = [len; a1_elts; a2_elts] })
+
+(*
+let symbolic_concat_list: smtvar -> smtvec list -> smtvec =
+    fun new_name vecs ->
+    let base_ty = match vecs with
+    | (_, ty, _) :: tl -> ty
+    | [] -> failwith "Empty symbolic concat" in
+    let new_ty = List.fold_left (fun (_, ty1, _) (_, ty2, _) -> match_tys ty1 ty2) base_ty vecs in
+*)
 
 (* General binary operations on symbolic vectors. Assumes that the warning
  will not be thrown if their lengths aren't compatible. The operator in this case
@@ -128,9 +169,8 @@ let symbolic_bool_single_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
             smt_int_const 1) in
             (* Constrain value[0] to be the combo of name1[0] and name2[0].*)
             let value = SmtEq (
-                SmtArrGet (SmtVar new_name, (smt_int_const 0)),
-                smt_combo (SmtArrGet (SmtVar name1, (smt_int_const 0)))
-                    (SmtArrGet (SmtVar name2, (smt_int_const 0)))) in
+                smt_getn new_name 0,
+                smt_combo (smt_getn name1 0) (smt_getn name2 0)) in
             (new_name, S.RBool, { S.path_list = [len; value] })
     | _ -> fail ()
 
