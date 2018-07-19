@@ -593,13 +593,13 @@ let rule_IfEval : state -> state list =
 let rule_IfRet : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
-    | Some (ReturnSlot mem, _,
+    | Some (ReturnSlot cond_mem, _,
             BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
-      if not (is_mem_symval mem state.heap) then
+      if not (is_mem_symval cond_mem state.heap) then
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = if is_mem_conc_true mem state.heap then
+                          slot = if is_mem_conc_true cond_mem state.heap then
                                    EvalSlot t_expr
                                  else
                                    EvalSlot f_expr } in
@@ -612,17 +612,19 @@ let rule_IfRet : state -> state list =
 let rule_IfRetSym : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
-    | Some (ReturnSlot mem, _,
+    | Some (ReturnSlot cond_mem, _,
             BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
-      (match heap_find mem state.heap with
+      (match heap_find cond_mem state.heap with
       | Some (DataObj (Vec (SymVec (sid, sty, spath)), attrs)) ->
+          let arr_smt = SmtArrGet (SmtVar sid, SmtConst "0") in
+
           let c_frame_t = { frame_default with
                             env_mem = c_env_mem;
                             slot = EvalSlot t_expr } in
-          let path_t = add_pathcons (SmtVar (smtvar_of_mem mem)) spath in
+          let path_t = add_pathcons arr_smt spath in
           let obj_t = DataObj (Vec (SymVec (sid, sty, path_t)), attrs) in
-          let heap_t = heap_add mem obj_t state.heap in
+          let heap_t = heap_add cond_mem obj_t state.heap in
           let state_t = { state with
                             stack = stack_push c_frame_t c_stack2;
                             heap = heap_t; } in
@@ -630,10 +632,9 @@ let rule_IfRetSym : state -> state list =
           let c_frame_f = { frame_default with
                             env_mem = c_env_mem;
                             slot = EvalSlot f_expr } in
-          let path_f = add_pathcons
-                          (SmtNeg (SmtVar (smtvar_of_mem mem))) spath in
+          let path_f = add_pathcons (SmtNeg arr_smt) spath in
           let obj_f = DataObj (Vec (SymVec (sid, sty, path_f)), attrs) in
-          let heap_f = heap_add mem obj_f state.heap in
+          let heap_f = heap_add cond_mem obj_f state.heap in
           let state_f = { state with
                             stack = stack_push c_frame_f c_stack2;
                             heap = heap_f; } in
@@ -706,10 +707,12 @@ let rule_WhileCondSym : state -> state list =
             c_stack2) ->
       (match heap_find cond_mem state.heap with
       | Some (DataObj (Vec (SymVec (sid, sty, spath)), attrs)) ->
+          let arr_smt = SmtArrGet (SmtVar sid, SmtConst "0") in
+
           let c_frame_t = { frame_default with
                               env_mem = c_env_mem;
                               slot = LoopSlot (cond, body, None) } in
-          let path_t = add_pathcons (SmtVar (smtvar_of_mem cond_mem)) spath in
+          let path_t = add_pathcons arr_smt spath in
           let obj_t = DataObj (Vec (SymVec (sid, sty, path_t)), attrs) in
           let heap_t = heap_add cond_mem obj_t state.heap in
           let state_t = { state with
@@ -719,8 +722,7 @@ let rule_WhileCondSym : state -> state list =
           let c_frame_f = { frame_default with
                               env_mem = c_env_mem;
                               slot = ReturnSlot body_mem } in
-          let path_f = add_pathcons
-                          (SmtNeg (SmtVar (smtvar_of_mem cond_mem))) spath in
+          let path_f = add_pathcons (SmtNeg arr_smt) spath in
           let obj_f = DataObj (Vec (SymVec (sid, sty, path_f)), attrs) in
           let heap_f = heap_add cond_mem obj_f state.heap in
           let state_f = { state with
