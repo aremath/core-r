@@ -97,9 +97,9 @@ let dump_file_linearization : string -> string -> unit =
   fun dir file ->
     let (files, exprs) = linearize_source dir file in
       print_endline "--- files:";
-      map (fun f -> print_string f; print_newline ()) files;
+      iter (fun f -> print_string f; print_newline ()) files;
       print_endline "--- exprs:";
-      map (fun (f, e) -> print_string ("[" ^ (*f ^ *) "] ");
+      iter (fun (f, e) -> print_string ("[" ^ (*f ^ *) "] ");
                          print_endline (string_of_expr e)) exprs;
       print_endline "--- end dump";;
 
