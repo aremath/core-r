@@ -427,7 +427,7 @@ let newline =
   | '\r' '\n'
 
 let comment =
-  '#' ([^ '\n']*)
+  '#' [^ '\n']*
 
 (* spaces, tabs, form feeds *)
 (* TODO: others? *)

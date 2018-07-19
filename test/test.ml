@@ -53,39 +53,40 @@ let test_test = "Proto" >:::
     "foo2" >:: (fun _ -> assert_equal 1 2);
   ]
 
-let test_dir : string = "/mnt/c/Users/Ross/Documents/Research_18/core-r/test"
-(*
-let test_dir : string = "/home/celery/foo/harvard/core-r/test"
-let test_dir : string = "/mnt/c/Users/Ross/Documents/Research_18/core-r/test"
-*)
+let test_dir : unit -> string =
+  fun _ ->
+    (* "/mnt/c/Users/Ross/Documents/Research_18/core-r/test" *)
+    "/home/celery/foo/harvard/core-r/test"
+    (* "/mnt/c/Users/Ross/Documents/Research_18/core-r/test" *)
 
-let test_simple_dir : string = test_dir ^ "/simple"
+let test_simple_dir : unit -> string =
+  fun _ -> test_dir () ^ "/simple"
 
 let test_simple = "Simple" >:::
   [
     "assign.R" >::
-      test_file (test_simple_dir ^ "/assigns.R") 100
+      test_file (test_simple_dir () ^ "/assigns.R") 100
                 (rint_vec_of_ints [4]);
     "dots.R" >::
-      test_file (test_simple_dir ^ "/dots.R") 100
+      test_file (test_simple_dir () ^ "/dots.R") 100
                 (rint_vec_of_ints [8; 9; 10]);
     "gt.R" >::
-      test_file (test_simple_dir ^ "/gt.R") 100
+      test_file (test_simple_dir () ^ "/gt.R") 100
                 (rbool_vec_of_bools [0]);
     "arithmetics.R" >::
-      test_file (test_simple_dir ^ "/arithmetics.R") 100
+      test_file (test_simple_dir () ^ "/arithmetics.R") 100
                 (rint_vec_of_ints [600; 906; 604; 912]);
     "vecs.R" >::
-      test_file (test_simple_dir ^ "/vecs.R") 100
+      test_file (test_simple_dir () ^ "/vecs.R") 100
                 (rint_vec_of_ints [9]);
     "branching.R" >::
-      test_file (test_simple_dir ^ "/branching.R") 100
+      test_file (test_simple_dir () ^ "/branching.R") 100
                 (rint_vec_of_ints [201]);
     "loops.R" >::
-      test_file (test_simple_dir ^ "/loops.R") 500
+      test_file (test_simple_dir () ^ "/loops.R") 500
                 (rint_vec_of_ints [15]);
     "var-dots.R" >::
-      test_file (test_simple_dir ^ "/var-dots.R") 100
+      test_file (test_simple_dir () ^ "/var-dots.R") 100
                 (rint_vec_of_ints [123]);
   ]
 

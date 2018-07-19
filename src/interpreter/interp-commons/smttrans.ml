@@ -206,8 +206,12 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
     match s with
     | SmtSortInt -> SmtSortInt
     | SmtSortFloat -> SmtSortFloat
-    | SmtSortDouble -> SmtSortDouble
     | SmtSortBool -> SmtSortBool
+    | SmtSortBitVec i -> SmtSortBitVec i
+    | SmtSortArray (is, o) ->
+        let is' = List.map (replace_sort var1 var2) is in
+        let o' = replace_sort var1 var2 o in
+          SmtSortArray (is', o')
     | SmtSortApp (vsort, vsorts) ->
         let vsorts' = List.map (replace_sort var1 var2) vsorts in
           if vsort = var1 then SmtSortApp (var2, vsorts')

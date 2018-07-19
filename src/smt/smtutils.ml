@@ -22,13 +22,14 @@ let string_of_list : ('a -> string) -> 'a list -> string =
 let string_of_smtlogic : smtlogic -> string =
   fun logic ->
     match logic with
-    | SmtALL -> "SmtAll"
-    | SmtQFLIA -> "SmtQFLIA"
-    | SmtQFLRA -> "SmtQFLRA"
-    | SmtQFNIA -> "SmtQFNIA"
-    | SmtQFNRA -> "SmtQFNRA"
-    | SmtQFLIRA -> "SmtQFLIRA"
-    | SmtQFNIRA -> "SmtQFNIRA"
+    | SmtLogALL -> "SmtLogAll"
+    | SmtLogQFUF -> "SmtLogQFUF"
+    | SmtLogQFLIA -> "SmtLogQFLIA"
+    | SmtLogQFLRA -> "SmtLogQFLRA"
+    | SmtLogQFNIA -> "SmtLogQFNIA"
+    | SmtLogQFNRA -> "SmtLogQFNRA"
+    | SmtLogQFLIRA -> "SmtLogQFLIRA"
+    | SmtLogQFNIRA -> "SmtLogQFNIRA"
 
 let string_of_smtvar : smtvar -> string =
   fun var -> var
@@ -41,16 +42,26 @@ let rec string_of_smtsort : smtsort -> string =
     match sort with
     | SmtSortInt -> "SmtSortInt"
     | SmtSortFloat -> "SmtSortFloat"
-    | SmtSortDouble -> "SmtSortDouble"
     | SmtSortBool -> "SmtSortBool"
+    | SmtSortBitVec i -> "SmtSortBitVec (" ^ string_of_int i ^ ")"
+    | SmtSortArray (is, o) ->
+        "SmtSortArray (" ^
+          string_of_list_comma (map string_of_smtsort is) ^ "," ^
+          string_of_smtsort o ^ ")"
     | SmtSortApp (v, ss) ->
-        "SmtSortApp (" ^ string_of_smtvar v ^ "," ^
-                         string_of_list_comma (map string_of_smtsort ss) ^ ")"
+        "SmtSortApp (" ^
+          string_of_smtvar v ^ "," ^
+          string_of_list_comma (map string_of_smtsort ss) ^ ")"
 
 let rec string_of_smtexpr : smtexpr -> string =
   fun smtexpr ->
     match smtexpr with
     | SmtVar v -> "Var (" ^ string_of_smtvar v ^ ")"
+    | SmtIndVar (v, is) ->
+        "IndVar (" ^ string_of_smtvar v ^ "," ^
+            string_of_list_comma (map string_of_int is) ^ ")"
+    | SmtQualVar (v, s) ->
+        "QualVar (" ^ string_of_smtvar v ^ "," ^ string_of_smtsort s ^ ")"
     | SmtConst c -> "Const (" ^ string_of_smtconst c ^ ")"
 
     | SmtGt (e1, e2) ->
@@ -164,7 +175,7 @@ let string_of_smtcmd : smtcmd -> string =
 
     | SmtGetValue es ->
       "SmtGetValue (" ^ string_of_list_comma (map string_of_smtexpr es) ^ ")"
-    | SmtGetAssign -> "SmtGetAssign"
+    | SmtGetAssignment -> "SmtGetAssignment"
 
     | SmtPush i -> "SmtPush (" ^ string_of_int i ^ ")"
     | SmtPop i -> "SmtPop (" ^ string_of_int i ^ ")"
