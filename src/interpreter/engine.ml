@@ -198,3 +198,6 @@ let dump_solve_passresult : string -> passresult -> unit =
       ()
 
 
+let inj_symbolics : unit list -> state -> state =
+  fun _ s -> s
+
