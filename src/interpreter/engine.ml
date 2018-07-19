@@ -151,6 +151,8 @@ let solve_state : state -> string =
   fun state ->
     let stmts = smtcmd_list_of_state state in
     let smt2 = smt2_of_smtcmd_list stmts in
+    print_endline "SOLVE STATE:";
+    print_endline smt2;
       run_z3 smt2
 
 let rw_perms : unit -> int =

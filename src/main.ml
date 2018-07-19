@@ -24,6 +24,10 @@ let main () =
 
   let ress = run_n_hist n [state] in
   print_endline (string_of_passresult_list ress);
+  let solns = match List.hd (List.rev ress) with
+  | (complete_list, _, _) -> List.map (fun (_, state) ->
+    solve_state state) complete_list in
+  List.iter (print_endline) solns;
   (*
 
   let res = run_n n [state] in
@@ -38,12 +42,14 @@ let main () =
 
   print_endline "SimpleR: done!";
 
+  (*
   print_endline "\n\n\n*** Z3 TEST ***\n\n\n";
   print_endline (test_z3 ());
 
   print_endline "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$";
 
   dump_solve_state "hello" state;
+  *)
 
   ;;
   

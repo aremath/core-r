@@ -3,7 +3,7 @@ module C = Native_support
 open Smtsyntax
 open Smttrans
 
-(* Creates a new symbolic vector with the name var *)
+(* Creates a new unallocated symbolic vector with the name var *)
 let vec_to_named_sym: smtvar -> S.rvector ->  S.symvec =
     fun var vec ->
     match vec with
@@ -34,11 +34,20 @@ let vec_to_named_sym: smtvar -> S.rvector ->  S.symvec =
         (var, S.RBool, { S.path_list = [len_constraint] @ gets })
     | S.SymVec (name, ty, pcs) -> failwith "Vector is already symbolic"
 
+(* For makes a symbolic rvector from a concrete rvector. Note that
+  the function calling this has responsibility for allocating it. *)
 let vec_to_symvec: S.rvector -> S.state -> (S.rvector * S.state) =
     fun vec state ->
     let name, state' = S.name_fresh state in
     let sy = vec_to_named_sym name vec in
     (S.SymVec sy, state')
+
+let vec_to_sym_alloc: S.rvector -> S.state -> (S.symvec * S.state) =
+    fun vec state ->
+    let name, state' = S.name_fresh state in
+    let sy = vec_to_named_sym name vec in
+    let state'' = S.alloc_implicit_symvec sy state' in
+    sy, state''
 
 let match_tys: S.rtype -> S.rtype -> S.rtype =
     fun ty1 ty2 ->

@@ -35,6 +35,7 @@ let rvector_length_vec: S.rvector -> S.state -> S.rvector * S.state =
         let value = SmtEq (
             smt_getn new_name 0,
             smt_len n) in
+        (* Can use regular constructor because it will be allocated by rvector_length_mem *)
         let vec = S.SymVec (new_name, S.RInt, { S.path_list = [len; value] }) in
         vec, state'
 
@@ -72,13 +73,15 @@ let mk_empty_floatvec: unit -> S.rvector = fun _ -> S.FloatVec (Array.make 0 (So
 let mk_empty_complexvec: unit -> S.rvector = fun _ -> S.ComplexVec (Array.make 0 (Some Complex.zero))
 let mk_empty_strvec: unit -> S.rvector = fun _ -> S.StrVec (Array.make 0 (Some ""))
 let mk_empty_boolvec: unit -> S.rvector = fun _ -> S.BoolVec (Array.make 0 (Some 0))
-let mk_empty_symvec: smtvar -> S.rtype -> S.rvector =
-    fun name ty ->
+let mk_empty_symvec: S.state -> S.rtype -> S.rvector * S.state =
+    fun state ty ->
+    let name, state' = S.name_fresh state in
     (* Length zero *)
     let len = SmtEq (
         smt_len name,
         smt_int_const 0) in
-    S.SymVec (name, ty, { S.path_list = [len] })
+    (* Allocate it *)
+    S.mk_implicit_symrvec (name, ty, { S.path_list = [len] }) state'
 
 (* Concatenate two vectors - For now does not do type coercion. *)
 let concat_rvectors: S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
@@ -91,19 +94,17 @@ let concat_rvectors: S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) 
     | (S.BoolVec b1, S.BoolVec b2) -> (S.BoolVec (Array.concat [b1;b2]), state)
     (* In the case where they're both symbolic, no conversion is necessary *)
     | (S.SymVec sy1, S.SymVec sy2) -> let name, state' = S.name_fresh state in
-        let symconcat = S.SymVec (Sym.symbolic_concat name sy1 sy2) in
-        (symconcat, state')
+        let symconcat, state'' = S.mk_implicit_symrvec (Sym.symbolic_concat name sy1 sy2) state' in
+        (symconcat, state'')
     (* If they're not both symbolic, we should convert one *)
-    | (S.SymVec sy1, vec) -> let name1, state' = S.name_fresh state in
-        let name2, state'' = S.name_fresh state' in
-        let sy2 = Sym.vec_to_named_sym name1 vec in
-        let symconcat = S.SymVec (Sym.symbolic_concat name2 sy1 sy2) in
-        (symconcat, state'')
-    | (vec, S.SymVec sy2) -> let name1, state' = S.name_fresh state in
-        let name2, state'' = S.name_fresh state' in
-        let sy1 = Sym.vec_to_named_sym name1 vec in
-        let symconcat = S.SymVec (Sym.symbolic_concat name2 sy1 sy2) in
-        (symconcat, state'')
+    | (S.SymVec sy1, vec) -> let concat_name, state' = S.name_fresh state in
+        let sy2, state'' = Sym.vec_to_sym_alloc vec state' in
+        let symconcat, state''' = S.mk_implicit_symrvec (Sym.symbolic_concat concat_name sy1 sy2) state'' in
+        (symconcat, state''')
+    | (vec, S.SymVec sy2) -> let concat_name, state' = S.name_fresh state in
+        let sy1, state'' = Sym.vec_to_sym_alloc vec state' in
+        let symconcat, state''' = S.mk_implicit_symrvec (Sym.symbolic_concat concat_name sy1 sy2) state'' in
+        (symconcat, state''')
     | _ -> failwith "Can't concatenate incompatible vectors"
 
 (* Folds rvectors together with concat *)
@@ -120,9 +121,11 @@ let fold_rvectors: S.rvector list -> S.state -> (S.rvector * S.state) =
         | S.StrVec _ -> S.state_fold_left concat_rvectors (mk_empty_strvec ()) vlist state
         | S.BoolVec _ -> S.state_fold_left concat_rvectors (mk_empty_boolvec ()) vlist state
         | S.SymVec (_, t, _) -> let name, state' = S.name_fresh state in
-            S.state_fold_left concat_rvectors (mk_empty_symvec name t) vlist state'
+            let empty, state'' = mk_empty_symvec state t in
+            S.state_fold_left concat_rvectors (empty) vlist state'
         end
 
+(* TODO: because fold_rvectors allocates, this is a double allocate *)
 let alloc_fold_vectors: S.rvector list -> S.state -> (S.memref * S.state) =
     fun vecs state ->
     match vecs with
@@ -228,14 +231,14 @@ let mk_range_vals: smtvar -> smtexpr -> smtexpr -> smtexpr =
         (SmtSub (y0, SmtVar forall_var))
         (SmtPlus (y0, SmtVar forall_var)))
 
-(* Helper for range: builds an rvector for x:y based on expressions for x[0] and y[0] *)
+(* Helper for range: creates an rvector for x:y based on expressions for x[0] and y[0].
+  Does not allocated because range_mems will allocate it. *)
 let mk_range_vec: S.rtype -> smtexpr -> smtexpr -> S.state -> (S.rvector * S.state) =
     fun ty x0 y0 state ->
     let name, state' = S.name_fresh state in
     let len = mk_range_len name x0 y0 in
     let vals = mk_range_vals name x0 y0 in
-    let vec = S.SymVec (name, ty, { S.path_list = [len;vals] }) in
-    (vec, state')
+    (S.SymVec (name, ty, { S.path_list = [len;vals] }), state')
 
 (* Handles 1:5 and 5:-5, etc, as well as symbolic ex. x:3 *)
 let range_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
@@ -317,10 +320,10 @@ let vector_bop_mems: (S.rvector -> S.rvector -> S.state -> (S.rvector * S.state)
     let rhs = C.dereference_rvector rhs_ref state in
     let (true_rhs, true_lhs), state' = match lhs, rhs with
     | S.SymVec sy1, S.SymVec sy2 -> (S.SymVec sy1, S.SymVec sy2), state
-    | S.SymVec sy1, vec2 -> let syv2, state' = Sym.vec_to_symvec vec2 state in
-        (S.SymVec sy1, syv2), state'
-    | vec1, S.SymVec sy2 -> let syv1, state' = Sym.vec_to_symvec vec1 state in
-        (syv1, S.SymVec sy2), state'
+    | S.SymVec sy1, vec2 -> let sy2, state' = (Sym.vec_to_sym_alloc vec2 state) in
+        (S.SymVec sy1, S.SymVec sy2), state'
+    | vec1, S.SymVec sy2 -> let sy1, state' = (Sym.vec_to_sym_alloc vec1 state) in
+        (S.SymVec sy1, S.SymVec sy2), state'
     (* If they're concrete, multiply out the shorter rvector, if appropriate *)
     | vec1, vec2 -> (compatify_lengths vec1 vec2), state in
     (* Do the operation on the (possibly wrapped) vectors *)
@@ -474,7 +477,8 @@ let vector_dimnames_assign_mems: S.memref -> S.memref -> S.state -> (S.memref * 
     end
 
 (* Create a symbolic vector whose length is constrained.
-  Can only be used with symbolic int vectors or actual int vectors *)
+  Can only be used with symbolic int vectors or actual int vectors.
+  Does not allocate because make_symbolic_mems will allocate. *)
 let make_symbolic_vector: S.rvector -> S.rtype -> S.state -> (S.rvector * S.state) =
     fun vec ty state ->
     let new_name, state' = S.name_fresh state in

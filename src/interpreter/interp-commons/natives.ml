@@ -117,7 +117,7 @@ let nw_fun_vec_sym: (param list * expr) =
     ([Param (id_of_string "length"); Param (id_of_string "type")],
     NativeLambdaApp
         (native_vector_symbolic_id,
-        [id_of_string "vector1"; id_of_string "vector2"]))
+        [id_of_string "length"; id_of_string "type"]))
 
 
 (* Pairs to inject with *)

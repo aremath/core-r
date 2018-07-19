@@ -300,13 +300,13 @@ let id_of_string : string -> ident =
 let id_fresh : state -> ident * state =
   fun state ->
     let count2 = state.fresh_count + 1 in
-    let name = rstring_of_string ("fs$" ^ string_of_int count2) in
+    let name = rstring_of_string ("fs" ^ string_of_int count2) in
       (id_of_rstring name, { state with fresh_count = count2 })
 
 let name_fresh: state -> string * state =
     fun state ->
     let count2 = state.fresh_count + 1 in
-    let name = "fs$" ^ (string_of_int count2) in
+    let name = "fs" ^ (string_of_int count2) in
     (name, {state with fresh_count = count2})
 
 (* List.map for states, but doing the operation so that the new state produced from the first
@@ -664,13 +664,34 @@ let state_default : state =
     pred_unique = 0;
     unique = 1 }
     
-(* Bindings for e.g. heap_alloc that work on states. *)
+(* Bindings for e.g. heap_alloc that work on states. The state alloc-er will
+  automatically register symbolic values with its sym_mems list. *)
 let state_alloc : heapobj -> state -> memref * state =
     fun hobj state ->
-    let memref, heap = heap_alloc hobj state.heap in
-    (memref, { state with heap = heap })
+    match hobj with
+    | DataObj (Vec (SymVec _), _) as symobj -> let memref, heap = heap_alloc symobj state.heap in
+        (memref, { state with heap = heap; sym_mems = memref :: state.sym_mems })
+    | _ -> let memref, heap = heap_alloc hobj state.heap in
+        (memref, { state with heap = heap })
 
 let state_find : memref -> state -> heapobj option =
     fun mem state ->
     heap_find mem state.heap
+
+(* Allocates a symbolic vector and adds its mem address to the list of 
+  symbolic mem addresses. Note that this returns an rvector, and the memory address
+  of the new symbolic vector is implicitly dropped. When doing this, there's no way
+  to refer back to the symbolic vector that this creates. This function is here for 
+  creating SymVecs that are used implicitly in function calls, and are never returned.
+  Other symvecs might refer to this vec by name via the path constraints, but it can't
+  otherwise be accessed. *)
+let alloc_implicit_symvec: symvec -> state -> state =
+    fun sy state ->
+    let _, state' = state_alloc (DataObj (Vec (SymVec sy), attrs_empty ())) state in
+    state'
+
+let mk_implicit_symrvec: symvec -> state -> rvector * state =
+    fun sy state ->
+    let state' = alloc_implicit_symvec sy state in
+    (SymVec sy, state')
 
