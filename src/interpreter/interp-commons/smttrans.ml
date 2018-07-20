@@ -79,9 +79,15 @@ let smt_rbool_const: int -> smtexpr =
     | 1 -> SmtConst "true"
     | _ -> failwith "Non-boolean bool"
 
+(*
 (* Refer to the length of v *)
 let smt_len: smtvar -> smtexpr =
     fun v -> SmtFunApp ("len", [SmtVar v])
+*)
+
+(* Refer to the length of v *)
+let smt_len: smtvar -> smtexpr =
+    fun v -> SmtVar (v ^ "_len")
 
 (* Assert that the length of the symbolic array var is
  equal to the actual length of a *)
