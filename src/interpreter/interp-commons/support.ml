@@ -80,7 +80,8 @@ type pathcons =
   { path_list : smtexpr list }
 
 (* Named type for symbolic definition *)
-type symvec = (smtvar * rtype * pathcons * symdepends)
+type symdef = (smtvar * rtype * pathcons)
+type symvec = (symdef * symdepends)
 
 and symdepends =
   | NoDepends
@@ -704,25 +705,4 @@ let state_alloc : heapobj -> state -> memref * state =
 let state_find : memref -> state -> heapobj option =
     fun mem state ->
     heap_find mem state.heap
-
-(* Allocates a symbolic vector and adds its mem address to the list of 
-  symbolic mem addresses. Note that this returns an rvector, and the
-  memory address of the new symbolic vector is implicitly dropped.
-  When doing this, there's no way
-  to refer back to the symbolic vector that this creates.
-  This function is here for 
-  creating SymVecs that are used implicitly in function calls,
-  and are never returned.
-  Other symvecs might refer to this vec by name via the path constraints,
-  but it can't otherwise be accessed. *)
-let alloc_implicit_symvec: symvec -> state -> state =
-  fun sy state ->
-    let obj = DataObj (Vec (SymVec sy), attrs_empty ()) in
-    let (_, state') = state_alloc obj state in
-      state'
-
-let mk_implicit_symrvec: symvec -> state -> rvector * state =
-  fun sy state ->
-    let state' = alloc_implicit_symvec sy state in
-    (SymVec sy, state')
 

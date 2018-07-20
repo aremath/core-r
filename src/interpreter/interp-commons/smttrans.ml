@@ -227,7 +227,7 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
 let get_mem_pathcons_list : memref -> heap -> symvec list =
   fun mem heap ->
     match heap_find mem heap with
-    | Some (DataObj (Vec (SymVec (sid, rty, pc, dep)), _)) -> [(sid, rty, pc, dep)]
+    | Some (DataObj (Vec (SymVec ((sid, rty, pc), dep)), _)) -> [((sid, rty, pc), dep)]
     | _ -> []
 
 let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
@@ -236,7 +236,7 @@ let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
 
 (* Assert each path constraint for a symvec and its implicit dependencies *)
 let rec smtcmd_of_symvec : symvec -> smtcmd list =
-    fun (_, _, pc, deps) ->
+    fun ((_, _, pc), deps) ->
     let dep_pathcons = match deps with
     | NoDepends -> []
     | Depends l -> concat (map smtcmd_of_symvec l) in
@@ -252,7 +252,7 @@ let smtsort_of_rtype : rtype -> smtsort =
 
 (* Create the declaration for a symvec and its implicit dependencies *)
 let rec smtdecl_of_symvec: symvec -> smtcmd list =
-  fun (var, ty, _, deps) ->
+  fun ((var, ty, _), deps) ->
     let dep_decls = match deps with
     | NoDepends -> []
     | Depends l -> concat (map smtdecl_of_symvec l) in
