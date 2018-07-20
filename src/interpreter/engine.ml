@@ -159,11 +159,22 @@ let solve_state : state -> smtprog =
   fun state ->
     let stmts = smtcmd_list_of_state state in
     let smt2 = smt2_of_smtcmd_list stmts in
+    (*
     let _ = print_endline "querying z3 with:" in
     let _ = print_endline smt2 in
+    *)
     let res = run_z3 smt2 in
+    (*
     let _ = print_endline "z3 result:" in
     let _ = print_endline (string_of_smtprog res) in
+    *)
+      res
+
+let solve_stupid_state : state -> string =
+  fun state ->
+    let stmts = smtcmd_list_of_state state in
+    let smt2 = smt2_of_smtcmd_list stmts in
+    let res = run_stupid_z3 smt2 in
       res
 
 let rw_perms : unit -> int =
@@ -184,10 +195,15 @@ let dump_solve_state : string -> state -> unit =
       ()
 *)
 
-let solve_comps_passresult : passresult -> smtprog list =
+let solve_comps_passresult : passresult -> (rule list * state * smtprog) list =
   fun pass ->
-    let progs = map (fun (_, s) -> solve_state s) pass.pass_comps in
-      progs
+    map (fun (rs, s) -> (rs, s, solve_state s)) pass.pass_comps
+
+let solve_stupid_comps_passresult :
+  passresult -> (rule list * state * string) list =
+  fun pass ->
+    map (fun (rs, s) -> (rs, s, solve_stupid_state s)) pass.pass_comps
+
 
 
 (*

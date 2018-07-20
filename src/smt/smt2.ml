@@ -40,11 +40,15 @@ let rec smt2_of_smtexpr : smtexpr -> smt2 =
   fun smtexpr ->
     match smtexpr with
     | SmtVar v -> smt2_of_smtvar v
-    | SmtIndVar (v, is) ->
+    | SmtIndVarInt (v, is) ->
         "(_ " ^ smt2_of_smtvar v ^ " " ^
           (String.concat " " (map string_of_int is)) ^ ")"
-    | SmtQualVar (v, s) ->
+    | SmtIndVarVar (v1, v2) ->
+        "(_ " ^ smt2_of_smtvar v1 ^ " " ^ smt2_of_smtvar v2 ^ ")"
+    | SmtQualVarSort (v, s) ->
         "(as " ^ smt2_of_smtvar v ^ " " ^ smt2_of_smtsort s ^ ")"
+    | SmtQualVarVar (v1, v2) ->
+        "(as " ^ smt2_of_smtvar v1 ^ " " ^ smt2_of_smtvar v2 ^ ")"
     | SmtConst c -> smt2_of_smtconst c
 
     | SmtGt (e1, e2) ->
@@ -120,7 +124,7 @@ let rec smt2_of_smtexpr : smtexpr -> smt2 =
                     smt2_of_smtsort s ^ ")") bs)) ^ ") " ^
           smt2_of_smtexpr e ^ ")"
 
-let smt2_of_smtcmd : smtcmd -> smt2 =
+let rec smt2_of_smtcmd : smtcmd -> smt2 =
   fun stmt ->
     match stmt with
     | SmtSetLogic l ->
@@ -177,6 +181,8 @@ let smt2_of_smtcmd : smtcmd -> smt2 =
 
     | SmtSat -> "sat"
     | SmtUnsat -> "unsat"
+    | SmtModel cs ->
+        "(model " ^ (String.concat " " (map smt2_of_smtcmd cs)) ^ ")"
 
 let smt2_of_smtcmd_list : smtcmd list -> smt2 =
   fun stmts ->

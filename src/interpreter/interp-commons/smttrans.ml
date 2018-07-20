@@ -253,6 +253,12 @@ let custom_decls : unit -> smtcmd list =
                 [SmtSortArray ([SmtSortInt], SmtSortInt)],
                 SmtSortInt)]
 
+let custom_post : unit -> smtcmd list =
+  fun _ ->
+    [SmtCheckSat;
+     SmtGetModel;
+     SmtExit]
+
 
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
@@ -262,5 +268,5 @@ let smtcmd_list_of_state : state -> smtcmd list =
     let decls = fold_left (@) [] (map (fun (s, t, _) -> smtdecl_of_symvec s t) paths) in
     let asserts = concat (map (fun (_, _, p) ->
                             smtcmd_list_of_pathcons p) paths) in
-      custom_decls () @ decls @ asserts
+      custom_decls () @ decls @ asserts @ custom_post ()
 

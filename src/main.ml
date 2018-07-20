@@ -24,7 +24,21 @@ let main () =
             int_of_string Sys.argv.(2) in
   let ress = run_n_hist n [state] in
 
+  (*
   let _ = solve_comps_passresult (hd (rev ress)) in
+  *)
+  let solves = solve_stupid_comps_passresult (hd (rev ress)) in
+  iter (fun (rs, s, z3dump) ->
+          begin
+            print_endline "******************* START *******************";
+            print_endline (string_of_rule_list rs);
+            print_endline (string_of_state s);
+            print_endline "Z3 RESULT:";
+            print_endline z3dump;
+            print_endline "******************* _END_ *******************";
+            print_endline "\n\n\n";
+          end
+        ) solves;
 
 
   (* print_endline (string_of_passresult_list ress); *)

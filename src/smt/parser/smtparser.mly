@@ -35,7 +35,7 @@
 %token PUSH POP
 %token GET_OPTION SET_OPTION
 %token GET_INFO SET_INFO
-%token EXIT SAT UNSAT
+%token EXIT SAT UNSAT MODEL
 
 
 %start prog
@@ -74,8 +74,11 @@ sort:
   | SORT_FLOAT { SmtSortFloat }
   | SORT_BOOL  { SmtSortBool }
   | LPAREN UNDERSCORE SORT_BITVEC INT_CONST RPAREN { SmtSortBitVec ($4) }
+  | UNDERSCORE SORT_BITVEC INT_CONST               { SmtSortBitVec ($3) }
   | LPAREN SORT_ARRAY sorts sort RPAREN            { SmtSortArray ($3, $4) }
+  | SORT_ARRAY sorts sort                          { SmtSortArray ($2, $3) }
   | LPAREN SYMBOL sorts RPAREN                     { SmtSortApp ($2, $3) }
+  | SYMBOL sorts                                   { SmtSortApp ($1, $2) }
 
 sortq:
   |            { [] }
@@ -87,8 +90,10 @@ sorts:
 
 ident:
   | SYMBOL                               { SmtVar ($1) }
-  | LPAREN UNDERSCORE SYMBOL nums RPAREN { SmtIndVar ($3, $4) }
-  | LPAREN AS SYMBOL sort RPAREN         { SmtQualVar ($3, $4) }
+  | LPAREN UNDERSCORE SYMBOL SYMBOL      { SmtIndVarVar ($3, $4) }
+  | LPAREN UNDERSCORE SYMBOL nums RPAREN { SmtIndVarInt ($3, $4) }
+  | LPAREN AS SYMBOL SYMBOL RPAREN       { SmtQualVarVar ($3, $4) }
+  | LPAREN AS SYMBOL sort RPAREN         { SmtQualVarSort ($3, $4) }
 
 symbsort:
   | LPAREN SYMBOL sort RPAREN { ($2, $3) }
@@ -167,9 +172,19 @@ cmd:
   | LPAREN UNSAT RPAREN { SmtUnsat }
   | UNSAT               { SmtUnsat }
 
+  | LPAREN MODEL cmdq RPAREN  { SmtModel ($3) }
+
+cmdq:
+  |          { [] }
+  | cmd cmdq { $1 :: $2 }
+
+cmds:
+  | cmd      { [$1] }
+  | cmd cmdq { $1 :: $2 }
+
 prog:
     END_OF_INPUT { [] }
-  | NEWLINE prog { $2 }
+  | cmd          { [$1] }
   | cmd prog     { $1 :: $2 }
   ;
 

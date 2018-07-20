@@ -1,6 +1,7 @@
 
 open Smtsyntax
 open Smt2
+open Smtutils
 
 open Filename
 open Sys
@@ -13,14 +14,19 @@ let tmp_file : unit -> string =
 
 let z3_cmd_of_smt2 : smt2 -> string =
   fun smt2 ->
-    "z3 -smt2 -in <<" ^
+    "z3 -smt2 -in >" ^ tmp_file () ^ " <<" ^
     z3_eof () ^ "\n" ^
     string_of_smt2 smt2 ^ "\n" ^
-    z3_eof () ^ "\n"
+    z3_eof () ^ " "
 
 let run_z3 : smt2 -> smtprog =
   fun smt2 ->
-    let cmd = (z3_cmd_of_smt2 smt2) ^ " > " ^ tmp_file () in
+    let cmd = z3_cmd_of_smt2 smt2 in
+    (*
+    let _ = print_endline "about to run command:" in
+    let _ = print_endline cmd in
+    let _ = print_endline "..........................." in
+    *)
     let _ = command cmd in
     let tmp_in = open_in (tmp_file ()) in
     let lexbuf = Lexing.from_channel tmp_in in
@@ -40,6 +46,28 @@ let run_z3 : smt2 -> smtprog =
         end
         in
       let _ = close_in tmp_in in
+      (*
+      let _ = print_endline "we ran here" in
+      let _ = print_endline (string_of_smtprog prog) in
+      let _ = print_endline "^^^^^^^^^^^^^^^^^^^^^" in
+      *)
         prog
+
+let run_stupid_z3 : smt2 -> string =
+  fun smt2 ->
+    let cmd = z3_cmd_of_smt2 smt2 in
+    let _ = command cmd in
+    let tmp_in = open_in (tmp_file ()) in
+    let lines = ref [] in
+    let _ =
+      try
+        while true do
+          let line = input_line tmp_in in
+          lines := !lines @ [line]
+        done
+      with _ ->
+          close_in tmp_in; in
+      String.concat "\n" !lines
+
 
 

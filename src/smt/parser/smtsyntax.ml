@@ -25,8 +25,10 @@ type smtsort =
 
 type smtexpr =
   | SmtVar of smtvar
-  | SmtIndVar of smtvar * int list
-  | SmtQualVar of smtvar * smtsort
+  | SmtIndVarVar of smtvar * smtvar
+  | SmtIndVarInt of smtvar * int list
+  | SmtQualVarSort of smtvar * smtsort
+  | SmtQualVarVar of smtvar * smtvar
   | SmtConst of smtconst
 
   (* Equality comparison predicates *)
@@ -110,6 +112,7 @@ type smtcmd =
   (* Responses *)
   | SmtSat
   | SmtUnsat
+  | SmtModel of smtcmd list
 
 type smtprog = smtcmd list
 

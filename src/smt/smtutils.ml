@@ -57,11 +57,15 @@ let rec string_of_smtexpr : smtexpr -> string =
   fun smtexpr ->
     match smtexpr with
     | SmtVar v -> "Var (" ^ string_of_smtvar v ^ ")"
-    | SmtIndVar (v, is) ->
-        "IndVar (" ^ string_of_smtvar v ^ "," ^
+    | SmtIndVarVar (v1, v2) ->
+        "IndVarVar (" ^ string_of_smtvar v1 ^ " " ^ string_of_smtvar v2 ^ ")"
+    | SmtIndVarInt (v, is) ->
+        "IndVarInt (" ^ string_of_smtvar v ^ "," ^
             string_of_list_comma (map string_of_int is) ^ ")"
-    | SmtQualVar (v, s) ->
-        "QualVar (" ^ string_of_smtvar v ^ "," ^ string_of_smtsort s ^ ")"
+    | SmtQualVarSort (v, s) ->
+        "QualVarSort (" ^ string_of_smtvar v ^ "," ^ string_of_smtsort s ^ ")"
+    | SmtQualVarVar (v1, v2) ->
+        "QualVarVar (" ^ string_of_smtvar v1 ^ "," ^ string_of_smtvar v2 ^ ")"
     | SmtConst c -> "Const (" ^ string_of_smtconst c ^ ")"
 
     | SmtGt (e1, e2) ->
@@ -135,7 +139,7 @@ let rec string_of_smtexpr : smtexpr -> string =
                           (string_of_smtvar, string_of_smtsort)) bs) ^ "," ^
                      string_of_smtexpr e ^ ")"
 
-let string_of_smtcmd : smtcmd -> string =
+let rec string_of_smtcmd : smtcmd -> string =
   fun stmt ->
     match stmt with
     | SmtSetLogic l ->
@@ -194,6 +198,9 @@ let string_of_smtcmd : smtcmd -> string =
     | SmtExit -> "SmtExit"
     | SmtSat -> "SmtSat"
     | SmtUnsat -> "SmtUnsat"
+    
+    | SmtModel cs ->
+        "SmtModel (" ^ (String.concat " " (map string_of_smtcmd cs)) ^ ")"
 
 let string_of_smtprog : smtprog -> string =
   fun prog ->

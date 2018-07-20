@@ -132,6 +132,7 @@ rule tokenize context = parse
   | "exit"  { EXIT }
   | "unsat" { UNSAT }
   | "sat"   { SAT }
+  | "model" { MODEL }
 
   | binary   { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
   | hex      { INT_CONST (int_of_string (Lexing.lexeme lexbuf)) }
@@ -144,7 +145,7 @@ rule tokenize context = parse
 
   | comment    { tokenize context lexbuf }
   | whitespace { tokenize context lexbuf }
-  | newline    { incr_line_count lexbuf; NEWLINE }
+  | newline    { incr_line_count lexbuf; tokenize context lexbuf }
   | eof        { END_OF_INPUT }
 
 
