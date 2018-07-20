@@ -28,6 +28,7 @@ let main () =
   let _ = solve_comps_passresult (hd (rev ress)) in
   *)
   let solves = solve_stupid_comps_passresult (hd (rev ress)) in
+  print_endline ("Total of " ^ string_of_int (length solves) ^ " complete states");
   iter (fun (rs, s, z3dump) ->
           begin
             print_endline "******************* START *******************";
