@@ -63,7 +63,7 @@ let string_of_rtype : rtype -> string =
     | RComplex -> "RComplex"
     | RString -> "RString"
 
-let string_of_symvec : symvec -> string =
+let rec string_of_symvec : symvec -> string =
   fun (v, t, p, ds) ->
     "SymVec (" ^ string_of_smtvar v ^ "," ^
                  string_of_rtype t ^ "," ^
@@ -71,8 +71,10 @@ let string_of_symvec : symvec -> string =
                  string_of_symdepends ds ^ ")"
 
 and string_of_symdepends : symdepends -> string =
-  fun syms ->
-    string_of_list_comma (map string_of_symvec syms)
+  fun deps ->
+    match deps with
+    | NoDepends -> "NoDepends"
+    | Depends syms -> string_of_list_comma (map string_of_symvec syms)
 
 let string_of_rvector: rvector -> string =
     function
