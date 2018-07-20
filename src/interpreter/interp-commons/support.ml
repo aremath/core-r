@@ -81,9 +81,10 @@ type pathcons =
 
 (* Named type for symbolic definition *)
 type symvec = (smtvar * rtype * pathcons * symdepends)
+
 and symdepends =
-    | NoDepends
-    | Depends of symvec list
+  | NoDepends
+  | Depends of symvec list
 
 (* Values *)
 type rvector =
