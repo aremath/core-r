@@ -1,5 +1,7 @@
 
 open Syntax
+open Smtsyntax
+open Smtutils
 open Support
 open Rules
 open Native_calls
@@ -7,7 +9,6 @@ open Loader
 open Smttrans
 open Smt2
 open Solver
-open Smt
 
 open Stepper
 
@@ -48,11 +49,11 @@ let is_state_complete : state -> bool =
 let is_state_not_complete : state -> bool =
   fun state -> not (is_state_complete state)
 
-
 let run_pass : (rule list * state) list -> passresult =
   fun states ->
     let comps = filter (fun (a, b) -> is_state_complete b) states in
     let incomps = filter (fun (a, b) -> is_state_not_complete b) states in
+    let (comps2, errs2, incomps2) =
       fold_left
         (fun (c, e, i) (hist, st) ->
           match step_rule st with
@@ -79,7 +80,11 @@ let run_pass : (rule list * state) list -> passresult =
               let ncsts = filter (fun (r, s) -> is_state_not_complete s)
                                   expanded in
                 (csts @ c, e, ncsts @ i))
-        (comps, [], []) incomps
+        (comps, [], []) incomps in
+      { (fresh_passresult ()) with
+          pass_comps = comps2;
+          pass_errs = errs2;
+          pass_incomps = incomps2 }
 
 (* Different versions of run functions for debugging, etc *)
 
@@ -96,21 +101,24 @@ let run_n : int -> state list -> passresult =
             begin ticks := -1; end
           else
             begin
-              let (comps2, errs2, incomps2) = run_pass !incomps in
-              comps := comps2 @ !comps;
-              errs := errs2 @ !errs;
-              incomps := incomps2;
+              let pr2 = run_pass !incomps in
+              comps := pr2.pass_comps @ !comps;
+              errs := pr2.pass_errs @ !errs;
+              incomps := pr2.pass_incomps;
               ticks := !ticks - 1
             end
         done;
-        (!comps, !errs, !incomps)
+        { (fresh_passresult ()) with
+            pass_comps = !comps;
+            pass_errs = !errs;
+            pass_incomps = !incomps }
       end
 
 let run_n_hist : int -> state list -> passresult list =
   fun n inits ->
     let raws = map (fun s -> ([], s)) inits in
     let ticks = ref n in
-    let hist = ref [([], [], raws)] in
+    let hist = ref [{ (fresh_passresult ()) with pass_incomps = raws }] in
     let incomps = ref raws in
       begin
         while (!ticks > 0) do
@@ -118,9 +126,9 @@ let run_n_hist : int -> state list -> passresult list =
             begin ticks := -1; end
           else
             begin
-              let (comps2, errs2, incomps2) = run_pass !incomps in
-              hist := !hist @ [(comps2, errs2, incomps2)];
-              incomps := incomps2;
+              let pr2 = run_pass !incomps in
+              hist := !hist @ [pr2];
+              incomps := pr2.pass_incomps;
               ticks := !ticks - 1;
             end
         done;
@@ -130,8 +138,8 @@ let run_n_hist : int -> state list -> passresult list =
 let run_n_first_result :
   int -> state list ->  (value * attributes) option =
   fun n inits ->
-    let (comps, errs, incomps) = run_n n inits in
-    let ress = map (fun (_, s) -> get_state_result s) comps in
+    let pr = run_n n inits in
+    let ress = map (fun (_, s) -> get_state_result s) pr.pass_comps in
       match ress with
       | (res :: ress_tail) ->
           begin
@@ -147,20 +155,25 @@ let load_run_n_first_result : string -> int -> (value * attributes) option =
     let state = load_file_guess file in
       run_n_first_result n [state]
 
-let solve_state : state -> string =
+let solve_state : state -> smtprog =
   fun state ->
     let stmts = smtcmd_list_of_state state in
     let smt2 = smt2_of_smtcmd_list stmts in
-    print_endline "SOLVE STATE:";
-    print_endline smt2;
-      run_z3 smt2
+    let _ = print_endline "querying z3 with:" in
+    let _ = print_endline smt2 in
+    let res = run_z3 smt2 in
+    let _ = print_endline "z3 result:" in
+    let _ = print_endline (string_of_smtprog res) in
+      res
 
 let rw_perms : unit -> int =
   fun _ -> 0o666
 
+(*
 (* Assumes a canonicalized directory *)
 let dump_solve_state : string -> state -> unit =
   fun dir state ->
+    let smtprog = solve_state state in
     let res = solve_state state in
     (* let _ = if file_exists dir then mkdir dir (rw_perms ()) in *)
     let _ = if file_exists dir then command ("mkdir " ^ dir) else -1 in
@@ -169,7 +182,15 @@ let dump_solve_state : string -> state -> unit =
     let _ = fprintf dump_out "%s" res in
     let _ = close_out dump_out in
       ()
+*)
 
+let solve_comps_passresult : passresult -> smtprog list =
+  fun pass ->
+    let progs = map (fun (_, s) -> solve_state s) pass.pass_comps in
+      progs
+
+
+(*
 (* Assumes a canonicalized directory *)
 let dump_solve_passresult : string -> passresult -> unit =
   fun dir (comps, errs, incomps) ->
@@ -199,6 +220,7 @@ let dump_solve_passresult : string -> passresult -> unit =
     let _ = map (fun (_, s) -> dump_solve_state incomps_dir s) incomps in
       ()
 
+*)
 
 let inj_symbolics : unit list -> state -> state =
   fun _ s -> s

@@ -11,7 +11,16 @@ Plugins: META (0.4), DevFiles (0.4)
 Executable "main"
   Path: src
   MainIs: main.ml
-  BuildDepends: language, interpreter, loader, natives, smt
+  BuildDepends: smt, language, interpreter, loader, natives
+
+Library "smt-parser"
+  Path: src/smt/parser
+  Modules: Smtparser, Smtsyntax
+
+Library "smt"
+  Path: src/smt
+  Modules: Smt2, Solver, Smtutils, Ismt
+  BuildDepends: smt-parser
 
 Library "parser"
   Path: src/parser
@@ -21,10 +30,6 @@ Executable "absyn_generator"
   Path: src/parser
   MainIs: absyn_generator.ml
   BuildDepends: parser
-
-Library "smt"
-  Path: src/smt
-  Modules: Smtsyntax, Smt2, Solver, Smtparser, Smtutils, Smt
 
 Library "language"
   Path: src/language
@@ -39,22 +44,22 @@ Library "natives"
   Path: src/interpreter/natives
   Modules: Constants, Copy, Vector, Native_support, Subscript,
            Native_calls, Arithmetic, Symbolic_ops
-  BuildDepends: language, interp-commons
+  BuildDepends: interp-commons
 
 Library "loader"
   Path: src/interpreter/preprocess
   Modules: Loader, Rast_to_language
-  BuildDepends: language, parser, natives
+  BuildDepends: parser, interp-commons, natives
 
 Library "stepper"
   Path: src/interpreter/stepper
   Modules: Stepper
-  BuildDepends: language, smt, interp-commons, natives
+  BuildDepends: interp-commons, natives
 
 Library "interpreter"
   Path: src/interpreter
   Modules: Engine
-  BuildDepends: language, smt, interp-commons, natives, loader, stepper
+  BuildDepends: interp-commons, natives, loader, stepper
 
 Library "ounit"
   Path: test/ounit
@@ -64,8 +69,7 @@ Library "ounit"
 Executable "testytesty"
   Path: test
   MainIs: test.ml
-  BuildDepends: language, smt, inter-commons, natives, loader,
-                interpreter, ounit
+  BuildDepends: interpreter, ounit
 
 Test "testytesty"
   TestTools: testytesty

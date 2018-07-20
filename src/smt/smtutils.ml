@@ -195,3 +195,7 @@ let string_of_smtcmd : smtcmd -> string =
     | SmtSat -> "SmtSat"
     | SmtUnsat -> "SmtUnsat"
 
+let string_of_smtprog : smtprog -> string =
+  fun prog ->
+    String.concat "\n" (map string_of_smtcmd prog)
+

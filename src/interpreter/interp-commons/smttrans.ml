@@ -223,21 +223,44 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
           if vsort = var1 then SmtSortApp (var2, vsorts')
               else SmtSortApp (vsort, vsorts')
 
-let get_mem_pathcons_list : memref -> heap -> pathcons list =
+let get_mem_pathcons_list : memref -> heap -> (smtvar * rtype * pathcons) list =
   fun mem heap ->
     match heap_find mem heap with
-    | Some (DataObj (Vec (SymVec (_, _, pc)), _)) -> [pc]
+    | Some (DataObj (Vec (SymVec (sid, rty, pc)), _)) -> [(sid, rty, pc)]
     | _ -> []
 
 let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
 
+let smtsort_of_rtype : rtype -> smtsort =
+  fun ty ->
+    match ty with
+    | RBool -> SmtSortBool
+    | RInt -> SmtSortInt
+    | RFloat -> SmtSortFloat
+    | t -> failwith ("smtsort_of_rtype: no support for complex and string")
+
+let smtdecl_of_symvec: smtvar -> rtype -> smtcmd list =
+  fun var ty ->
+    [SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty));
+    SmtDeclFun (var ^ "_len", [], SmtSortInt)]
+
+let custom_decls : unit -> smtcmd list =
+  fun _ ->
+    (* ONLY HANDLES INTEGERS FOR NOW *)
+    [SmtDeclFun ("sym_vec_length_int",
+                [SmtSortArray ([SmtSortInt], SmtSortInt)],
+                SmtSortInt)]
+
+
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
-    let smems = state.sym_mems in
+    let smems = mem_list_of_sym_mems state.sym_mems in
     let heap = state.heap in
     let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
-    let asserts = concat (map smtcmd_list_of_pathcons paths) in
-      asserts
+    let decls = fold_left (@) [] (map (fun (s, t, _) -> smtdecl_of_symvec s t) paths) in
+    let asserts = concat (map (fun (_, _, p) ->
+                            smtcmd_list_of_pathcons p) paths) in
+      custom_decls () @ decls @ asserts
 

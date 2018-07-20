@@ -111,5 +111,5 @@ type smtcmd =
   | SmtSat
   | SmtUnsat
 
-type prog = smtcmd list
+type smtprog = smtcmd list
 

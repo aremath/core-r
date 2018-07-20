@@ -259,7 +259,7 @@ let string_of_hist : (rule list * state) -> string =
     string_of_state state ^ ""
 
 let string_of_passresult : passresult -> string =
-  fun (comps, errs, incomps) ->
+  fun { pass_comps = comps; pass_errs = errs; pass_incomps = incomps } ->
     string_of_list_newline
       (map (fun c ->
             bar60 ^ "\n" ^
@@ -292,7 +292,7 @@ let string_of_passresult_list : passresult list -> string =
 
 let string_of_passresult_list_first_complete : passresult list -> string =
   fun passes ->
-    match filter (fun (c, e, i) -> length c > 0) passes with
+    match filter (fun pr -> length pr.pass_comps > 0) passes with
     | [] -> "No completes yet"
     | (p :: _) -> string_of_passresult p
 
