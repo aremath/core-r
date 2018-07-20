@@ -194,6 +194,7 @@ let rec replace: smtvar -> smtvar -> smtexpr -> smtexpr =
     | SmtExists (defs, e1) -> SmtExists (
         (List.map (replace_def var1 var2) defs),
         (vreplace e1))
+    | _ -> failwith "Unsupported expr"
 
 (* Helpers for replace *)
 and replace_let: smtvar -> smtvar -> (smtvar * smtexpr) -> (smtvar * smtexpr) =
@@ -223,15 +224,23 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
           if vsort = var1 then SmtSortApp (var2, vsorts')
               else SmtSortApp (vsort, vsorts')
 
-let get_mem_pathcons_list : memref -> heap -> (smtvar * rtype * pathcons) list =
+let get_mem_pathcons_list : memref -> heap -> symvec list =
   fun mem heap ->
     match heap_find mem heap with
-    | Some (DataObj (Vec (SymVec (sid, rty, pc)), _)) -> [(sid, rty, pc)]
+    | Some (DataObj (Vec (SymVec (sid, rty, pc, dep)), _)) -> [(sid, rty, pc, dep)]
     | _ -> []
 
 let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
+
+(* Assert each path constraint for a symvec and its implicit dependencies *)
+let rec smtcmd_of_symvec : symvec -> smtcmd list =
+    fun (_, _, pc, deps) ->
+    let dep_pathcons = match deps with
+    | NoDepends -> []
+    | Depends l -> concat (map smtcmd_of_symvec l) in
+    dep_pathcons @ (smtcmd_list_of_pathcons pc)
 
 let smtsort_of_rtype : rtype -> smtsort =
   fun ty ->
@@ -241,9 +250,13 @@ let smtsort_of_rtype : rtype -> smtsort =
     | RFloat -> SmtSortFloat
     | t -> failwith ("smtsort_of_rtype: no support for complex and string")
 
-let smtdecl_of_symvec: smtvar -> rtype -> smtcmd list =
-  fun var ty ->
-    [SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty));
+(* Create the declaration for a symvec and its implicit dependencies *)
+let rec smtdecl_of_symvec: symvec -> smtcmd list =
+  fun (var, ty, _, deps) ->
+    let dep_decls = match deps with
+    | NoDepends -> []
+    | Depends l -> concat (map smtdecl_of_symvec l) in
+    dep_decls @ [SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty));
     SmtDeclFun (var ^ "_len", [], SmtSortInt)]
 
 let custom_decls : unit -> smtcmd list =
@@ -259,14 +272,12 @@ let custom_post : unit -> smtcmd list =
      SmtGetModel;
      SmtExit]
 
-
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
     let smems = mem_list_of_sym_mems state.sym_mems in
     let heap = state.heap in
     let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
-    let decls = fold_left (@) [] (map (fun (s, t, _) -> smtdecl_of_symvec s t) paths) in
-    let asserts = concat (map (fun (_, _, p) ->
-                            smtcmd_list_of_pathcons p) paths) in
+    let decls = concat (map smtdecl_of_symvec paths) in
+    let asserts = concat (map smtcmd_of_symvec paths) in
       custom_decls () @ decls @ asserts @ custom_post ()
 
