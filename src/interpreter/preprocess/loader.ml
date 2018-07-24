@@ -184,20 +184,23 @@ let frames_of_binds :
         Not_found ->
           failwith ("stringmap_of_list: failed to initialize env map properly")
 
-let raw_inits_of_file : string -> string -> stack * heap * memref =
+let raw_inits_of_file : string -> string -> stack * heap * memref * memref =
   fun dir file ->
     let heap1 = heap_empty_offset 1 in
     let null_env_mem = mem_null () in
     (* let (files, file_expr_binds) = linearize_source dir file in *)
     let (files, file_expr_binds) = linearize_source_with_base dir file in
-    let files2 = files in
+    (* Append on the native stuff for the target allocation *)
+    let files2 = "$native_file" :: files in
+    let file_expr_binds2 = ("$native_file", Const Nil) :: file_expr_binds in
     (* let _ = dump_file_linearization dir file in *)
     let (file_env_binds, heap2) = alloc_file_envs files2 null_env_mem heap1 in
-    let frames = frames_of_binds file_expr_binds file_env_binds in
+    let frames = frames_of_binds file_expr_binds2 file_env_binds in
       (* Need to get the last thing to check the global env *)
-      match (rev file_env_binds) with
-      | ((_, mem) :: _) -> (stack_push_list frames (stack_empty ()), heap2, mem)
-      | [] -> failwith "raw_inits_of_file: somehow failed to initialize envs"
+      match (file_env_binds, rev file_env_binds) with
+      | ((_, nat_mem) :: _, (_, glbl_mem) :: _) ->
+          (stack_push_list frames (stack_empty ()), heap2, glbl_mem, nat_mem)
+      | _ -> failwith "raw_inits_of_file: failed to initialize envs correctly"
 
 let make_native_binds : memref -> heap -> (ident * heapobj) list * heap =
   fun glbl_env_mem heap ->
@@ -213,9 +216,9 @@ let make_native_binds : memref -> heap -> (ident * heapobj) list * heap =
 
 let raw_init_state : string -> string -> state =
   fun dir file ->
-    let (stack, heap, glbl_env_mem) = raw_inits_of_file dir file in
-    let (native_binds, heap2) = make_native_binds glbl_env_mem heap in
-      match env_mem_bind_list native_binds glbl_env_mem heap2 with
+    let (stack, heap, glbl_env_mem, nat_env_mem) = raw_inits_of_file dir file in
+    let (native_binds, heap2) = make_native_binds nat_env_mem heap in
+      match env_mem_bind_list native_binds nat_env_mem heap2 with
       | Some heap3 ->
           { state_default with
               stack = stack;
