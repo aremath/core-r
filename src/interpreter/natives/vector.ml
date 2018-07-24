@@ -490,22 +490,22 @@ let make_symbolic_vector: S.rvector -> S.rtype -> S.state -> (S.rvector * S.stat
     | S.IntVec [| Some i |] when (i >= 0) -> let len = SmtEq (
             smt_len new_name,
             smt_int_const i) in
-        (S.SymVec ((new_name, ty, { path_list = [len] }), S.NoDepends), state')
+        (S.SymVec ((new_name, ty, { S.path_list = [len] }), S.NoDepends), state')
     | S.SymVec ((n,S.RInt,_), _) -> let  len = SmtEq (
             smt_len new_name,
             smt_getn n 0) in
-        (S.SymVec ((new_name, ty, { path_list = [len] }), S.NoDepends), state')
+        (S.SymVec ((new_name, ty, { S.path_list = [len] }), S.NoDepends), state')
     | _ -> failwith "Bad call to make_symbolic"
 
 let get_ty: S.rvector -> S.rtype =
     function
-    | S.StrVec [| Some s |] -> match s with
+    | S.StrVec [| Some s |] -> begin match s with
         | "int" -> S.RInt
         | "double" -> S.RFloat
         | "complex" -> failwith "Symbolic complex vectors unimplemented"
         | "string" ->  failwith "Symbolic string vectors unimplemented"
         | "logical" -> S.RBool
-        | _ -> failwith "Unknown type in get_ty"
+        | _ -> failwith "Unknown type in get_ty" end
     | _ -> failwith "Bad call to get_ty"
 
 (* Make a symbolic vector with length equal to the first element of the input.

@@ -2,6 +2,10 @@ module S = Support
 module C = Native_support
 module V = Vector
 
+module Sym = Symbolic_ops
+open Smtsyntax
+open Smttrans
+
 (* The offset array tells the subscripter how much variation in a single dimension
  affects the linear index. For example, if x is a 5x2 vector it is stored in memory
  as a length-10 vector. The value x[[3,0]] is physically directly before the value
@@ -189,17 +193,16 @@ let find_names_index: S.rstring array -> S.rstring array -> int =
     let sub = subscript_vec.(0) in
     find names sub 0
 
-let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.state -> (S.memref * S.state) = 
-    fun data_rvec names subscript_vec state ->
+let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.rvector = 
+    fun data_rvec names subscript_vec ->
     let idx = find_names_index names subscript_vec in
-    let out_rvec = match data_rvec with
+    match data_rvec with
     | S.IntVec i -> S.IntVec (Array.make 1 i.(idx))
     | S.FloatVec f -> S.FloatVec (Array.make 1 f.(idx))
     | S.ComplexVec c -> S.ComplexVec (Array.make 1 c.(idx))
     | S.StrVec s -> S.StrVec (Array.make 1 s.(idx))
     | S.BoolVec b -> S.BoolVec (Array.make 1 b.(idx))
-    | S.SymVec s -> failwith "symbolic unimplemented" in
-    S.state_alloc (S.DataObj ((S.Vec out_rvec), S.attrs_empty ())) state
+    | S.SymVec s -> failwith "symbolic unimplemented"
 
 (* Find the true index into the vector given an integer *)
 let find_int_index: int -> int array -> int =
@@ -208,12 +211,15 @@ let find_int_index: int -> int array -> int =
     (* the index to get *)
     let n = subscript_vec.(0) in
     let _ = if n = 0 then failwith "0 subscript" else () in
-    if n < 0 then (data_length) + (n - 1) else n - 1
+    (* You might think that this is how it works... *)
+    (* if n < 0 then (data_length) + (n - 1) else n - 1 *)
+    let _ = if n < 0 then failwith "Attempt to select more than one element in subscript" else () in
+    n - 1
 
-let subscript_int: S.rvector -> int array -> S.state -> (S.memref * S.state) =
-    fun data_rvec subscript_vec state ->
+let subscript_int: S.rvector -> int array -> S.rvector =
+    fun data_rvec subscript_vec ->
     let true_n = find_int_index (V.rvector_length data_rvec) subscript_vec in
-    let sub_rvec = begin match data_rvec with
+    begin match data_rvec with
     | S.IntVec i -> let v = i.(true_n) in
         S.IntVec (Array.make 1 v)
     | S.FloatVec f -> let v = f.(true_n) in
@@ -225,28 +231,39 @@ let subscript_int: S.rvector -> int array -> S.state -> (S.memref * S.state) =
     | S.BoolVec b -> let v = b.(true_n) in
         S.BoolVec (Array.make 1 v)
     | S.SymVec s -> failwith "symbolic unimplemented!"
-    end in
-    (* allocate it as a data object on the state *)
-    S.state_alloc (S.DataObj ((S.Vec sub_rvec), S.attrs_empty ())) state
+    end
 
 (* v[[x]] *)
 let subscript_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     fun data_ref subscript_ref state ->
     match S.state_find data_ref state with
     | Some (S.DataObj (S.Vec data_rvec, data_attrs)) ->
+        let subscript_rvec = C.dereference_rvector subscript_ref state in
         (* If it's a string, we're supposed to lookup in the names attribute *)
-        begin match C.dereference_rvector subscript_ref state with
-        | S.StrVec subscript_vec -> let names_ref = begin
+        (* For now, only subscripting with symbolic ints, no subscripting with symbolic strings *)
+        let out_vec, state' = begin match (data_rvec, subscript_rvec) with
+        (* Any symbolic subscript *)
+        | (S.SymVec _, _)
+        | (_, S.SymVec _) -> Sym.sym_op (Sym.arg2listize Sym.symbolic_subscript)
+            [data_rvec;subscript_rvec] state
+        (* String subscripting using names *)
+        | (data, S.StrVec subscript_vec) -> let names_ref = begin
                 match S.attrs_find (Some "names") data_attrs with
                 | Some r -> r
                 | None -> failwith "Cannot string subscript a vector with no names attribute"
                 end in
             (* get the names attribute *)
             let names = C.rvector_to_str_array (C.dereference_rvector names_ref state) in
-            subscript_str data_rvec names subscript_vec state
-        | rvec -> let subscript_vec = C.rvector_to_int_array rvec in
-            subscript_int data_rvec (C.resolve_vec subscript_vec) state
-        end
+            let out = subscript_str data names subscript_vec in
+            (out, state)
+        (* Regular integer subscripting *)
+        | (data, S.IntVec svec) ->
+            let out = subscript_int data (C.resolve_vec svec) in
+            (out, state)
+        | _ -> failwith "Bad vector subscript"
+        end in
+        (* Allocate it as a data object *)
+        S.state_alloc (S.DataObj (S.Vec out_vec, S.attrs_empty ())) state'
     | _ -> failwith "Vector expected"
 
 (* Puts the first element of vec into data_vec at index
@@ -285,9 +302,19 @@ let subscript_assign_mems: S.memref -> S.memref -> S.memref -> S.state -> (S.mem
     let assign_vec = C.dereference_rvector assign_ref state' in
     match S.state_find data_ref' state' with
     | Some (S.DataObj (S.Vec data_rvec, data_attrs)) ->
-        begin match C.dereference_rvector subscript_ref state' with
+        let subscript_rvec = C.dereference_rvector subscript_ref state' in
+        begin match (data_rvec, subscript_rvec, assign_vec) with
+        (* Any symbolic subscript assignment *)
+        | (S.SymVec _, _, _)
+        | (_, S.SymVec _, _)
+        | (_, _, S.SymVec _) -> let (out_vec, state') = Sym.sym_op
+            (Sym.arg3listize Sym.symbolic_subscript_assign)
+            [data_rvec; subscript_rvec; assign_vec] state in
+            (* TODO: this creates a SECOND copy of data_vec :(, AND
+              makes a shared reference to data_attrs :( *)
+            S.state_alloc (S.DataObj(S.Vec out_vec, data_attrs)) state'
         (* If the subscript is a string, need to look at names *)
-        | S.StrVec subscript_vec -> let names_ref = begin
+        | (data, S.StrVec subscript_vec, assign) -> let names_ref = begin
                 match S.attrs_find (Some "names") data_attrs with
                 | Some r -> r
                 | None -> failwith "Cannot string subscript a vector with no names attribute"
@@ -297,11 +324,12 @@ let subscript_assign_mems: S.memref -> S.memref -> S.memref -> S.state -> (S.mem
             let _ = do_replace data_rvec (idx, assign_vec) in
             (* No need to allocate - the copy already lives on the state *)
             (data_ref', state')
-        (* If it's not a string, assume it's an int, and do normal integer subscripting *)
-        | rvec -> let subscript_vec = C.rvector_to_int_array rvec in
+        (* Normal integer subscripting *)
+        | (data, S.IntVec subscript_vec, assign) ->
             let idx = find_int_index (V.rvector_length data_rvec) (C.resolve_vec subscript_vec) in
             let _ = do_replace data_rvec (idx, assign_vec) in
             (data_ref', state')
+        | _ -> failwith "Bad vector subscript"
         end
     | _ -> failwith "Vector expected"
 

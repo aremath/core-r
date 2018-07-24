@@ -41,6 +41,55 @@ let vec_to_symvec: S.rvector -> S.state -> (S.symvec * S.state) =
     let sy = vec_to_named_sym name vec in
     (sy, state')
 
+(* TODO: refactor vector.ml to use this in cases where it would be used.
+ TODO: This is not be the most efficient implementation of some cases. For
+ example, when doing the computation x[7] with symbolic x, this function will
+ convert 7 to a symbolic vector and do the symbolic computation, rather than just
+ creating a new symbolic vector z with the path constraints that
+    z_len = 1
+    Select z 0 = Select x 7 
+*)
+(* Takes symbolic definition creation function and applies it to a list of its arguments
+  as rvectors. The result is an rvector whose dependencies are the arguments that were
+  be converted from concrete to symbolic. *)
+let sym_op: (smtvar -> S.symvec list -> S.symdef) ->
+        S.rvector list -> S.state -> (S.rvector * S.state) =
+    fun smt_op args state ->
+    let (sym_args, state') = S.state_map (fun arg state ->
+        match arg with
+        | S.SymVec sy -> (sy, state)
+        | _ -> vec_to_symvec arg state) args state in
+    (* Generate a list of lists  which is either empty or sym_list[i] depending on
+    whether or not that arg had to be converted. *)
+    let depends_lists = List.mapi (fun i a -> 
+        match a with
+        | S.SymVec _ -> []
+        | _ -> [List.nth sym_args i]) args in
+    let depends_list = List.fold_left (@) [] depends_lists in
+    let depends = match depends_list with
+    | [] -> S.NoDepends
+    | _ -> S.Depends depends_list in
+    let newvec_name, state'' = S.name_fresh state' in
+    let newvec_def = smt_op newvec_name sym_args in
+    (S.SymVec (newvec_def, depends), state'')
+
+(* Produces an smt_op compatible with symbolize for a function with two arguments *)
+let arg2listize: (smtvar -> S.symvec -> S.symvec -> S.symdef) ->
+        smtvar -> S.symvec list -> S.symdef =
+    fun f name args ->
+    match args with
+    | [arg1;arg2] -> f name arg1 arg2
+    | _ -> failwith "Wrong number of arguments"
+
+(* "" for a function with three arguments *)
+let arg3listize: (smtvar -> S.symvec -> S.symvec -> S.symvec -> S.symdef) ->
+        smtvar -> S.symvec list -> S.symdef =
+    fun f name args ->
+    match args with
+    | [arg1;arg2;arg3] -> f name arg1 arg2 arg3
+    | _ -> failwith "Wrong number of arguments"
+    
+
 let match_tys: S.rtype -> S.rtype -> S.rtype =
     fun ty1 ty2 ->
     match (ty1, ty2) with
@@ -72,14 +121,48 @@ let symbolic_concat: smtvar -> S.symvec -> S.symvec -> S.symdef =
             SmtArrGet (SmtVar name2, SmtVar forall_var))) in
     (new_name, new_ty, { S.path_list = [len; a1_elts; a2_elts] })
 
-(*
-let symbolic_concat_list: smtvar -> S.symvec list -> S.symvec =
-    fun new_name vecs ->
-    let base_ty = match vecs with
-    | (_, ty, _) :: tl -> ty
-    | [] -> failwith "Empty symbolic concat" in
-    let new_ty = List.fold_left (fun (_, ty1, _) (_, ty2, _) -> match_tys ty1 ty2) base_ty vecs in
-*)
+(* Produces a definition for symbolic x[y]. Assumes y is an index vector for x. *)
+let symbolic_subscript: smtvar -> S.symvec -> S.symvec -> S.symdef =
+    fun new_name ((name1, ty1, _), _) ((name2, ty2, _), _) ->
+    let _ = match ty2 with
+    | S.RInt -> ()
+    | _ -> failwith "Subscript with non-integer symbolic vector!" in
+    let len = lengthn new_name 1 in
+    (* a[0] = x[y[0]] *)
+    let value = (SmtEq (
+        smt_getn new_name 0,
+        SmtArrGet (SmtVar name1, SmtSub (smt_getn name2 0, smt_int_const 1)))) in
+    (* Constraints on y *)
+    let name2_c = is_index_vec name2 name1 in
+    (* Note that constraints about name2 are going into new_name's path constraints.
+    Path constraints do not actually care what vector they belong to. *)
+    (new_name, ty1, { S.path_list = [len;value;name2_c] })
+
+(* Produces a definition for symbolic x[y] <- z. Assumes y is a proper index vector for x, and
+ that z has length 1. *)
+let symbolic_subscript_assign: smtvar -> S.symvec -> S.symvec -> S.symvec -> S.symdef =
+    fun new_name ((name1, ty1, _), _) ((name2, ty2, _), _) ((name3, ty3, _), _) ->
+    let _ = match ty2 with
+    | S.RInt -> ()
+    | _ -> failwith "Subscript with non-integer symbolic vector!" in
+    (* Values in z must be the same type as values in x *)
+    let new_ty = match_tys ty1 ty3 in
+    (* The new array has the same length as x *)
+    let len = (SmtEq (
+        smt_len new_name,
+        smt_len name1)) in
+    (* Forall i in a, if i=y[0]-1 then a[i]=z[0] else a[i]=x[i]. *)
+    let vals = all_elements name3 (ifelse
+        (SmtEq (SmtVar forall_var, SmtSub (smt_getn name2 0, smt_int_const 1)))
+        (SmtEq (
+            SmtArrGet (SmtVar new_name, SmtVar forall_var),
+            SmtSub (smt_getn name2 0, smt_int_const 1)))
+        (SmtEq (
+            SmtArrGet (SmtVar new_name, SmtVar forall_var),
+            SmtArrGet (SmtVar name1, SmtVar forall_var)))) in
+    let name2_c = is_index_vec name2 name1 in
+    let name3_c = lengthn name3 1 in
+    (new_name, new_ty, {S.path_list = [len;vals;name2_c;name3_c]})
 
 let sym_fail: unit -> (smtexpr -> smtexpr -> smtexpr) =
     fun _ -> failwith "Symbolic operation not implemented."
