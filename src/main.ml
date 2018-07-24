@@ -22,11 +22,15 @@ let main () =
             default_steps
           else
             int_of_string Sys.argv.(2) in
-  let ress = run_n_hist n [state] in
 
   (*
-  let _ = solve_comps_passresult (hd (rev ress)) in
+  print_endline "INITIAL STATE";
+  print_endline (string_of_state state);
   *)
+
+  (*
+  let ress = run_n_hist n [state] in
+  let _ = solve_comps_passresult (hd (rev ress)) in
   let solves = solve_stupid_comps_passresult (hd (rev ress)) in
   print_endline ("Total of " ^ string_of_int (length solves) ^ " complete states");
   iter (fun (rs, s, z3dump) ->
@@ -40,6 +44,7 @@ let main () =
             print_endline "\n\n\n";
           end
         ) solves;
+  *)
 
 
   (* print_endline (string_of_passresult_list ress); *)
@@ -50,11 +55,9 @@ let main () =
     solve_state state) complete_list in
   List.iter (print_endline) solns;
   *)
-  (*
 
   let res = run_n n [state] in
   print_endline (string_of_passresult res);
-  *) 
 
   (*
   let res = get_first_completed_after_n n [state] in

@@ -1,6 +1,6 @@
 
 let parseFile filename =
-  print_endline ("parseFile: opening " ^ filename);
+  print_string ("parseFile: opening " ^ filename ^ " ... ");
   let channel = open_in filename in
   let lexbuf = Lexing.from_channel channel in
   let absyn =
@@ -9,6 +9,7 @@ let parseFile filename =
    with _ ->
       let pos = lexbuf.Lexing.lex_curr_p in
       begin
+        print_endline "Error!";
         print_string "Syntax error detected at line ";
         print_string (string_of_int pos.Lexing.pos_lnum);
         print_string " column ";
@@ -18,7 +19,7 @@ let parseFile filename =
         failwith "Syntax error"
       end in
       let _ = close_in channel in
-      print_endline ("parseFile: parsed okay " ^ filename);
+      print_endline ("Okay!");
       absyn;;
 
 let dumpTokens : string -> unit =

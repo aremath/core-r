@@ -14,8 +14,11 @@ module F = Filename
 open List
 open Sys
 
-let base_loc : string =
-  "/home/celery/foo/harvard/core-r/base/R/custom.R"
+let base_dir : unit -> string =
+  fun _ -> getcwd () ^ "/base/R"
+
+let base_file : unit -> string =
+  fun _ -> "custom.R"
 
 type rastexpr = unit R.expr
 
@@ -87,6 +90,15 @@ let linearize_source :
   string -> string -> string list * (string * expr) list =
   fun dir file ->
     linearization_of_exectree (exectree_of_file dir file)
+
+let linearize_source_with_base :
+  string -> string -> string list * (string * expr) list =
+  fun dir file ->
+    let canon_file = canon_of_R_file dir file in
+    let src_tree = exectree_of_file dir file in
+    let base_tree = exectree_of_file (base_dir ()) (base_file ()) in
+    let joint_tree = ExprNode (canon_file, [base_tree; src_tree]) in
+      linearization_of_exectree joint_tree
 
 let dump_file_ast : string -> unit =
   fun file ->
@@ -168,7 +180,8 @@ let raw_inits_of_file : string -> string -> stack * heap * memref =
   fun dir file ->
     let heap1 = heap_empty_offset 1 in
     let null_env_mem = mem_null () in
-    let (files, file_expr_binds) = linearize_source dir file in
+    (* let (files, file_expr_binds) = linearize_source dir file in *)
+    let (files, file_expr_binds) = linearize_source_with_base dir file in
     let (file_env_binds, heap2) = alloc_file_envs files null_env_mem heap1 in
     let frames = frames_of_binds file_expr_binds file_env_binds in
       match file_env_binds with
@@ -182,7 +195,8 @@ let make_native_binds : memref -> heap -> (ident * heapobj) list * heap =
         let f_env = { (env_empty ()) with pred_mem = glbl_env_mem } in
         let f_env_obj = DataObj (EnvVal f_env, attrs_empty ()) in
         let (f_env_mem, hp2) = heap_alloc f_env_obj hp in
-        let f_obj = DataObj (FuncVal (params, body, f_env_mem), attrs_empty ()) in
+        let func = FuncVal (params, body, f_env_mem) in
+        let f_obj = DataObj (func, attrs_empty ()) in
           (accs @ [(id, f_obj)], hp2))
       ([], heap) native_injection_pairs
 

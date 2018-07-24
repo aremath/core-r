@@ -11,7 +11,7 @@
 #     creation date (automatic)
 #     notes (default is NULL, can be user-supplied)
 
-library(austin)
+library("austin")
 #if(!require(XML)){
 #  print("XML package is required for translation")
 #}

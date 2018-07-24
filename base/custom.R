@@ -18,7 +18,7 @@ source("delay.R") #* I guess implementing delayedAssign() through native calls i
 source("det.R") #* Determinant calculations
 source("diag.R") #* Diagonal shit
 source("diff.R") #* Appears to be iterated (consecutive) differences in a vector. Could be handy
-source("duplicated.R") #* Appears to be some duplication stuff that we can maybe handle.
+# source("duplicated.R") #* Appears to be some duplication stuff that we can maybe handle.
 source("eapply.R") #* Applies with respect to some environment. Can totally handle this!
 source("eigen.R") #* Looks like some eigen value stuff
 source("environment.R") #* I guess, what's the harm in providing these?

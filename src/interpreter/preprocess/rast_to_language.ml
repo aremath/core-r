@@ -201,12 +201,14 @@ and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     | R.ExprArg (R.Ident { R.name = "..." }) -> L.VarArg
     | R.ExprArg e           -> let c_expr = convert_expr e in
                                 L.Arg c_expr
-    | R.IdentAssignEmpty i  -> failwith "Empty Assign not part of Core R!" (* TODO: what the heck *)
     | R.IdentAssign (i, e)  -> L.Named (convert_ident i, convert_expr e)
-    | R.StringAssignEmpty s -> failwith "String Assign not part of Core R!" (* TODO: what the heck *)
-    | R.StringAssign (s, e) -> failwith "String Assign not part of Core R!" (* TODO: what the heck *)
-    | R.NullAssignEmpty     -> failwith "Null Assign not part of Core R!" (* TODO: what the heck *)
+    | R.IdentAssignEmpty i  -> L.Named (convert_ident i, convert_expr R.Null)
+
+    | R.StringAssign (s, e) -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr e)
+    | R.StringAssignEmpty s -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr R.Null)
+
     | R.NullAssign e        -> failwith "Null Assign not part of Core R!" (* TODO: what the heck *)
+    | R.NullAssignEmpty     -> failwith "Null Assign Empty not part of Core R!" (* TODO: what the heck *)
     | R.ArgDots             -> L.VarArg
 
 and convert_param: 'a R.param -> ('a, 'b) L.param =
