@@ -82,9 +82,10 @@ let rec linearization_of_exectree :
       | ExprNode (file, currs) ->
           let level = map linearization_of_exectree currs in
           let (files, exprs) =
-              List.fold_left (fun (fs, es) (cfs, ces) -> (fs @ cfs, es @ ces))
-                             ([], []) level in
-            (file :: files, exprs)
+              List.fold_left
+                (fun (acc_f, acc_e) (f, e) -> (acc_f @ f, acc_e @ e))
+                ([], []) level in
+            (files @ [file], exprs)
 
 let linearize_source :
   string -> string -> string list * (string * expr) list =
@@ -95,9 +96,13 @@ let linearize_source_with_base :
   string -> string -> string list * (string * expr) list =
   fun dir file ->
     let canon_file = canon_of_R_file dir file in
-    let src_tree = exectree_of_file dir file in
     let base_tree = exectree_of_file (base_dir ()) (base_file ()) in
-    let joint_tree = ExprNode (canon_file, [base_tree; src_tree]) in
+    let src_tree = exectree_of_file dir file in
+    let joint_tree = (match src_tree with
+                      | ExprLeaf (f, e) ->
+                          ExprNode (f, [base_tree; ExprLeaf (f, e)])
+                      | ExprNode (f, ets) ->
+                          ExprNode (f, base_tree :: ets)) in
       linearization_of_exectree joint_tree
 
 let dump_file_ast : string -> unit =
@@ -107,12 +112,14 @@ let dump_file_ast : string -> unit =
 
 let dump_file_linearization : string -> string -> unit =
   fun dir file ->
-    let (files, exprs) = linearize_source dir file in
+    (* let (files, exprs) = linearize_source dir file in *)
+    let (files, exprs) = linearize_source_with_base dir file in
       print_endline "--- files:";
       iter (fun f -> print_string f; print_newline ()) files;
       print_endline "--- exprs:";
-      iter (fun (f, e) -> print_string ("[" ^ (*f ^ *) "] ");
-                         print_endline (string_of_expr e)) exprs;
+      iter (fun (f, e) -> print_string ("[" ^ f ^ "]\n");
+                         print_endline (string_of_expr e);
+                         print_newline ()) exprs;
       print_endline "--- end dump";;
 
 let inj_binds_to_env_heap : (ident * expr) list -> memref -> heap -> heap =
@@ -157,7 +164,8 @@ let alloc_file_envs :
                             | _ -> failwith ("alloc_file_envs: " ^
                                                 string_of_mem e)
                           ) heap2 pairs in
-        (combine files (rev mems), heap3)
+        (* (combine files (rev mems), heap3) *)
+        (combine files mems, heap3)
 
 let stringmap_of_list : (string * 'a) list -> 'a StringMap.t =
   fun lst ->
@@ -182,9 +190,12 @@ let raw_inits_of_file : string -> string -> stack * heap * memref =
     let null_env_mem = mem_null () in
     (* let (files, file_expr_binds) = linearize_source dir file in *)
     let (files, file_expr_binds) = linearize_source_with_base dir file in
-    let (file_env_binds, heap2) = alloc_file_envs files null_env_mem heap1 in
+    let files2 = files @ [""] in
+    (* let _ = dump_file_linearization dir file in *)
+    let (file_env_binds, heap2) = alloc_file_envs files2 null_env_mem heap1 in
     let frames = frames_of_binds file_expr_binds file_env_binds in
-      match file_env_binds with
+      (* Need to get the last thing to check the global env *)
+      match (rev file_env_binds) with
       | ((_, mem) :: _) -> (stack_push_list frames (stack_empty ()), heap2, mem)
       | [] -> failwith "raw_inits_of_file: somehow failed to initialize envs"
 

@@ -1,8 +1,8 @@
-source("aperm.R") #* Seems to be some array stuff we want to support?
+# source("aperm.R") #* Seems to be some array stuff we want to support?
 source("append.R") #* Appending lists? I think we should
 source("apply.R") #* Appears to use some annoying reflection properties that are sketch
 source("array.R") #* Definitely want to support such an important function 
-source("assign.R") #* Has an assign() function, and some list2env stuff -- guess needed somehow
+# source("assign.R") #* Has an assign() function, and some list2env stuff -- guess needed somehow
 # source("backsolve.R") #* These are internal calls to linear equality solvers
 # source("Bessel.R") #* I guess it doesn' thurt to have custom bessel functions
 # source("bitwise.R") #* Internal calls to bitwise operators

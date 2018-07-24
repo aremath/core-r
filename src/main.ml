@@ -3,6 +3,7 @@ open Syntax
 open Absyn_generator
 open Loader
 open Engine
+open Rules
 open Interputils
 
 open Sys
@@ -30,6 +31,7 @@ let main () =
 
   (*
   let ress = run_n_hist n [state] in
+  print_endline (string_of_passresult_list ress);
   let _ = solve_comps_passresult (hd (rev ress)) in
   let solves = solve_stupid_comps_passresult (hd (rev ress)) in
   print_endline ("Total of " ^ string_of_int (length solves) ^ " complete states");
@@ -47,17 +49,15 @@ let main () =
   *)
 
 
-  (* print_endline (string_of_passresult_list ress); *)
+  let res = run_n n [state] in
+  let _ = print_endline (string_of_passresult res) in
+  let solns = map (fun (_, s) -> solve_stupid_state state) res.pass_comps in
+  let _ = List.iter (print_endline) solns in
 
   (*
-  let solns = match List.hd (List.rev ress) with
-  | (complete_list, _, _) -> List.map (fun (_, state) ->
-    solve_state state) complete_list in
-  List.iter (print_endline) solns;
-  *)
-
   let res = run_n n [state] in
   print_endline (string_of_passresult res);
+  *)
 
   (*
   let res = get_first_completed_after_n n [state] in
