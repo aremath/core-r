@@ -63,6 +63,19 @@ let string_of_rtype : rtype -> string =
     | RComplex -> "RComplex"
     | RString -> "RString"
 
+let rec string_of_symvec : symvec -> string =
+  fun ((v, t, p), ds) ->
+    "SymVec (" ^ string_of_smtvar v ^ "," ^
+                 string_of_rtype t ^ "," ^
+                 string_of_pathcons p ^ "," ^
+                 string_of_symdepends ds ^ ")"
+
+and string_of_symdepends : symdepends -> string =
+  fun deps ->
+    match deps with
+    | NoDepends -> "NoDepends"
+    | Depends syms -> string_of_list_comma (map string_of_symvec syms)
+
 let string_of_rvector: rvector -> string =
     function
     | IntVec i ->
@@ -75,7 +88,7 @@ let string_of_rvector: rvector -> string =
         string_of_list_comma (map Langutils.string_of_rstring (Array.to_list s))
     | BoolVec b ->
         string_of_list_comma (map string_of_rbool (Array.to_list b))
-    | SymVec (i, t, p) ->
+    | SymVec ((i, t, p), ds) ->
         "(" ^ string_of_smtvar i ^ ";" ^
               string_of_rtype t ^ ";" ^
               string_of_pathcons p ^ ")"
@@ -113,7 +126,7 @@ let string_of_value: value -> string =
         let list_strs = map (fun mem -> string_of_mem mem) l in
           "List [" ^ string_of_list_comma list_strs ^ "]" *)
 
-let string_of_heapobj: heapobj -> string = 
+let string_of_heapobj: heapobj -> string =
   function
     | PromiseObj (e, m) ->
         "Promise (env : " ^ string_of_mem m ^ ") " ^

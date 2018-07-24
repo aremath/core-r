@@ -15,14 +15,14 @@ let vec_to_named_sym: smtvar -> S.rvector ->  S.symvec =
                 smt_int_const n)) (C.resolve_vec i)) in
         (* len(var) = length(x) *)
         let len_constraint = smt_len_array var i in
-        (var, S.RInt, { S.path_list = [len_constraint] @ gets })
+        ((var, S.RInt, { S.path_list = [len_constraint] @ gets }), S.NoDepends)
     | S.FloatVec f ->
         let gets = Array.to_list (Array.mapi (fun index n ->
             SmtEq (
                 smt_getn var index,
                 smt_float_const n)) (C.resolve_vec f)) in
         let len_constraint = smt_len_array var f in
-        (var, S.RFloat, { S.path_list = [len_constraint] @ gets })
+        ((var, S.RFloat, { S.path_list = [len_constraint] @ gets }), S.NoDepends)
     | S.ComplexVec c -> failwith "Symbolic complex vectors not implemented"
     | S.StrVec s -> failwith "Symbolic string vectors not implemented"
     | S.BoolVec b ->
@@ -31,23 +31,15 @@ let vec_to_named_sym: smtvar -> S.rvector ->  S.symvec =
                 smt_getn var index,
                 smt_rbool_const n)) (C.resolve_vec b)) in
         let len_constraint = smt_len_array var b in
-        (var, S.RBool, { S.path_list = [len_constraint] @ gets })
-    | S.SymVec (name, ty, pcs) -> failwith "Vector is already symbolic"
+        ((var, S.RBool, { S.path_list = [len_constraint] @ gets }), S.NoDepends)
+    | S.SymVec ((_, _, _), _) -> failwith "Vector is already symbolic"
 
-(* For makes a symbolic rvector from a concrete rvector. Note that
-  the function calling this has responsibility for allocating it. *)
-let vec_to_symvec: S.rvector -> S.state -> (S.rvector * S.state) =
+(* For makes a symbolic rvector from a concrete rvector. *)
+let vec_to_symvec: S.rvector -> S.state -> (S.symvec * S.state) =
     fun vec state ->
     let name, state' = S.name_fresh state in
     let sy = vec_to_named_sym name vec in
-    (S.SymVec sy, state')
-
-let vec_to_sym_alloc: S.rvector -> S.state -> (S.symvec * S.state) =
-    fun vec state ->
-    let name, state' = S.name_fresh state in
-    let sy = vec_to_named_sym name vec in
-    let state'' = S.alloc_implicit_symvec sy state' in
-    sy, state''
+    (sy, state')
 
 let match_tys: S.rtype -> S.rtype -> S.rtype =
     fun ty1 ty2 ->
@@ -61,8 +53,8 @@ let match_tys: S.rtype -> S.rtype -> S.rtype =
     
 (* From two symbolic vectors, make a new symbolic vector which is
  constrained to be the concatenation of v1 and v2. *)
-let symbolic_concat: smtvar -> S.symvec -> S.symvec -> S.symvec =
-    fun new_name (name1, ty1, _) (name2, ty2, _) ->
+let symbolic_concat: smtvar -> S.symvec -> S.symvec -> S.symdef =
+    fun new_name ((name1, ty1, _), _) ((name2, ty2, _), _) ->
     let new_ty = match_tys ty1 ty2 in
     (* len(x@y) = len(x) + len(y) *)
     let len = (SmtEq (
@@ -95,8 +87,8 @@ let sym_fail: unit -> (smtexpr -> smtexpr -> smtexpr) =
 (* General binary operations on symbolic vectors. Assumes that the warning
  will not be thrown if their lengths aren't compatible. The operator in this case
  must combine smtexprs. For example, the op for plus is expr1 -> expr2 -> SmtPlus (expr1, expr2) *)
-let symbolic_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symvec -> S.symvec =
-    fun new_name smt_combo (name1, ty1, _) (name2, ty2, _) ->
+let symbolic_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symvec -> S.symdef =
+    fun new_name smt_combo ((name1, ty1, _), _) ((name2, ty2, _), _) ->
     let new_ty = match_tys ty1 ty2 in
     (* The length of a vectorized operator on two vectors is the length of the longer vector *)
     let len = ifelse (SmtGt ((smt_len name1), (smt_len name2)))
@@ -136,7 +128,7 @@ let symbolic_exp = fun e1 e2 -> SmtExp (e1, e2)
 
 (* Symbolic comparison is the same as any other binop, but the result is a symbolic
   bool vector. *)
-let symbolic_cmp: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symvec -> S.symvec =
+let symbolic_cmp: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symvec -> S.symdef =
     fun new_name smt_combo v1 v2 ->
     let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo v1 v2 in
     (op_name, S.RBool, op_pcs)
@@ -155,8 +147,8 @@ let symbolic_leq = fun e1 e2 -> SmtLe (e1, e2)
 (* A symbolic vectorized operation for booleans only - & and |.
   Do v1 & v2 by using (symbolic_bool_vec_op symbolic_and_op symbolic_andvec_failure) *)
 let symbolic_logic_vec_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
-        (unit -> S.symvec) -> 
-        S.symvec -> S.symvec -> S.symvec =
+        (unit -> S.symdef) -> 
+        S.symvec -> S.symvec -> S.symdef =
     fun new_name smt_combo fail v1 v2 ->
     let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo v1 v2 in
     match op_ty with
@@ -177,9 +169,9 @@ let symbolic_xor_failure = fun _ -> failwith "Symbolic xor unimplemented!"
 (* A symbolic single operation for booleans only - && and ||.
   Do v1 && v2 by using (symbolic_bool_single_op smybolic_and_op symbolic_and_failure) *)
 let symbolic_logic_single_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
-        (unit -> S.symvec) ->
-        S.symvec -> S.symvec -> S.symvec =
-    fun new_name smt_combo fail (name1, ty1, _) (name2, ty2, _) ->
+        (unit -> S.symdef) ->
+        S.symvec -> S.symvec -> S.symdef =
+    fun new_name smt_combo fail ((name1, ty1, _), _) ((name2, ty2, _), _) ->
     (* If they're both symbolic bool vectors, then make a vector of length 1
       with the appropriate path constraints *)
     match match_tys ty1 ty2 with
@@ -196,9 +188,12 @@ let symbolic_logic_single_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
 (* Copies a symbolic vector, introducing a new symbolic vector with a different name,
   and the same path constraints induced over the new name. *)
 let copy_symbolic: smtvar -> S.symvec -> S.symvec =
-    fun new_name (name1, ty1, pc1) ->
+    fun new_name ((name1, ty1, pc1), _) ->
     let new_pathcons = List.map (replace name1 new_name) pc1.S.path_list in
-    (new_name, ty1, { S.path_list = new_pathcons })
+    (* The new vector has empty dependencies - The vector it was copied from is
+      responsible for holding the vectors it depends on, and making their definitions
+      in the Z3 file. *)
+    ((new_name, ty1, { S.path_list = new_pathcons }), S.NoDepends)
 
 (*
 (* Create a new symbolic vector which contains the ith element of name1 *)
