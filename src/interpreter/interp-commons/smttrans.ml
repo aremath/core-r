@@ -97,17 +97,29 @@ let smt_len_array: 'a. smtvar -> 'a array -> smtexpr =
         smt_len v,
         smt_int_const (Array.length a))
 
-(* Assert that lower <= var < upper *)
-let bounded: smtvar -> smtexpr -> smtexpr -> smtexpr =
-    fun var lower upper ->
+(* Assert that lower <= expr < upper *)
+let bounded: smtexpr -> smtexpr -> smtexpr -> smtexpr =
+    fun expr lower upper ->
     SmtAnd (
-        SmtGe (SmtVar var, lower),
-        SmtLe (SmtVar var, upper))
+        SmtGe (expr, lower),
+        SmtLe (expr, upper))
+
+(* The values for smtexpr are between 0 and the length of arr *)
+let array_bounded: smtexpr -> smtvar -> smtexpr =
+    fun expr arr ->
+    bounded expr (smt_int_const 0) (smt_len arr)
+
+(* Arr has length n *)
+let lengthn: smtvar -> int -> smtexpr =
+    fun arr n ->
+    SmtEq (
+        smt_len arr,
+        smt_int_const n)
 
 (* Assert expr across all valid indices of array_name.
   When using this, use forall_var to refer to the index. For example,
 
-    all_elements a (SmtLt (SmtVar i, smt_int_const 10))
+    all_elements a (SmtLt (SmtVar forall_var, smt_int_const 10))
 
   asserts that i < 10 for all i within the bounds of a. If len(a) >= 10 then
   this is unsat.
@@ -116,7 +128,7 @@ let all_elements: smtvar -> smtexpr -> smtexpr =
     fun array_name expr ->
     SmtForAll ([(forall_var, SmtSortInt)],
         (* if var is bounded between 0 and the array len, then expr holds *)
-        (SmtImp (bounded forall_var (smt_int_const 0) (smt_len array_name), expr)))
+        (SmtImp (array_bounded (SmtVar forall_var) array_name, expr)))
 
 (* Assert a[i] = expr across all valid indices of array_name.
   When using this, use forall_var to refer to the index. For example,
@@ -146,6 +158,14 @@ let ifelse: smtexpr -> smtexpr -> smtexpr -> smtexpr =
 let smt_getn: smtvar -> int -> smtexpr =
     fun a i ->
     SmtArrGet (SmtVar a, smt_int_const i)
+
+(* assert idx is a proper index vector for arr - It has length 1 and
+  its 0th element is in bounds. *)
+let is_index_vec: smtvar -> smtvar -> smtexpr =
+    fun idx arr ->
+    let len = lengthn idx 1 in
+    let inbounds = array_bounded (smt_getn idx 0) arr in
+    SmtAnd (len, inbounds)
 
 (* Return a copy of the smtexpr with all instances of var1 replaced with var2 *)
 let rec replace: smtvar -> smtvar -> smtexpr -> smtexpr =
