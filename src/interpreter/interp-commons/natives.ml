@@ -1,3 +1,36 @@
+(*
+    natives.ml
+
+    This file contains the definitions for the native calls that are supported
+    by the interpreter. To make a new native call, there are a few things that
+    need to happen:
+    1. Register it here. Here, we create an identifier for the native call, and
+    a NativeLambdaApp that actually executes the call. The "injection pairs" at
+    the bottom are registered with R as actual R functions, so that when the
+    interpreter is doing a native call, it appears as just another function.
+
+    2. Edit the native_call function in interpreter/natives/native_calls.ml. That's the
+    function that is actually invoked when the interpreter encounters a NativeLambdaApp.
+    It's essentially a list of cases for which different calls to invoke based on the
+    identifier of the NLA. More details about how to register a new function appear there.
+
+    3. If necessary, edit interpreter/preprocess/rast_to_language.ml to generate a case
+    of when your function will be called. If you're making a native function called foo
+    and you expect the user to invoke it from R as foo(), then this isn't necessary, but
+    if you're implementing some weird operation invoked as x >-< y, then a) the parser
+    needs to get a token for >-< with precedence rules, and b), the preprocessor should
+    translate the new binop to a LambdaApp using the identifier you created in step 1.
+
+    4. Actually write the native call. More details about how to do that are in
+    interpreter/natives, but the function should take one memory reference for each
+    argument, and a program state. It should return a new memory reference to the output
+    and a new program state (with the return value allocated in it, as well as having
+    registered any side effects). The native_call function that you edited in step 2
+    will push a ReturnSlot onto the stack so that the interpreter knows that it has
+    successfully evaluated the function, and the return value is allocated at the
+    memory reference your native function returned.
+*)
+
 open Syntax
 open Support
 
@@ -46,7 +79,8 @@ let nw_fun_vec_length : (param list) * expr =
 (* Vector binary operations *)
 
 (* Sets up a native lambda app for a function with name ident that takes two arguments:
- vector1 and vector2 *)
+ vector1 and vector2. Technically can be used for anything that expects two arguments
+ even if it isn't strictly a binop. *)
 let vec_binop: ident -> param list * expr =
     fun id ->
     ([Param (id_of_string "vector1"); Param (id_of_string "vector2")],

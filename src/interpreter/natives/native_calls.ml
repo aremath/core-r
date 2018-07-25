@@ -1,4 +1,15 @@
+(*
+    native_calls.ml
 
+    Registers native calls with the interpreter. When the interpreter sees a
+    NativeLambdaApp, it first evaluates the arguments down to memory references
+    like a normal function call, then calls the native_call function here to
+    determine what the actual functionality is. The native_call function simply
+    dispatches the arguments to the appropriate primitive function, and then
+    pushes a return frame onto the execution stack that holds the return memory
+    reference from the primitive function. This also handles things like named
+    arguments and argument order.
+*)
 open Syntax
 open Support
 open Subscript
@@ -32,7 +43,7 @@ let extract_native_name : ident -> string option =
 (* Basic form for every binary operation: 
  expect two arguments only, and put the result in a ReturnSlot.
  The only difference here is which op to do (possible ops in arithmetic.ml) *)
-(* TODO: a little ugly to need to pass the env_mem and the state... *)
+(* TODO: a little ugly to need to pass the env_mem... *)
 let do_rvector_bop: (rvector -> rvector -> state -> rvector * state) -> 
         memref list -> memref -> state -> state option =
     fun op arg_mems c_env_mem state ->
@@ -50,7 +61,10 @@ let do_rvector_bop: (rvector -> rvector -> state -> rvector * state) ->
   a NativeLambdaApp. Fails when it can't recognize the identifier for the NativeLambdaApp - the function
   requested either doesn't exist or hasn't been registered (see interpreter/interp-commons/natives.ml),
   or when a different number of arguments are passed from expected. Notably does not dereference
-  the arguments. *)
+  the arguments. 
+  This will fail gracefully when the identifier did not match a known native call - it simply
+  will not produce a state, and the interpreter will do whatever is default when it applied
+  a production rule that didn't succeed. *)
 let native_call : ident -> memref list -> memref -> state -> state option =
   fun id arg_mems c_env_mem state ->
     (* Vector subscripting *)
@@ -149,6 +163,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     else if id = native_vector_xor_id then
         do_rvector_bop rvector_xor arg_mems c_env_mem state
 
+    (* make.symbolic, for creating a symbolic vector. *)
     else if id = native_vector_symbolic_id then
       (match arg_mems with
       | (len_mem :: type_mem :: []) ->

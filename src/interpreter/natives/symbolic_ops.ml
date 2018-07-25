@@ -1,3 +1,51 @@
+(*
+    symbolic_ops.ml
+
+    Defines methods for dealing with symbolic rvectors.
+
+    This file includes symbolic arithmetic, as well as other functions that
+    are used to combine symbolic vectors, like concatenation, conversion
+    from concrete values, etc. For now, a symbolic combine should assume that
+    inputs are correct. That is, division by zero should add a path constraint
+    that the values of the denominator are all nonzero. Another paradigm for
+    dealing with this is to produce a "good" state with these assumptions, and
+    an error state with the negation of them, but we are less interested in
+    checking for unsatisfiability of error states and more about proofs
+    over valid inputs for now, so the first approach is better.
+   
+    A note about symbolic vectors:
+    The way that we handle symbolic vectors is somewhat complicated.
+    To output Smt2Lib code, we need to produce a list at the end of every
+    symbolic value. To do this, the state keeps a list of every symbolic 
+    value in the heap. Symbolic values are never deallocated because a new
+    symbolic vector's definition may depend on an old symbolic value.
+    The state_alloc function which allocates new memory also ensures that if
+    the object you're allocating is symbolic, it is registered as such.
+
+    What about "implicit" symbolic vectors, though? The most common case where
+    this comes up is in an operation like x + 3. For us, we implicitly coerce
+    the vector 3 to a symbolic vector which is constrained to have the same
+    values, length, type, etc. Then, we do a symbolic addition between these
+    vectors, and get back a definition for a new symbolic vector. This
+    definition relies on the (already allocated) x, and the (unallocated)
+    symbolic 3. Instead of requiring that the function that created sym3 also
+    be responsible for allocating it, symbolic vectors come with a dependency
+    list of vector definitions. When creating a symbolic vector, there are
+    two choices: make a true S.rvector, in which case that vector must be
+    allocated, or leave it as an S.symvec, in which case it must appear inside
+    the dependencies of an allocated vector.
+    This scheme is complex, but it reduces the possibility of writing code that
+    accidentally creates symbolic values and never allocates them. This is
+    because there is an explicit type difference between the kind of symbolic
+    vector which can (and must) be allocated, and the kind of symbolic vector
+    which is implicit and should be a dependency for some allocated vector.
+
+    That's why the functions in this file produce symvecs or symdefs;
+    the actual native call is where the logic is that decides which
+    vectors to allocate.
+*)
+(* TODO: need to continue to add assumptions for valid inputs.
+  Look at vector.ml, subscript.ml, etc. for which kinds of inputs are valid. *)
 module S = Support
 module C = Native_support
 open Smtsyntax
