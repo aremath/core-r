@@ -135,18 +135,19 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_sub_id, nw_fun_vec_sub);
     (native_vector_mod_id, nw_fun_vec_mod);
     (native_vector_exp_id, nw_fun_vec_exp);
+
     (native_vector_lt_id, nw_fun_vec_lt);
     (native_vector_gt_id, nw_fun_vec_gt);
     (native_vector_eq_id, nw_fun_vec_eq);
     (native_vector_neq_id, nw_fun_vec_neq);
     (native_vector_geq_id, nw_fun_vec_geq);
     (native_vector_leq_id, nw_fun_vec_leq);
+
     (native_vector_andvec_id, nw_fun_vec_andvec);
     (native_vector_and_id, nw_fun_vec_and);
     (native_vector_orvec_id, nw_fun_vec_orvec);
     (native_vector_or_id, nw_fun_vec_or);
     (native_vector_xor_id, nw_fun_vec_xor);
-
     (native_vector_symbolic_id, nw_fun_vec_sym);
   ]
 

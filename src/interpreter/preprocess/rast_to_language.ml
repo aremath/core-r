@@ -72,28 +72,39 @@ let convert_numeric: R.numeric -> L.numeric =
 (* TODO: ObjAttr (and convert idents found on the right into strings) *)
 let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     function
-    | R.NumericConst n      -> L.Const (L.Num (convert_numeric n))
-    | R.StringConst s       -> L.Const (L.Str (Some s))
-    | R.BoolConst b         -> let b_num = if b then Some 1 else Some 0 in
+    | R.NumericConst n -> L.Const (L.Num (convert_numeric n))
+    | R.StringConst s  -> L.Const (L.Str (Some s))
+    | R.BoolConst b    -> let b_num = if b then Some 1 else Some 0 in
                                 L.Const (L.Bool b_num)
-    | R.Null                -> L.Const (L.Num (L.Int (Some 0))) (* TODO *)
-    | R.Ident i             -> L.Ident (convert_ident i)
-    | R.Uop (u, e)          -> let u_ident = uop_to_ident u in
-                                let c_expr  = convert_expr e in
-                                begin match u with
-                                | R.UMinus -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg (L.Const (L.Num (L.Int (Some 0))));
-                                    L.Arg c_expr])
-                                | R.UPlus -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg (L.Const (L.Num (L.Int (Some 0))));
-                                    L.Arg c_expr])
-                                | R.Not -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg c_expr])
-                                | R.UForm -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg c_expr])
-                                | R.UHelp -> L.LambdaApp (L.Ident u_ident,
-                                    [L.Arg c_expr])
-                            end
+    | R.Null           -> L.Const (L.Num (L.Int (Some 0))) (* TODO *)
+    | R.Ident i        -> L.Ident (convert_ident i)
+
+    | R.Uop (u, e) ->
+        let u_ident = uop_to_ident u in
+        let c_expr  = convert_expr e in
+        begin match u with
+        | R.UMinus ->
+          L.LambdaApp (L.Ident native_vector_sub_id,
+            [L.Arg (L.Const (L.Num (L.Int (Some 0))));
+             L.Arg c_expr])
+
+        | R.UPlus ->
+          L.LambdaApp
+            (L.Ident native_vector_mul_id,
+            [L.Arg c_expr;
+             L.Arg (L.LambdaApp
+                    (L.Ident native_vector_geq_id,
+                    [L.Arg c_expr; L.Arg (L.Const (L.Num (L.Int (Some 0))))]))])
+
+        | R.Not ->
+          L.LambdaApp (L.Ident native_vector_eq_id,
+                      [L.Arg c_expr; L.Arg (L.Const (L.Num (L.Int (Some 0))))])
+
+        | R.UForm -> L.LambdaApp (L.Ident u_ident,
+            [L.Arg c_expr])
+        | R.UHelp -> L.LambdaApp (L.Ident u_ident,
+            [L.Arg c_expr])
+    end
     (* Assignment special cases *)
     (* length<- *)
     | R.Bop (R.Assign,
@@ -148,6 +159,9 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 failwith "too many arguments passed to return"
     | R.FuncCall (R.Ident { R.name = "c" }, args) ->
                                 L.LambdaApp (L.Ident native_vector_make_id,
+                                           map convert_arg args)
+    | R.FuncCall (R.Ident { R.name = "length" }, args) ->
+                                L.LambdaApp (L.Ident native_vector_length_id,
                                            map convert_arg args)
     | R.FuncCall (e, args)  -> let c_args = map convert_arg args in
                                 let c_e = convert_expr e in
