@@ -85,9 +85,20 @@ let test_simple = "Simple" >:::
                 (rint_vec_of_ints [123]);
   ]
 
+let test_base_dir : unit -> string =
+  fun _ -> getcwd () ^ "/base-test"
+
+let test_base = "base" >:::
+  [
+    "appending.R" >::
+      test_file (test_base_dir () ^ "/appending.R") 150
+                (rint_vec_of_ints [1; 2; 3; 3; 4; 5]);
+  ]
+
+
 let _ =
-  (*
-  run_test_tt test_test;
-  *)
-  run_test_tt test_simple
+  let _ = run_test_tt test_simple in
+  let _ = run_test_tt test_base in
+    ()
+
 
