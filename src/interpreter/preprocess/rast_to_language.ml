@@ -1,3 +1,10 @@
+(*
+  rast_to_language.ml
+  
+  Converts from the richer parser AST from parser/rast.ml to the lower-level
+  runtime representation in language/syntax.ml.
+*)
+
 module R = Rast
 module L = Syntax
 module T = Support
@@ -8,6 +15,10 @@ open List
 
 let ident_count = ref 32
 
+(* Create new unique identifiers. $ is used in the name because $ is not a valid R
+  identifier, so we can be sure this doesn't shadow some user-defined name. Used in 
+  (ex.) for-loops to hold the index variable when translating down to while. 
+  rident is for rast.ml identifiers, while lident is for syntax.ml ids. *)
 let fresh_rident _: 'a R.ident =
     let next = !ident_count in
     let _ = incr ident_count in
@@ -18,12 +29,15 @@ let fresh_lident _: 'a L.ident =
     let _ = incr ident_count in
     {L.pkg = None; L.name = Some ("t$syn_" ^ string_of_int next); L.tag = None}
 
+(* Convert a unary operator to a function call. *)
 let uop_to_ident: R.unop -> 'a L.ident =
     fun u -> {L.pkg = Some N.native_rstring;
               L.name = Some (R.string_of_unop u);
               L.tag = None}
 
-(* TODO: others? *)
+(* Convert a binary operator to a native function call.
+  If there's no definted native function call for the operator,
+  we just convert it by name with the printing code. *)
 let bop_to_ident : R.binop -> 'a L.ident =
   fun b ->
     match b with
@@ -70,6 +84,9 @@ let convert_numeric: R.numeric -> L.numeric =
     | R.Na      -> L.Int (None) (* TODO *)
 
 (* TODO: ObjAttr (and convert idents found on the right into strings) *)
+(* Convert a rast.ml expression to a syntax.ml expression.
+    A parsed program is [R.expr], and we want to produce [L.expr] to run the
+    interpreter on. *)
 let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     function
     | R.NumericConst n -> L.Const (L.Num (convert_numeric n))
@@ -79,6 +96,8 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
     | R.Null           -> L.Const (L.Num (L.Int (Some 0))) (* TODO *)
     | R.Ident i        -> L.Ident (convert_ident i)
 
+    (* Some of the unary operators are implemented as native calls, which
+        means invoking the native ids associated with those operators. *)
     | R.Uop (u, e) ->
         let u_ident = uop_to_ident u in
         let c_expr  = convert_expr e in
@@ -105,7 +124,18 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
         | R.UHelp -> L.LambdaApp (L.Ident u_ident,
             [L.Arg c_expr])
     end
-    (* Assignment special cases *)
+    (* Assignment special cases. When we do x[[2]] <- 3 in R, it doesn't happen like it
+        does in many languages. In a C-like language, x[2] is an operation that gets a
+        memory reference, and the assignment is done onto that memory location. Because
+        R uses pass by deep-copy, x[[2]] is just a vector of length 1, and assigning 
+        to it doesn't really do anything.
+        To make this behavior work, R translates x[2] <- 3 differently: as a function call to the
+        '[<-' function. When we do x[[2]] <- 3, the [<- function creates a copy of x, and assigns
+        3 into the memory of the copy, then updates the name x to map to the copy. This also means
+        that if you have y=x; x[[2]] <- 3, the operation will not affect y.
+        The same hack is used for all operations that make it seem like you can assign to some
+        part of an object in R. These translation cases handle that behavior by invoking
+        native calls that will do the right thing. *)
     (* length<- *)
     | R.Bop (R.Assign,
         R.FuncCall (R.Ident {R.name="length";_}, args),e)
@@ -179,12 +209,20 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
             L.Arg (convert_expr e) :: (map convert_arg args))
     | R.ListSub (e, args)  -> L.LambdaApp (L.Ident (native_vector_subset_id),
             L.Arg (convert_expr e) :: (map convert_arg args))
-    (* | R.ListSub (e, args)   -> failwith "TODO: translate ListSub" *)
-                              (* L.ArraySub (convert_expr e, map convert_arg args) *)
     | R.If (e1, e2)         -> L.If (convert_expr e1, convert_expr e2, convert_expr R.Null) (* TODO ^ *)
     | R.IfElse (e1, e2, e3) -> L.If (convert_expr e1, convert_expr e2, convert_expr e3)
-    (* | R.For ((i, e1), e2)   -> L.For (convert_ident i, convert_expr e1, convert_expr e2) *)
-    (* TODO: check this *)
+    (* for (x in y) body translates to the code:
+        tmp_length = len(y);
+        tmp_index = 1;
+        while (tmp_index <= tmp_length)
+        {
+            x = y[tmp_index];
+            tmp_index++;
+            body
+        }
+
+        where tmp_index and tmp_length are special identifiers to avoid shadowing.
+        *)
     | R.For ((i, e1), e2)   ->
         (* tmp_index  holds the INDEX in the vector we're iterating over *)
         let tmp_index = fresh_rident () in
@@ -205,10 +243,32 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
         let loop = R.While (cond, block) in
         L.Seq [convert_expr init; init2; convert_expr loop]
     | R.While (e1, e2)      -> L.While (convert_expr e1, convert_expr e2)
+    (* Repeat translates to while (True). *)
     | R.Repeat e            -> L.While (L.Const (L.Bool (Some 1)), convert_expr e)
     | R.Next                -> L.Next
     | R.Break               -> L.Break
 
+(* Converts a rast.ml argument into a syntax.ml argument.
+    There's some confusion here because R arguments are complicated:
+    1. You can refer to arguments using strings. So if foo = function (a) {},
+    it's valid to do
+        foo("a"=3)
+    2. You can have "empty" arguments. From the example before
+        foo(a=,2)
+    is valid syntax, and binds a=2 in the arguments. As far was we can tell,
+    the arguments are bound to values in order, so if we have bar = function (a,b) {},
+        bar(3,b=,4,"a"=)
+    will bind a=3 and b=4. It's unclear why R would allow you to pass more formal parameters
+    than a function requires, and what the user is trying to do if they write this code.
+    We do not implement this behavior.
+    As far as we can tell
+        foo(a=)
+    will bind a=NULL in the arguments, but we don't implement this either.
+    3. We're not entirely sure what the null assignment means semantically. There are
+    some functions where you may pass NULL=, but the language definition doesn't give a clue
+    as to how to interpret it. Possibly this is telling the function to replace returning a null with
+    returning something else, but since we don't have any evidence for this, we do not implement
+    this behavior. *)
 and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     function
     | R.EmptyArg            -> L.Arg (L.Const L.Nil)
@@ -216,10 +276,12 @@ and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     | R.ExprArg e           -> let c_expr = convert_expr e in
                                 L.Arg c_expr
     | R.IdentAssign (i, e)  -> L.Named (convert_ident i, convert_expr e)
-    | R.IdentAssignEmpty i  -> L.Named (convert_ident i, convert_expr R.Null)
+    (* | R.IdentAssignEmpty i  -> L.Named (convert_ident i, convert_expr R.Null) *)
+    | R.IdentAssignEmpty i  -> failwith "Empty assign not part of Core R!"
 
     | R.StringAssign (s, e) -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr e)
-    | R.StringAssignEmpty s -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr R.Null)
+    (* | R.StringAssignEmpty s -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr R.Null) *)
+    | R.StringAssignEmpty s -> failwith "Empty assign not part of Core R!"
 
     | R.NullAssign e        -> failwith "Null Assign not part of Core R!" (* TODO: what the heck *)
     | R.NullAssignEmpty     -> failwith "Null Assign Empty not part of Core R!" (* TODO: what the heck *)
@@ -234,6 +296,8 @@ and convert_param: 'a R.param -> ('a, 'b) L.param =
     | R.DefaultParam (i, e) -> L.Default (convert_ident i, convert_expr e)
     | R.ParamDots           -> L.VarParam
 
+(* Helper function for convert_expr that creates a <- function from a normal name.
+    so assign_special_body "length" will define the "length<-" function. *)
 and assign_special_body: string -> 'a R.arg list -> 'a R.expr -> 'a R.expr option -> ('a, 'b) L.expr =
     fun s args e1 oe2 ->
     let c_args = map convert_arg args in

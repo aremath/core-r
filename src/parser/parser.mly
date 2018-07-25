@@ -1,3 +1,15 @@
+(*
+  parser.mly
+
+  A parser for R based on the R-source implementation at:
+    https://github.com/wch/r-source/tree/trunk/src/main/gram.y
+
+  This parser is almost a rule-for-rule copy of R's parser - most of the extra
+  work to handle context-sensitivity is done in the lexer. As of at least
+  July 25 2018, this parser still has a single shift-reduce conflict dealing
+  with the REPEAT token, but that's a minor issue and the default shift behavior
+  seems correct.
+*)
 %{
   module A = Rast
   open A
@@ -33,6 +45,9 @@
 
 %token         QUESTION DOLLAR CARAT PLUS MINUS DIV MULT TILDE COLON BANG AT
 %token         LPAREN RPAREN LBRACE RBRACE LBRACK RBRACK COMMA SEMI NEWLINE
+(* RBRAX are unused: This is because If you're lexing x[y[1]], producing an RBRAX will not allow
+  this to be parsed. Instead, the LBRAX rule is LBRAX expr RBRACK RBRACK, to allow subsetting. The
+  token is left here just in case. *)
 %token         LBRAX RBRAX (* [[ and ]] *)
 %token         RSUPER_ASSIGN LSUPER_ASSIGN
 %token         TRUE FALSE

@@ -1,3 +1,12 @@
+(*
+  syntax.ml
+
+  Internal representation of the R program during execution.
+  interpreter/preprocess/rast_to_language.ml is used to convert from the parsed AST in
+  parser/rast.ml to this representation. This representation is simpler, so (ex.) for-loops
+  are syntactic sugar for while-loops.
+*)
+
 
 type rint = int option
 type rfloat = float option
