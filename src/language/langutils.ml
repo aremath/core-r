@@ -1,3 +1,8 @@
+(* langutils.ml
+
+  Pretty-printing for the syntax.ml AST.
+*)
+
 
 open Annotations
 open Syntax

@@ -1,10 +1,21 @@
 (*
-  Adapted from: https://github.com/antlr/grammars-v4/blob/master/r/R.g4
+  lexer.mll
+  Defines a lexer for R based on R's internal lexer:
+    https://github.com/wch/r-source/tree/trunk/src/main/gram.y
+
+  For use with ocamllex. Pairs with parser.mly via menhir
+  The R lexer is quite complicated, and the lexing process is interleaved
+  with the parsing process. This is a translation into a more traditional
+  parser-generator, but some of the same complexities with respect to treatment
+  of newlines and if-statements is present. Given how different the code for our
+  lexer is, it's entirely possible that there are still some subtle inconsistencies.
+  That said, this parser parses most of the R base library.
 *)
 
 {
   open Parser
 
+  (* Increments the line counter for error reporting purposes. *)
   let incr_line_count : Lexing.lexbuf -> unit =
     fun lexbuf ->
       let
@@ -12,8 +23,8 @@
       in
         lexbuf.Lexing.lex_curr_p <- {
           pos with
-            Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
-            Lexing.pos_bol = pos.Lexing.pos_cnum;
+            Lexing.pos_lnum = pos.Lexing.pos_lnum + 1; (* lnum is line number *)
+            Lexing.pos_bol = pos.Lexing.pos_cnum; (* bol is beginning of line *)
         }
 
   let filter_numeric : string -> string =
@@ -27,6 +38,7 @@
             then String.sub str 0 (len - 1)
             else str
 
+    (* Makes a string from a token to pretty-print the token stream. *)
     let string_of_token : Parser.token -> string =
         function
         | TOP -> "TOP"
@@ -98,6 +110,8 @@
         | AND2 -> "AND2"
         | AND -> "AND"
 
+    (* Whether or not the current token will ignore line numbers when it's on top of the
+      context. For a more complete explanation of how this works, see the comment for step(). *)
     let nl_ignore : Parser.token -> bool =
         function
         | TOP               -> false
@@ -171,7 +185,7 @@
 
     (* What tokens affect the context - many tokens do not affect the context and are
     pushed zero times. Binops affect the context once. Something like an if (where both the
-    condition and the expression can be placed with newlines) will be pushed twice *)
+    condition and the expression can be placed with newlines) will be pushed twice. *)
     let to_push: Parser.token -> Parser.token list =
         function
         | WHILE             -> [WHILE; WHILE] (* expect (cond) expr *)
@@ -196,7 +210,7 @@
         | LBRACE            -> [LBRACE] (* don't expect *)
         | INT_CONST _       -> []
         | INFINITY          -> []
-        | IN                -> [] (* expect expr, but it doesn't matter *)
+        | IN                -> [] (* expect expr, but it doesn't matter because this is always in parens *)
         | IF                -> [IF; IF] (* expect (cond) body (else body2?) *)
         | FUNCTION          -> [FUNCTION; FUNCTION] (* expect (args) expr *)
         | FOR               -> [FOR; FOR] (* expect (var in expr) expr *)
@@ -209,7 +223,9 @@
         | BREAK             -> []
         | x                 -> [x] (* Binops *)
 
-    (* which tokens match which other tokens *)
+    (* Which tokens match each other. A token will only be popped from the context when we encounter
+      its match. This means that (ex.) LPAREN stays on the context until the lexer encounters an 
+      RPAREN. *)
     let token_match: Parser.token -> Parser.token -> bool =
         fun t1 t2 ->
             begin
@@ -281,19 +297,38 @@
             | _                 -> false
             end
 
+(* Get the top token of the context. If the context is empty, there's a fake token called
+  TOP which isn't used by the parser, but serves to describe the behavior of the empty context. *)
 let get_top: Parser.token list ref -> Parser.token =
     fun context_ref ->
         match !context_ref with
         | hd::tl -> hd
         | []     -> TOP
 
+(* Replaces the top of the context with tok. *)
 let replace_top: Parser.token list ref -> Parser.token -> unit =
     fun context_ref tok ->
     match !context_ref with
     | hd::tl -> context_ref := tok::tl
     | []     -> context_ref := [tok]
 
-(* Does the closest context clue below IFs tell us to ignore newlines before an else or not? *)
+(* Does the closest context clue below IFs tell us to ignore newlines before an else or not? 
+  The way that if-statements are parsed in R is confusing. I'm going to call LPAREN, RBRACK, etc. 
+  'delimiters', and when the top of the context is a delimiter, this is a 'delimited context'.
+  When the R lexer is not inside a delimited context, newlines before elses are not ignored.
+  This behavior is because of how R code is written to a command line. If you say 'if TRUE then 0\n'
+  in a command-line interpreter, the interpreter will evaluate this line immediately since it is a
+  valid statement. If the next thing you type is 'else 1', that's a syntax error because else by itself
+  is not a valid expression.
+  But in a delimited context it's easy for R to tell when you meant an if with an else or not.
+  The parser will only parse an if-statement without an else if it gets to the righthand delimiter 
+  without encountering an else. This works the same way with nested ifs, where they behave differently 
+  outside a delimited context. The way that this is implemented here is that there's a special regex
+  that matches any blank space followed by a newline followed by whitespace followed by else. When lexing
+  this regex, we check the context to see whether we should produce a NEWLINE token before the ELSE. 
+  A seemingly simpler way to do this is just to say, IF's will push themselves three times onto the 
+  context when the context is delimited. This does not succeed because if there is not an else after
+  the if, the newlines that separate the if-statement from the statement after it should not be ignored.*)
 let rec is_if_context: Parser.token list -> bool =
     fun context ->
     match context with
@@ -307,7 +342,8 @@ let rec is_if_context: Parser.token list -> bool =
 (* When the lexer matches a lexeme that contains newlines, its position and column reporting
  gets messed up. In errors, it reports a column number that matches the total length of the lexeme
  and a line number which effectively ignores the newlines in the matched lexeme. This function
- updates the lexer position to the correct information *)
+ updates the lexer position to the correct information. This is used for handling elses with newlines,
+ where the regex matches all the newlines before the else. *)
 let update_position =
     fun lexeme lexbuf ->
     for i = 0 to (String.length lexeme) - 1 do
@@ -322,22 +358,23 @@ let update_position =
         else () (* lexbuf.Lexing.lex_curr_p.pos_cnum <- lexbuf.Lexing.lex_curr_p.pos_cnum + 1 *)
     done
 
-(*
-let update_line_count =
-    fun lexeme lexbuf ->
-    String.iter (fun c -> if c = '\n' then (* incr_line_count lexbuf else ()) lexeme *)
-        Lexing.new_line lexbuf else ())
-*)
-
+(* Print the context for debugging *)
 let string_of_context: Parser.token list ref -> string =
     fun context_ref ->
     let context_strs = List.map string_of_token !context_ref in
     "[" ^ (String.concat ", " context_strs) ^ "]"
 
-(* The general algorithm for this is when we see a token, if it affects the context,
-put it on the stack, then use its behavior until a match is found, at which point it is
-removed from the stack, and we go back to the newline behavior of the character under it.
-Tokens that do not have a match do not go onto the context stack.*)
+(* Step is the function that maintains the lexing context during lexing. The context determines
+  whether newlines should be ignored. In R, newlines separate statements from each other, so
+  3\n+4 is actually two statements. The expression 3, and the expression unary_plus 4. Notably
+  3+\n4 parses to 3+4 because the plus token affects the context to ignore newlines. R ignores newlines
+  when it expects something to complete the expression. In 3+, it knows that there must be an expression
+  to complete the + statement, so it ignores newlines until it finds one. Essentially, whether or not the
+  context ignores newlines represents whether or not the current expression is incomplete.
+  The general algorithm for this is when we see a token, if it affects the context,
+  put it on the stack, then use its behavior until a match is found, at which point it is
+  removed from the stack, and we go back to the newline behavior of the character under it.
+  Tokens that do not have a match do not go onto the context stack.*)
     let step : Parser.token -> (Parser.token list) ref -> unit =
         fun tok context_ref ->
             let top = get_top context_ref in
@@ -352,6 +389,9 @@ Tokens that do not have a match do not go onto the context stack.*)
             let x = to_push tok in
             context_ref := x @ !context_ref
 
+(* When parsing a string, the lexeme is everything matched by
+  the regex, including the quotes. We actually want to make an R string using
+  the characters inside the quotes. *)
 let strip_string_quotes : string -> string =
   fun str -> String.sub str 1 (String.length str - 2)
 }
@@ -376,6 +416,10 @@ let float =
   | digit+ exp?
   | '.' digit+ exp?
 
+(* R parses 1+3i as a plus operation involving a double (1.0) and a complex (0,3.0), then
+  implicitly casts the double to a complex (1.0,0) and does the addition. Since SimpleR does
+  not do any kind of implicit conversion, this makes complex numbers hard to deal with, since 
+  you would have to explicitly cast the double to a complex. *)
 let complex =
     int 'i'
   | float 'i'

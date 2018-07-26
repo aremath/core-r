@@ -1,3 +1,13 @@
+(*
+  rast.ml
+
+  Our internal rich AST that can express the entire R language. This is converted
+  to a lower-level AST found in language/syntax.ml via interpreter/preprocess/rast_to_language.ml 
+  when we do actual execution. The identifiers found here may have associated information, such as
+  where they were defined, and various other information, but for actual execution, only the name
+  is looked up in the environment.
+*)
+
 type source =
   { file : string
   ; line : int
@@ -64,7 +74,7 @@ type binop =
   | ObjAttr
   (* List ranges *)
   | Range
-  (* What the hell is this *)
+  (* TODO: We parse this, but do not have anything implemented for it *)
   | Form
   (* Qualified namespace lookup *)
   | GetPackage
@@ -127,7 +137,10 @@ and 'a expr =
 type 'a program = ('a expr) list
 
 
-(* Useful string conversion functions *)
+(* String conversion to print ASTs. For the most part our string
+  conversion is not "pretty-printing" for debugging reasons. The resulting
+  string representation should explicitly state what constructs it's using
+  so that we can compare that against the expected output. *)
 
 let string_of_ident : 'a ident -> string =
   fun id -> match id.pkg with
