@@ -1,9 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: d7f6f5df5af710363a5c1ede2143436d)
-# Ignore VCS directories, you can use the same kind of rule outside
-# OASIS_START/STOP if you want to exclude directories that contains
+# DO NOT EDIT (digest: 834bda08f5af316bab3c6b82b5b7758b)
+# Ignore VCS directories, you can use the same kind of rule outside 
+# OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
-true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -18,94 +17,94 @@ true: annot, bin_annot
 "src/smt/parser/smt-parser.cmxs": use_smt-parser
 # Library smt
 "src/smt/smt.cmxs": use_smt
-<src/smt/*.ml{,i,y}>: use_smt-parser
+<src/smt/*.ml{,i}>: use_smt-parser
 # Library parser
 "src/parser/parser.cmxs": use_parser
 # Executable absyn_generator
 "src/parser/absyn_generator.byte": use_parser
-<src/parser/*.ml{,i,y}>: use_parser
+<src/parser/*.ml{,i}>: use_parser
 # Library language
 "src/language/language.cmxs": use_language
 # Library interp-commons
 "src/interpreter/interp-commons/interp-commons.cmxs": use_interp-commons
-<src/interpreter/interp-commons/*.ml{,i,y}>: use_language
-<src/interpreter/interp-commons/*.ml{,i,y}>: use_smt
-<src/interpreter/interp-commons/*.ml{,i,y}>: use_smt-parser
+<src/interpreter/interp-commons/*.ml{,i}>: use_smt
+<src/interpreter/interp-commons/*.ml{,i}>: use_smt-parser
+<src/interpreter/interp-commons/*.ml{,i}>: use_language
 # Library natives
 "src/interpreter/natives/natives.cmxs": use_natives
-<src/interpreter/natives/*.ml{,i,y}>: use_interp-commons
-<src/interpreter/natives/*.ml{,i,y}>: use_language
-<src/interpreter/natives/*.ml{,i,y}>: use_smt
-<src/interpreter/natives/*.ml{,i,y}>: use_smt-parser
+<src/interpreter/natives/*.ml{,i}>: use_interp-commons
+<src/interpreter/natives/*.ml{,i}>: use_smt
+<src/interpreter/natives/*.ml{,i}>: use_smt-parser
+<src/interpreter/natives/*.ml{,i}>: use_language
 # Library loader
 "src/interpreter/preprocess/loader.cmxs": use_loader
-<src/interpreter/preprocess/*.ml{,i,y}>: use_interp-commons
-<src/interpreter/preprocess/*.ml{,i,y}>: use_language
-<src/interpreter/preprocess/*.ml{,i,y}>: use_natives
-<src/interpreter/preprocess/*.ml{,i,y}>: use_parser
-<src/interpreter/preprocess/*.ml{,i,y}>: use_smt
-<src/interpreter/preprocess/*.ml{,i,y}>: use_smt-parser
+<src/interpreter/preprocess/*.ml{,i}>: use_natives
+<src/interpreter/preprocess/*.ml{,i}>: use_interp-commons
+<src/interpreter/preprocess/*.ml{,i}>: use_smt
+<src/interpreter/preprocess/*.ml{,i}>: use_smt-parser
+<src/interpreter/preprocess/*.ml{,i}>: use_parser
+<src/interpreter/preprocess/*.ml{,i}>: use_language
 # Library stepper
 "src/interpreter/stepper/stepper.cmxs": use_stepper
-<src/interpreter/stepper/*.ml{,i,y}>: use_interp-commons
-<src/interpreter/stepper/*.ml{,i,y}>: use_language
-<src/interpreter/stepper/*.ml{,i,y}>: use_natives
-<src/interpreter/stepper/*.ml{,i,y}>: use_smt
-<src/interpreter/stepper/*.ml{,i,y}>: use_smt-parser
+<src/interpreter/stepper/*.ml{,i}>: use_natives
+<src/interpreter/stepper/*.ml{,i}>: use_interp-commons
+<src/interpreter/stepper/*.ml{,i}>: use_smt
+<src/interpreter/stepper/*.ml{,i}>: use_smt-parser
+<src/interpreter/stepper/*.ml{,i}>: use_language
 # Library interpreter
 "src/interpreter/interpreter.cmxs": use_interpreter
-<src/interpreter/*.ml{,i,y}>: use_interp-commons
-<src/interpreter/*.ml{,i,y}>: use_language
-<src/interpreter/*.ml{,i,y}>: use_loader
-<src/interpreter/*.ml{,i,y}>: use_natives
-<src/interpreter/*.ml{,i,y}>: use_parser
-<src/interpreter/*.ml{,i,y}>: use_smt
-<src/interpreter/*.ml{,i,y}>: use_smt-parser
-<src/interpreter/*.ml{,i,y}>: use_stepper
+<src/interpreter/*.ml{,i}>: use_stepper
+<src/interpreter/*.ml{,i}>: use_loader
+<src/interpreter/*.ml{,i}>: use_natives
+<src/interpreter/*.ml{,i}>: use_interp-commons
+<src/interpreter/*.ml{,i}>: use_smt
+<src/interpreter/*.ml{,i}>: use_smt-parser
+<src/interpreter/*.ml{,i}>: use_parser
+<src/interpreter/*.ml{,i}>: use_language
 # Executable main
-"src/main.byte": use_interp-commons
 "src/main.byte": use_interpreter
-"src/main.byte": use_language
+"src/main.byte": use_stepper
 "src/main.byte": use_loader
 "src/main.byte": use_natives
-"src/main.byte": use_parser
+"src/main.byte": use_interp-commons
 "src/main.byte": use_smt
 "src/main.byte": use_smt-parser
-"src/main.byte": use_stepper
-<src/*.ml{,i,y}>: use_interp-commons
-<src/*.ml{,i,y}>: use_interpreter
-<src/*.ml{,i,y}>: use_language
-<src/*.ml{,i,y}>: use_loader
-<src/*.ml{,i,y}>: use_natives
-<src/*.ml{,i,y}>: use_parser
-<src/*.ml{,i,y}>: use_smt
-<src/*.ml{,i,y}>: use_smt-parser
-<src/*.ml{,i,y}>: use_stepper
+"src/main.byte": use_parser
+"src/main.byte": use_language
+<src/*.ml{,i}>: use_interpreter
+<src/*.ml{,i}>: use_stepper
+<src/*.ml{,i}>: use_loader
+<src/*.ml{,i}>: use_natives
+<src/*.ml{,i}>: use_interp-commons
+<src/*.ml{,i}>: use_smt
+<src/*.ml{,i}>: use_smt-parser
+<src/*.ml{,i}>: use_parser
+<src/*.ml{,i}>: use_language
 # Library ounit
 "test/ounit/ounit.cmxs": use_ounit
-<test/ounit/*.ml{,i,y}>: pkg_unix
+<test/ounit/*.ml{,i}>: pkg_unix
 # Executable testytesty
-"test/test.byte": pkg_unix
-"test/test.byte": use_interp-commons
 "test/test.byte": use_interpreter
-"test/test.byte": use_language
+"test/test.byte": use_stepper
 "test/test.byte": use_loader
 "test/test.byte": use_natives
-"test/test.byte": use_ounit
-"test/test.byte": use_parser
+"test/test.byte": use_interp-commons
 "test/test.byte": use_smt
 "test/test.byte": use_smt-parser
-"test/test.byte": use_stepper
-<test/*.ml{,i,y}>: pkg_unix
-<test/*.ml{,i,y}>: use_interp-commons
-<test/*.ml{,i,y}>: use_interpreter
-<test/*.ml{,i,y}>: use_language
-<test/*.ml{,i,y}>: use_loader
-<test/*.ml{,i,y}>: use_natives
-<test/*.ml{,i,y}>: use_ounit
-<test/*.ml{,i,y}>: use_parser
-<test/*.ml{,i,y}>: use_smt
-<test/*.ml{,i,y}>: use_smt-parser
-<test/*.ml{,i,y}>: use_stepper
+"test/test.byte": use_parser
+"test/test.byte": use_language
+"test/test.byte": use_ounit
+"test/test.byte": pkg_unix
+<test/*.ml{,i}>: use_interpreter
+<test/*.ml{,i}>: use_stepper
+<test/*.ml{,i}>: use_loader
+<test/*.ml{,i}>: use_natives
+<test/*.ml{,i}>: use_interp-commons
+<test/*.ml{,i}>: use_smt
+<test/*.ml{,i}>: use_smt-parser
+<test/*.ml{,i}>: use_parser
+<test/*.ml{,i}>: use_language
+<test/*.ml{,i}>: use_ounit
+<test/*.ml{,i}>: pkg_unix
 # OASIS_STOP
 true: use_menhir

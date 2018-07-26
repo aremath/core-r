@@ -138,6 +138,13 @@ let vec_binop: ident -> param list * expr =
         (id,
         [id_of_string "vector1"; id_of_string "vector2"]))
 
+let vec_uop: ident -> param list * expr =
+    fun id ->
+    ([Param (id_of_string "vector1")],
+    NativeLambdaApp
+        (id,
+        [id_of_string "vector1"]))
+
 (* Colon *)
 let native_vector_colon_id = native_id_of_string "vector.colon"
 let nw_fun_vec_colon = vec_binop (native_vector_colon_id)
@@ -196,13 +203,25 @@ let nw_fun_vec_or = vec_binop (native_vector_or_id)
 let native_vector_xor_id = native_id_of_string "vector.xor"
 let nw_fun_vec_xor = vec_binop (native_vector_xor_id)
 
-let native_vector_make_symbolic_id = native_id_of_string "make.symbolic"
-let nw_fun_vec_make_sym: (param list * expr) =
+(* make.symbolic(4, "int") creates a symbolic vector of 4 integers *)
+let native_vector_make_symbolic_id = id_of_rstring (Some "make.symbolic")
+let nw_fun_vec_sym: (param list * expr) =
     ([Param (id_of_string "length"); Param (id_of_string "type")],
     NativeLambdaApp
         (native_vector_make_symbolic_id,
         [id_of_string "length"; id_of_string "type"]))
 
+(* Conversion *)
+let native_vector_intconv_id = id_of_rstring (Some "as.integer")
+let nw_fun_vec_intconv = vec_uop native_vector_intconv_id
+let native_vector_floatconv_id = id_of_rstring (Some "as.float")
+let nw_fun_vec_floatconv = vec_uop native_vector_floatconv_id
+let native_vector_complexconv_id = id_of_rstring (Some "as.complex")
+let nw_fun_vec_complexconv = vec_uop native_vector_complexconv_id
+let native_vector_strconv_id = id_of_rstring (Some "as.string")
+let nw_fun_vec_strconv = vec_uop native_vector_strconv_id
+let native_vector_boolconv_id = id_of_rstring (Some "as.bool")
+let nw_fun_vec_boolconv = vec_uop native_vector_boolconv_id
 
 (* Pairs to inject with *)
 let native_injection_pairs : (ident * (param list * expr)) list =
@@ -240,6 +259,13 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_orvec_id, nw_fun_vec_orvec);
     (native_vector_or_id, nw_fun_vec_or);
     (native_vector_xor_id, nw_fun_vec_xor);
-    (native_vector_make_symbolic_id, nw_fun_vec_make_sym);
+
+    (native_vector_make_symbolic_id, nw_fun_vec_sym);
+
+    (native_vector_intconv_id, nw_fun_vec_intconv);
+    (native_vector_floatconv_id, nw_fun_vec_floatconv);
+    (native_vector_complexconv_id, nw_fun_vec_complexconv);
+    (native_vector_strconv_id, nw_fun_vec_strconv);
+    (native_vector_boolconv_id, nw_fun_vec_boolconv);
   ]
 

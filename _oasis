@@ -43,7 +43,7 @@ Library "interp-commons"
 Library "natives"
   Path: src/interpreter/natives
   Modules: Constants, Copy, Vector, Native_support, Subscript,
-           Native_calls, Arithmetic, Symbolic_ops
+           Native_calls, Arithmetic, Symbolic_ops, Convert
   BuildDepends: interp-commons
 
 Library "loader"

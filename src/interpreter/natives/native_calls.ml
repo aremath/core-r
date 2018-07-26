@@ -17,6 +17,7 @@ module U = Langutils
 open Natives
 open Vector
 open Arithmetic
+open Convert
 
 open List
 
@@ -56,18 +57,30 @@ let do_rvector_bop: (rvector -> rvector -> state -> rvector * state) ->
         Some { state2 with stack = stack_push c_frame state.stack }
     | _ -> None
 
-(* Matches the identifier used for the call to determine which native mems
-  call it needs to perform and matches the memory addresses passed in to the
-  arguments expected. Called when the evaluator sees a NativeLambdaApp.
-  Fails when it can't recognize the identifier for the
-  NativeLambdaApp - the function requested either doesn't exist or hasn't been
-  registered (see interpreter/interp-commons/natives.ml),
-  or when a different number of arguments are passed from expected.
-  
-  Notably does not dereference the arguments. 
-  This will fail gracefully when the identifier did not match a known
-  native call - it simply will not produce a state, and the interpreter will
-  do whatever is default when it applied
+(* For rvector conversion. For now we do not allow explicit conversion of symbolic
+    vectors, so the conversion function is rvector -> rvector. The conversion
+    functions are found in native_support.ml.
+*)
+let do_rvector_conv: (rvector -> rvector) ->
+        memref list -> memref -> state -> state option =
+    fun op arg_mems c_env_mem state ->
+    match arg_mems with
+    | [v1] ->
+        let (mem2, state2) = convert_vector_mems op v1 state in
+        let c_frame = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot mem2 } in
+        Some { state2 with stack = stack_push c_frame state.stack }
+    | _ -> None
+
+(* Matches the identifier used for the call to determine which native mems call it needs to perform
+  and matches the memory addresses passed in to the arguments expected. Called when the evaluator sees
+  a NativeLambdaApp. Fails when it can't recognize the identifier for the NativeLambdaApp - the function
+  requested either doesn't exist or hasn't been registered (see interpreter/interp-commons/natives.ml),
+  or when a different number of arguments are passed from expected. Notably does not dereference
+  the arguments. 
+  This will fail gracefully when the identifier did not match a known native call - it simply
+  will not produce a state, and the interpreter will do whatever is default when it applied
   a production rule that didn't succeed. *)
 let native_call : ident -> memref list -> memref -> state -> state option =
   fun id arg_mems c_env_mem state ->
@@ -338,6 +351,17 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                           slot = ReturnSlot mem2 } in
           Some { state2 with stack = stack_push c_frame state.stack }
       | _ -> None)
+
+    else if id = native_vector_intconv_id then
+        do_rvector_conv rvector_as_integer arg_mems c_env_mem state
+    else if id = native_vector_floatconv_id then
+        do_rvector_conv rvector_as_float arg_mems c_env_mem state
+    else if id = native_vector_complexconv_id then
+        do_rvector_conv rvector_as_complex arg_mems c_env_mem state
+    else if id = native_vector_strconv_id then
+        do_rvector_conv rvector_as_string arg_mems c_env_mem state
+    else if id = native_vector_boolconv_id then
+        do_rvector_conv rvector_as_bool arg_mems c_env_mem state
         
     (* Oh no! *)
     else

@@ -321,7 +321,7 @@ and convert_arg: 'a R.arg -> ('a, 'b) L.arg =
     (* | R.IdentAssignEmpty i  -> L.Named (convert_ident i, convert_expr R.Null) *)
     | R.IdentAssignEmpty i  -> failwith "Empty assign not part of Core R!"
 
-    | R.StringAssign (s, e) -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr e)
+    | R.StringAssign (s, e) -> L.Named (convert_ident {R.default_ident with R.name = s}, convert_expr e)
     (* | R.StringAssignEmpty s -> L.Named (convert_ident {R.default_ident with name = s}, convert_expr R.Null) *)
     | R.StringAssignEmpty s -> failwith "Empty assign not part of Core R!"
 

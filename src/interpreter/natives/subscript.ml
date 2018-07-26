@@ -108,7 +108,6 @@ let do_subset_assign: 'a. ('a array * int array) -> int array list -> 'a array -
     let _ = if n_elements mod n_assigns <> 0 then
         failwith "Number of items to replace is not a multiple of replacement length"
         else () in
-    let out_array = Array.make n_elements (0, in_array.(0)) in
     (* Find which indices of in_array will be assigned to *)
     let final_indices = out_indices n_elements bounds subs offset n_dims in
     (* Do the assignments - wrap assigns using mod *)
