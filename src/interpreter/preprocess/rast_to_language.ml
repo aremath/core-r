@@ -117,7 +117,7 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
 
         | R.Not ->
           L.LambdaApp (L.Ident native_vector_eq_id,
-                      [L.Arg c_expr; L.Arg (L.Const (L.Num (L.Int (Some 0))))])
+                      [L.Arg c_expr; convert_arg (R.ExprArg (R.BoolConst false))])
 
         | R.UForm -> L.LambdaApp (L.Ident u_ident,
             [L.Arg c_expr])

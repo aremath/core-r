@@ -83,4 +83,6 @@ source("mean.R") #* Find the mean of things
 
 library <- function (...) {}
 
+warning <- function (...) {}
+
 

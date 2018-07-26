@@ -93,7 +93,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with 
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_is_integer_id then
@@ -114,7 +116,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_is_logical_id then
@@ -135,7 +139,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_is_character_id then
@@ -156,7 +162,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_is_complex_id then
@@ -177,7 +185,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_is_null_id then
@@ -198,7 +208,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_is_na_id then
@@ -215,7 +227,9 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
-          Some { state with stack = stack_push c_frame state.stack }
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     (* Vector subscripting *)
