@@ -91,7 +91,7 @@ let test_base_dir : unit -> string =
 let test_base = "base" >:::
   [
     "appending.R" >::
-      test_file (test_base_dir () ^ "/appending.R") 150
+      test_file (test_base_dir () ^ "/appending.R") 200
                 (rint_vec_of_ints [1; 2; 3; 3; 4; 5]);
   ]
 
