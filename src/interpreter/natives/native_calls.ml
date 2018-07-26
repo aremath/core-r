@@ -17,6 +17,7 @@ module U = Langutils
 open Natives
 open Vector
 open Arithmetic
+open Convert
 
 open List
 
@@ -50,6 +51,22 @@ let do_rvector_bop: (rvector -> rvector -> state -> rvector * state) ->
     match arg_mems with
     | (v1 :: v2 :: []) ->
         let (mem2, state2) = vector_bop_mems op v1 v2 state in
+        let c_frame = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot mem2 } in
+        Some { state2 with stack = stack_push c_frame state.stack }
+    | _ -> None
+
+(* For rvector conversion. For now we do not allow explicit conversion of symbolic
+    vectors, so the conversion function is rvector -> rvector. The conversion
+    functions are found in native_support.ml.
+*)
+let do_rvector_conv: (rvector -> rvector) ->
+        memref list -> memref -> state -> state option =
+    fun op arg_mems c_env_mem state ->
+    match arg_mems with
+    | [v1] ->
+        let (mem2, state2) = convert_vector_mems op v1 state in
         let c_frame = { frame_default with
                             env_mem = c_env_mem;
                             slot = ReturnSlot mem2 } in
@@ -173,6 +190,17 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                           slot = ReturnSlot mem2 } in
           Some { state2 with stack = stack_push c_frame state.stack }
       | _ -> None)
+
+    else if id = native_vector_intconv_id then
+        do_rvector_conv rvector_as_integer arg_mems c_env_mem state
+    else if id = native_vector_floatconv_id then
+        do_rvector_conv rvector_as_float arg_mems c_env_mem state
+    else if id = native_vector_complexconv_id then
+        do_rvector_conv rvector_as_complex arg_mems c_env_mem state
+    else if id = native_vector_strconv_id then
+        do_rvector_conv rvector_as_string arg_mems c_env_mem state
+    else if id = native_vector_boolconv_id then
+        do_rvector_conv rvector_as_bool arg_mems c_env_mem state
         
     (* Oh no! *)
     else
