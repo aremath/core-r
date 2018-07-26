@@ -1,4 +1,21 @@
-(* Functions for dealing with rvectors - creating them, editing their attributes, etc. *)
+(*
+    vector.ml
+
+    Functions for dealing with rvectors - creating them, editing their attributes, etc.
+    Functions ending in "mems" are intended to work with memory references and a state,
+    and can be registered as native calls. Other functions are helpers for these
+    native functions. Note that these functions take an S.state. Before introducing
+    symbolic variables, they took an S.heap, since they could only allocate new
+    data. Since they might need to produce names on the fly for symbolic values,
+    they take an entire state.
+    
+    Right now, the error-handling scheme is very messy, with functions typically
+    failing when they encounter invalid input. One possibility for a better
+    error-handling scheme is for these functions to push an ErrorSlot of string
+    onto the state's stack, to allow for interpreter rules that unwind the
+    stack when encountering an ErrorSlot, rather than just crashing and burning.
+*)
+
 module S = Support
 module C = Native_support (* was Coerce *)
 module Copy = Copy
@@ -18,6 +35,7 @@ let rvector_length: S.rvector -> int =
     | S.BoolVec b -> Array.length b
     | S.SymVec s -> failwith "Can't get integer length for symbolic vector!"
 
+(* Create a length-1 rvector holding the length of another rvector. *)
 let rvector_length_vec: S.rvector -> S.state -> S.rvector * S.state =
     fun vec state ->
     match vec with
@@ -45,10 +63,15 @@ let rvector_length_mem: S.memref -> S.state -> (S.memref * S.state) =
     (* allocate the length *)
     S.state_alloc (S.DataObj (S.Vec len_vec, S.attrs_empty ())) state'
 
-(* Returns a memref because of ex.
+(* Handles dim(x) <- y. No physical change needs to be made to x because of how R handles
+    dimensions: dimensions is just an attribute with the requirement that the product of
+    the dimensions is equal to the length of its vector. Subsetting code deals explicitly
+    with the dimensions to determine what elements to choose.
+    This function returns a memref because of ex.
     y = (dim(x) <- c(1,5))  # y = [1, 5]
+
     TODO: do we need to copy dim_ref' again so that y here doesn't point directly to x's dims?
-    I think it might be fine since there's no way to edit x's dims directly (anything will make a copy)
+    I think it might be fine since there's no way to edit x's dims directly (access will make a copy)
 *)
 let set_dims_mem: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     fun data_ref dim_ref state ->
@@ -67,11 +90,15 @@ let set_dims_mem: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     else
         failwith "Dimension not compatible with vector length" (* TODO: sprintf to show what the size was *)
 
+(* Array of length 0 used as the basis for fold with concatenate. *)
 let mk_empty_intvec: unit -> S.rvector = fun _ -> S.IntVec (Array.make 0 (Some 0))
 let mk_empty_floatvec: unit -> S.rvector = fun _ -> S.FloatVec (Array.make 0 (Some 0.0))
 let mk_empty_complexvec: unit -> S.rvector = fun _ -> S.ComplexVec (Array.make 0 (Some Complex.zero))
 let mk_empty_strvec: unit -> S.rvector = fun _ -> S.StrVec (Array.make 0 (Some ""))
 let mk_empty_boolvec: unit -> S.rvector = fun _ -> S.BoolVec (Array.make 0 (Some 0))
+(* This is really ugly - The empty symbolic vector we make needs to be allocated since
+    there's no vector for it to be a dependency of.
+*)
 let mk_empty_symvec: S.state -> S.rtype -> S.rvector * S.state =
     fun state ty ->
     let name, state' = S.name_fresh state in
@@ -95,20 +122,10 @@ let concat_rvectors: S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) 
     | (S.ComplexVec c1, S.ComplexVec c2) -> (S.ComplexVec (Array.concat [c1;c2]), state)
     | (S.StrVec s1, S.StrVec s2) -> (S.StrVec (Array.concat [s1;s2]), state)
     | (S.BoolVec b1, S.BoolVec b2) -> (S.BoolVec (Array.concat [b1;b2]), state)
-    (* In the case where they're both symbolic, no conversion is necessary *)
-    | (S.SymVec sy1, S.SymVec sy2) -> let name, state' = S.name_fresh state in
-        let symconcat = (Sym.symbolic_concat name sy1 sy2) in
-        (S.SymVec (symconcat, S.NoDepends), state')
-    (* If they're not both symbolic, we should convert one *)
-    | (S.SymVec sy1, vec) -> let concat_name, state' = S.name_fresh state in
-        let sy2, state'' = Sym.vec_to_symvec vec state' in
-        let symconcat = (Sym.symbolic_concat concat_name sy1 sy2) in
-        (* sy2 created implictly - concat uses sy2 in its definition. *)
-        (S.SymVec (symconcat, S.Depends [sy2]), state'')
-    | (vec, S.SymVec sy2) -> let concat_name, state' = S.name_fresh state in
-        let sy1, state'' = Sym.vec_to_symvec vec state' in
-        let symconcat = (Sym.symbolic_concat concat_name sy1 sy2) in
-        (S.SymVec (symconcat, S.Depends [sy1]), state'')
+    (* Concrete values are converted to symbolic for symbolic primitive operations. *)
+    | (S.SymVec _, _)
+    | (_, S.SymVec _) -> Sym.sym_op (Sym.arg2listize Sym.symbolic_concat)
+        [v1;v2] state
     | _ -> failwith "Can't concatenate incompatible vectors"
 
 (* Folds rvectors together with concat *)
@@ -129,7 +146,7 @@ let fold_rvectors: S.rvector list -> S.state -> (S.rvector * S.state) =
             S.state_fold_left concat_rvectors (empty) vlist state'
         end
 
-(* TODO: because fold_rvectors allocates, this is a double allocate *)
+(* Allocates the concatenations of the rvectors. *)
 let alloc_fold_vectors: S.rvector list -> S.state -> (S.memref * S.state) =
     fun vecs state ->
     match vecs with
@@ -142,8 +159,10 @@ let alloc_fold_vectors: S.rvector list -> S.state -> (S.memref * S.state) =
         (* Allocate the new vector and return a reference to it *)
         S.state_alloc (S.DataObj(S.Vec new_vec, S.attrs_empty ())) state'
 
-(* Vector creation - R's "c" function *)
-(* Does not support ex. c(a=c(1,2)) *)
+(* Vector creation - R's "c" function. Does not support ex. c(a=c(1,2))
+    This is currently unused since make_vector_mems handles the "names" attribute,
+    and so can be applied to more complex cases like above.
+*)
 let make_vector_simple_mems: S.memref list -> S.state -> (S.memref * S.state) =
     fun vec_mems state ->
     (* First, deep copy the arguments so they're not captured *)
@@ -152,7 +171,15 @@ let make_vector_simple_mems: S.memref list -> S.state -> (S.memref * S.state) =
     let vecs = List.map (fun m -> C.dereference_rvector m state') vec_mems' in
     alloc_fold_vectors vecs state'
 
-(* Produces ex. (Some "a") 2 -> S.StrVec [| (Some "a1"), (Some "a2") |] *)
+(* Produces ex. (Some "a") 2 -> S.StrVec [| (Some "a1"), (Some "a2") |]
+    When a vector is created using something like x=c(a=c(1,2),3,b=c(4,5)),
+    x is an rvector: [1,2,3,4,5]. In this case, x has a "names" attribute, and
+    names(x) = ["a1","a2","","b1","b2"]. Note that this storage method allows a
+    vector to have multiple elements named "a1", if you do c(a=c(1,2),a=c(1,2)).
+    This is a helper function that produces these names. Don't ask why, when
+    an element of the vector was not named, R decided to name it empty string
+    rather than NA.
+*)
 let n_names: S.rstring -> int -> S.rvector =
     fun so n ->
     match so with
@@ -168,6 +195,16 @@ let n_names: S.rstring -> int -> S.rvector =
      but it will never be passed in a call to make_vector. *)
     | None -> failwith "Invalid None name in n_names"
 
+(* R's c() function. Handles the vector's names using the default
+    arguments. Can be used to create symbolic vectors assuming no
+    names are provided.
+    You would expect x=c(y,a=1) with y symbolic to be an rvector
+    with constraints such that x is the concatenation of y and [1].
+    The complexity here is that x's names must also be symbolic,
+    constrained to be a vector of empty strings equal to the length
+    of y, concatenated with ["a"]. Since we do not currently support
+    symbolic string vectors, this behavior is not supported.
+*)
 let make_vector_mems: S.memref -> S.state -> (S.memref * S.state) =
     fun var_mem state ->
     (* First, copy the arguments since vector will capture them *)
@@ -256,7 +293,9 @@ let range_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
         (S.IntVec (C.unresolve_vec irange), state)
     | (S.FloatVec [|Some sf|], S.FloatVec [|Some ef|]) -> let frange = float_range sf ef in
         (S.FloatVec (C.unresolve_vec frange), state)
-    (* Symbolic ops *)
+    (* Symbolic ops. Doesn't use sym_op as usual because we want to use
+      the actual value of a concrete vector if we can. *)
+    (* TODO: Constrain each symvec which is an argument to have length 1. *)
     | (S.SymVec ((n1, S.RInt, _), _), S.SymVec ((n2, S.RInt, _), _)) ->
         mk_range_vec S.RInt (smt_getn n1 0) (smt_getn n2 0) state
     | (S.SymVec ((n1, S.RFloat, _), _), S.SymVec ((n2, S.RFloat, _), _)) ->
@@ -272,7 +311,11 @@ let range_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     | _ -> failwith "Bad range call" in (* TODO: better error messaging *)
     S.state_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty ())) state'
 
-(* makes an array which is a copied n times *)
+(* Makes an array which is a copied n times. Helper for vectorized operations.
+  When we do c(1,2) + c(1,2,3,4), R checks the lengths of the two vectors to
+  see if they are divisible. It then multiplies the shorter one to the length
+  of the longer one, and does pointwise addition. If the lengths aren't divisible,
+  R will warn and we will fail. *)
 let rec array_wrap: 'a array -> int -> 'a array =
     fun a n ->
     (* Wrap once just means copy *)
@@ -324,9 +367,9 @@ let vector_bop_mems: (S.rvector -> S.rvector -> S.state -> (S.rvector * S.state)
     let rhs = C.dereference_rvector rhs_ref state in
     let  true_lhs, true_rhs  = match lhs, rhs with
     (* Symbolic vectors do not need to be altered *)
-    | S.SymVec sy1, S.SymVec sy2 -> (S.SymVec sy1, S.SymVec sy2)
-    | S.SymVec sy1, vec2 -> (S.SymVec sy1, vec2)
-    | vec1, S.SymVec sy2 ->(vec1, S.SymVec sy2)
+    | S.SymVec _, S.SymVec _
+    | S.SymVec _, _
+    | _, S.SymVec _ -> (lhs, rhs)
     (* If they're concrete, multiply out the shorter rvector, if appropriate *)
     | vec1, vec2 -> compatify_lengths vec1 vec2 in
     (* Do the operation on the (possibly wrapped) vectors *)
@@ -335,12 +378,16 @@ let vector_bop_mems: (S.rvector -> S.rvector -> S.state -> (S.rvector * S.state)
     (* TODO: is attrs_empty () appropriate? *)
     S.state_alloc (S.DataObj ((S.Vec new_vec), S.attrs_empty ())) state'
 
-(* Inefficient, but works *)
+(* Inefficient, but works. *)
 let array_filter: ('a -> bool) -> 'a array -> 'a array =
     fun pred a ->
     let l = List.filter pred (Array.to_list a) in
     Array.of_list l
 
+(* Drops the dimensions of length 1 from a vector. Currently unused, but some
+    vector functions have a drop_dims bool which defaults to false. We do not
+    implement this, but this function should work if needed.
+*)
 let drop_dims_mems: S.memref -> S.state -> (S.memref * S.state) =
     fun vec_ref state ->
     (* First, copy the argument *)
