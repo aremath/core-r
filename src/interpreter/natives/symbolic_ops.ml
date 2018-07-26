@@ -136,8 +136,9 @@ let arg3listize: (smtvar -> S.symvec -> S.symvec -> S.symvec -> S.symdef) ->
     match args with
     | [arg1;arg2;arg3] -> f name arg1 arg2 arg3
     | _ -> failwith "Wrong number of arguments"
-    
 
+(* When combining two vectors, make sure that their types match and
+    return a new type for the new vector. *)
 let match_tys: S.rtype -> S.rtype -> S.rtype =
     fun ty1 ty2 ->
     match (ty1, ty2) with
@@ -147,7 +148,43 @@ let match_tys: S.rtype -> S.rtype -> S.rtype =
     | (S.RString, S.RString) -> S.RString
     | (S.RBool, S.RBool) -> S.RBool
     | (_, _) -> failwith "Incompatible symbolic types"
-    
+
+(* Sum across the vector *)
+let symbolic_sum: smtvar -> S.symvec -> S.symdef =
+    fun new_name ((name, ty, _),_) ->
+    let new_len = lengthn new_name 1 in
+    let name_sum = match ty with
+    | S.RInt -> all_elements name (SmtEq (
+        SmtFunApp ("sym_vec_int_sum", [SmtVar name; SmtVar forall_var]),
+        SmtPlus (SmtArrGet (SmtVar name, SmtVar forall_var),
+            SmtFunApp ("sym_vec_int_sum",
+                [SmtVar name;
+                    (SmtSub (SmtVar forall_var, smt_int_const 1))]))))
+    | S.RFloat -> all_elements name (SmtEq (
+        SmtFunApp ("sym_vec_float_sum", [SmtVar name; SmtVar forall_var]),
+        SmtPlus (SmtArrGet (SmtVar name, SmtVar forall_var),
+            SmtFunApp ("sym_vec_float_sum",
+                [SmtVar name;
+                    (SmtSub (SmtVar forall_var, smt_int_const 1))]))))
+    | _ -> failwith "Invalid type for symbolic sum" in
+    let name_sum_base_case = match ty with
+    | S.RInt -> SmtEq (
+        SmtFunApp ("sym_vec_int_sum", [SmtVar name; smt_int_const (-1)]),
+        smt_int_const 0)
+    | S.RFloat -> SmtEq (
+        SmtFunApp ("sym_vec_float_sum", [SmtVar name; smt_int_const (-1)]),
+        smt_int_const 0)
+    | _ -> failwith "Invalid type for symbolic sum" in
+    let new_val = match ty with
+    | S.RInt -> SmtEq (
+        smt_getn new_name 0,
+        SmtFunApp ("sym_vec_int_sum", [SmtVar name; SmtSub (smt_len name, smt_int_const 1)]))
+    | S.RFloat -> SmtEq (
+        smt_getn new_name 0,
+        SmtFunApp ("sym_vec_float_sum", [SmtVar name; SmtSub (smt_len name, smt_int_const 1)]))
+    | _ -> failwith "Invalid type for symbolic sum" in
+    (new_name, ty, { S.path_list = [new_len;new_val] })
+
 (* From two symbolic vectors, make a new symbolic vector which is
  constrained to be the concatenation of v1 and v2. *)
 let symbolic_concat: smtvar -> S.symvec -> S.symvec -> S.symdef =

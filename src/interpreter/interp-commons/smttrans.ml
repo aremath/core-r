@@ -284,7 +284,16 @@ let custom_decls : unit -> smtcmd list =
     (* ONLY HANDLES INTEGERS FOR NOW *)
     [SmtDeclFun ("sym_vec_length_int",
                 [SmtSortArray ([SmtSortInt], SmtSortInt)],
-                SmtSortInt)]
+                SmtSortInt);
+    (* Sum of an integer vector *)
+    SmtDeclFun ("sym_vec_int_sum",
+                [SmtSortArray ([SmtSortInt], SmtSortInt); SmtSortInt],
+                SmtSortInt);
+    (* Sum of a float vector *)
+    SmtDeclFun ("sym_vec_float_sum",
+                [SmtSortArray ([SmtSortInt], SmtSortFloat); SmtSortInt],
+                SmtSortFloat);
+    ]
 
 let custom_post : unit -> smtcmd list =
   fun _ ->
