@@ -121,10 +121,17 @@ let nw_fun_vec_make : (param list) * expr =
 (* Vector length *)
 let native_vector_length_id: ident = native_id_of_string "vector.length"
 let nw_fun_vec_length : (param list) * expr =
-    ([Param (id_of_string "data")],
-    NativeLambdaApp
-        (native_vector_length_id,
-        [id_of_string "data"]))
+  ([Param (id_of_string "data")],
+  NativeLambdaApp
+      (native_vector_length_id,
+      [id_of_string "data"]))
+
+let native_vector_sum_id : ident = native_id_of_string "vector.sum"
+let nw_fun_vec_sum : (param list) * expr =
+  ([Param (id_of_string "vec")],
+   NativeLambdaApp
+    (native_vector_sum_id,
+    [id_of_string "vec"]))
 
 (* Vector binary operations *)
 
@@ -238,6 +245,7 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_subset_id, nw_fun_vec_subset);
     (native_vector_make_id, nw_fun_vec_make);
     (native_vector_length_id, nw_fun_vec_length);
+    (native_vector_sum_id, nw_fun_vec_sum);
     (native_vector_colon_id, nw_fun_vec_colon);
 
     (native_vector_add_id, nw_fun_vec_add);

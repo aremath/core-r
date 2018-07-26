@@ -60,28 +60,28 @@ let test_simple_dir : unit -> string =
 let test_simple = "Simple" >:::
   [
     "assign.R" >::
-      test_file (test_simple_dir () ^ "/assigns.R") 100
+      test_file (test_simple_dir () ^ "/assigns.R") 200
                 (rint_vec_of_ints [4]);
     "dots.R" >::
-      test_file (test_simple_dir () ^ "/dots.R") 100
+      test_file (test_simple_dir () ^ "/dots.R") 200
                 (rint_vec_of_ints [8; 9; 10]);
     "gt.R" >::
-      test_file (test_simple_dir () ^ "/gt.R") 100
+      test_file (test_simple_dir () ^ "/gt.R") 200
                 (rbool_vec_of_bools [0]);
     "arithmetics.R" >::
-      test_file (test_simple_dir () ^ "/arithmetics.R") 150
+      test_file (test_simple_dir () ^ "/arithmetics.R") 300
                 (rint_vec_of_ints [600; 906; 604; 912]);
     "vecs.R" >::
-      test_file (test_simple_dir () ^ "/vecs.R") 100
+      test_file (test_simple_dir () ^ "/vecs.R") 200
                 (rint_vec_of_ints [9]);
     "branching.R" >::
-      test_file (test_simple_dir () ^ "/branching.R") 100
+      test_file (test_simple_dir () ^ "/branching.R") 200
                 (rint_vec_of_ints [201]);
     "loops.R" >::
       test_file (test_simple_dir () ^ "/loops.R") 500
                 (rint_vec_of_ints [15]);
     "var-dots.R" >::
-      test_file (test_simple_dir () ^ "/var-dots.R") 100
+      test_file (test_simple_dir () ^ "/var-dots.R") 200
                 (rint_vec_of_ints [123]);
   ]
 

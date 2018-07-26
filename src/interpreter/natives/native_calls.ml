@@ -14,6 +14,7 @@ open Syntax
 open Support
 open Subscript
 module U = Langutils
+module C = Complex
 open Natives
 open Vector
 open Arithmetic
@@ -293,6 +294,51 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem2 } in
           Some { state2 with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_vector_sum_id then
+      (match arg_mems with
+      | (vec_mem :: []) ->
+        let sum = (match heap_find vec_mem state.heap with
+            | Some (DataObj (Vec vec, _)) ->
+              (match vec with
+              | IntVec a ->
+                  Int (Array.fold_left (fun acc a ->
+                            match (acc, a) with
+                            | (Some l, Some r) -> Some (l + r)
+                            | (_ , None) -> None
+                            | (None, _) -> None) (Some 0) a)
+
+              | FloatVec a ->
+                  Float (Array.fold_left (fun acc a ->
+                            match (acc, a) with
+                            | (Some l, Some r) -> Some (l +. r)
+                            | (_ , None) -> None
+                            | (None, _) -> None) (Some 0.0) a)
+
+              | ComplexVec a ->
+                  Complex (Array.fold_left (fun acc a ->
+                            match (acc, a) with
+                            | (Some l, Some r) -> Some (Complex.add l r)
+                            | (_ , None) -> None
+                            | (None, _) -> None) (Some Complex.zero) a)
+
+              | BoolVec a ->
+                  Int (Array.fold_left (fun acc a ->
+                            match (acc, a) with
+                            | (Some l, Some r) -> Some (l + r)
+                            | (_ , None) -> None
+                            | (None, _) -> None) (Some 0) a)
+
+              | _ -> Int (Some 0))
+            | _ -> Int (Some 0)) in
+        let (mem2, heap2) = heap_alloc_const (Num sum) state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with
+                   heap = heap2;
+                   stack = stack_push c_frame state.stack }
       | _ -> None)
 
     else if id = native_vector_colon_id then

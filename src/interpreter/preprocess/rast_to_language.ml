@@ -180,6 +180,10 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 L.LambdaApp (L.Ident b_ident,
                                 [L.Arg c_e1; L.Arg c_e2])
 
+    | R.FuncCall (R.Ident { R.name = "sum" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_vector_sum_id,
+                                    map convert_arg args)
 
 
     | R.FuncCall (R.Ident { R.name = "is.numeric" }, args) ->

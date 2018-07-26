@@ -26,18 +26,24 @@ mean <- function(x, trim = 0, na.rm = FALSE, ...)
         return(NA_real_)
     }
     if (na.rm)
-	x <- x[!is.na(x)]
+        x <- x[!is.na(x)]
     if(!is.numeric(trim) || length(trim) != 1L)
         stop("'trim' must be numeric of length one")
     n <- length(x)
-    if(trim > 0 && n) {
-	if(is.complex(x))
-	    stop("trimmed means are not defined for complex data")
+    if(trim > 0 && n != 0) {
+        if(is.complex(x))
+            stop("trimmed means are not defined for complex data")
         if(anyNA(x)) return(NA_real_)
-	if(trim >= 0.5) return(stats::median(x, na.rm=FALSE))
-	lo <- floor(n*trim)+1
-	hi <- n+1-lo
-	x <- sort.int(x, partial = unique(c(lo, hi)))[lo:hi]
+        if(trim >= 0.5) return(stats::median(x, na.rm=FALSE))
+        lo <- floor(n*trim)+1
+        hi <- n+1-lo
+        x <- sort.int(x, partial = unique(c(lo, hi)))[lo:hi]
     }
-    .Internal(mean(x))
+    # .Internal(mean(x))
+    n2 <- length(x)
+    if (n2 == 0) {
+      return (0)
+    } else {
+      return (sum(x) / n2)
+    }
 }
