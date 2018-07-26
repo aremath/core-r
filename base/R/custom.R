@@ -38,7 +38,7 @@ source("array.R") #* Definitely want to support such an important function
 # source("match.R") #* Fine, fuck, okay >:(
 # source("matrix.R") #* A rather important file
 # source("max.col.R") #* Maximum of columns
-# source("mean.R") #* Find the mean of things
+source("mean.R") #* Find the mean of things
 # source("New-Internal.R") #* Appears to have some things like trig functions and shit
 # source("outer.R") #* cross product
 # source("pairlist.R") #* zippidy pairlist shit

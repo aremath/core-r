@@ -135,7 +135,6 @@ type stack =
 (* Heap *)
 type heapobj =
     PromiseObj of expr * memref
-  | PureObj of expr * memref
   | DataObj of value * attributes
 
 type heap =

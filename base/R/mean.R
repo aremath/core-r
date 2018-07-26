@@ -16,9 +16,10 @@
 #  A copy of the GNU General Public License is available at
 #  https://www.R-project.org/Licenses/
 
-mean <- function(x, ...) UseMethod("mean")
+# mean <- function(x, ...) UseMethod("mean")
 
-mean.default <- function(x, trim = 0, na.rm = FALSE, ...)
+# mean.default <- function(x, trim = 0, na.rm = FALSE, ...)
+mean <- function(x, trim = 0, na.rm = FALSE, ...)
 {
     if(!is.numeric(x) && !is.complex(x) && !is.logical(x)) {
         warning("argument is not numeric or logical: returning NA")

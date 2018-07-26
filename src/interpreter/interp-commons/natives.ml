@@ -44,6 +44,56 @@ let native_id_of_string : string -> ident =
   fun name ->
     native_id_of_rstring (rstring_of_string name)
 
+(* Primitive type checking *)
+let native_is_numeric_id : ident = native_id_of_string "is.numeric"
+let nw_fun_is_numeric : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_numeric_id,
+     [id_of_string "x"]))
+
+let native_is_integer_id : ident = native_id_of_string "is.integer"
+let nw_fun_is_integer : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_integer_id,
+     [id_of_string "x"]))
+
+let native_is_logical_id : ident = native_id_of_string "is.logical"
+let nw_fun_is_logical : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_logical_id,
+     [id_of_string "x"]))
+
+let native_is_character_id : ident = native_id_of_string "is.character"
+let nw_fun_is_character : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_character_id,
+     [id_of_string "x"]))
+
+let native_is_complex_id : ident = native_id_of_string "is.complex"
+let nw_fun_is_complex : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_complex_id,
+     [id_of_string "x"]))
+
+let native_is_null_id : ident = native_id_of_string "is.null"
+let nw_fun_is_null : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_null_id,
+     [id_of_string "x"]))
+
+let native_is_na_id : ident = native_id_of_string "is.na"
+let nw_fun_is_na : (param list) * expr =
+  ([Param (id_of_string "x")],
+   NativeLambdaApp
+    (native_is_complex_id,
+     [id_of_string "x"]))
+
 
 (* Vector subsetting *)
 let native_vector_subscript_id: ident = native_id_of_string "vector.subscript"
@@ -146,17 +196,25 @@ let nw_fun_vec_or = vec_binop (native_vector_or_id)
 let native_vector_xor_id = native_id_of_string "vector.xor"
 let nw_fun_vec_xor = vec_binop (native_vector_xor_id)
 
-let native_vector_symbolic_id = id_of_rstring (Some "make.symbolic")
-let nw_fun_vec_sym: (param list * expr) =
+let native_vector_make_symbolic_id = native_id_of_string "make.symbolic"
+let nw_fun_vec_make_sym: (param list * expr) =
     ([Param (id_of_string "length"); Param (id_of_string "type")],
     NativeLambdaApp
-        (native_vector_symbolic_id,
+        (native_vector_make_symbolic_id,
         [id_of_string "length"; id_of_string "type"]))
 
 
 (* Pairs to inject with *)
 let native_injection_pairs : (ident * (param list * expr)) list =
   [
+    (native_is_numeric_id, nw_fun_is_numeric);
+    (native_is_integer_id, nw_fun_is_integer);
+    (native_is_logical_id, nw_fun_is_logical);
+    (native_is_character_id, nw_fun_is_character);
+    (native_is_complex_id, nw_fun_is_complex);
+    (native_is_null_id, nw_fun_is_null);
+    (native_is_na_id, nw_fun_is_na);
+
     (native_vector_subscript_id, nw_fun_vec_subscript);
     (native_vector_subset_id, nw_fun_vec_subset);
     (native_vector_make_id, nw_fun_vec_make);
@@ -182,6 +240,6 @@ let native_injection_pairs : (ident * (param list * expr)) list =
     (native_vector_orvec_id, nw_fun_vec_orvec);
     (native_vector_or_id, nw_fun_vec_or);
     (native_vector_xor_id, nw_fun_vec_xor);
-    (native_vector_symbolic_id, nw_fun_vec_sym);
+    (native_vector_make_symbolic_id, nw_fun_vec_make_sym);
   ]
 

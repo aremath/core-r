@@ -276,19 +276,19 @@ let string_of_passresult : passresult -> string =
     string_of_list_newline
       (map (fun c ->
             bar60 ^ "\n" ^
-            "{Complete}:\n" ^ string_of_hist c ^ "\n" ^
+            "{Complete}:\n" ^ string_of_hist c ^ "\n>>> COMPLETE\n" ^
             bar60) comps) ^ "\n" ^
 
     string_of_list_newline
       (map (fun c ->
             bar60 ^ "\n" ^
-            "{Error}:\n" ^ string_of_hist c ^ "\n" ^
+            "{Error}:\n" ^ string_of_hist c ^ "\n>>> ERROR\n" ^
             bar60 ^ "") errs) ^ "\n" ^
 
     string_of_list_newline
       (map (fun c ->
             bar60 ^ "\n" ^
-            "{Incomplete}:\n" ^ string_of_hist c ^ "\n" ^
+            "{Incomplete}:\n" ^ string_of_hist c ^ "\n>>> INCOMPLETE\n" ^
             bar60 ^ "") incomps) ^ ""
 
 let string_of_passresult_list : passresult list -> string =

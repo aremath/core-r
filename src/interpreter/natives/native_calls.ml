@@ -56,19 +56,170 @@ let do_rvector_bop: (rvector -> rvector -> state -> rvector * state) ->
         Some { state2 with stack = stack_push c_frame state.stack }
     | _ -> None
 
-(* Matches the identifier used for the call to determine which native mems call it needs to perform
-  and matches the memory addresses passed in to the arguments expected. Called when the evaluator sees
-  a NativeLambdaApp. Fails when it can't recognize the identifier for the NativeLambdaApp - the function
-  requested either doesn't exist or hasn't been registered (see interpreter/interp-commons/natives.ml),
-  or when a different number of arguments are passed from expected. Notably does not dereference
-  the arguments. 
-  This will fail gracefully when the identifier did not match a known native call - it simply
-  will not produce a state, and the interpreter will do whatever is default when it applied
+(* Matches the identifier used for the call to determine which native mems
+  call it needs to perform and matches the memory addresses passed in to the
+  arguments expected. Called when the evaluator sees a NativeLambdaApp.
+  Fails when it can't recognize the identifier for the
+  NativeLambdaApp - the function requested either doesn't exist or hasn't been
+  registered (see interpreter/interp-commons/natives.ml),
+  or when a different number of arguments are passed from expected.
+  
+  Notably does not dereference the arguments. 
+  This will fail gracefully when the identifier did not match a known
+  native call - it simply will not produce a state, and the interpreter will
+  do whatever is default when it applied
   a production rule that didn't succeed. *)
 let native_call : ident -> memref list -> memref -> state -> state option =
   fun id arg_mems c_env_mem state ->
+    if id = native_is_numeric_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_num = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (IntVec _) -> 1
+                        | Vec (FloatVec _) -> 1
+                        | Vec (ComplexVec _) -> 1
+                        | Vec (SymVec ((_, ty, _), _)) ->
+                            (match ty with
+                            | RInt -> 1
+                            | RFloat -> 1
+                            | RComplex -> 1
+                            | _ -> 0)
+                        | _ -> 0)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_num) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_is_integer_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_int = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (IntVec _) -> 1
+                        | Vec (SymVec ((_, ty, _), _)) ->
+                            (match ty with
+                            | RInt -> 1
+                            | _ -> 0)
+                        | _ -> 0)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_int) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_is_logical_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_bool = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (BoolVec _) -> 1
+                        | Vec (SymVec ((_, ty, _), _)) ->
+                            (match ty with
+                            | RBool -> 1
+                            | _ -> 0)
+                        | _ -> 0)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_bool) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_is_character_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_char = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (StrVec _) -> 1
+                        | Vec (SymVec ((_, ty, _), _)) ->
+                            (match ty with
+                            | RString -> 1
+                            | _ -> 0)
+                        | _ -> 0)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_char) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_is_complex_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_comp = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (ComplexVec _) -> 1
+                        | Vec (SymVec ((_, ty, _), _)) ->
+                            (match ty with
+                            | RComplex -> 1
+                            | _ -> 0)
+                        | _ -> 0)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_comp) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_is_null_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_null = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (IntVec a) -> min 0 (Array.length a)
+                        | Vec (FloatVec a) -> min 0 (Array.length a)
+                        | Vec (ComplexVec a) -> min 0 (Array.length a)
+                        | Vec (StrVec a) -> min 0 (Array.length a)
+                        | Vec (BoolVec a) -> min 0 (Array.length a)
+                        | _ -> 0) (* Missing symbolics? *)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_null) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
+    else if id = native_is_na_id then
+      (match arg_mems with
+      | (val_mem :: []) ->
+        let is_na = (match heap_find val_mem state.heap with
+                     | Some (DataObj (value, _)) ->
+                        (match value with
+                        | Vec (BoolVec a) -> min 0 (Array.length a)
+                        | _ -> 0) (* Missing symbolics? *)
+                     | _ -> 0) in
+        let bool_const = Bool (rbool_of_bool is_na) in
+        let (mem2, heap2) = heap_alloc_const bool_const state.heap in
+        let c_frame = { frame_default with
+                          env_mem = c_env_mem;
+                          slot = ReturnSlot mem2 } in
+          Some { state with stack = stack_push c_frame state.stack }
+      | _ -> None)
+
     (* Vector subscripting *)
-    if id = native_vector_subscript_id then
+    else if id = native_vector_subscript_id then
       (match arg_mems with
       | (vec_mem :: sub_mem :: []) ->
         let (mem2, state2) = subscript_mems vec_mem sub_mem state in
@@ -164,7 +315,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
         do_rvector_bop rvector_xor arg_mems c_env_mem state
 
     (* make.symbolic, for creating a symbolic vector. *)
-    else if id = native_vector_symbolic_id then
+    else if id = native_vector_make_symbolic_id then
       (match arg_mems with
       | (len_mem :: type_mem :: []) ->
         let (mem2, state2) =  make_symbolic_mems len_mem type_mem state in

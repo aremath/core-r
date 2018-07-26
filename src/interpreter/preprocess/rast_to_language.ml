@@ -179,6 +179,48 @@ let rec convert_expr: 'a R.expr -> ('a, 'b) L.expr =
                                 let c_e2 = convert_expr e2 in
                                 L.LambdaApp (L.Ident b_ident,
                                 [L.Arg c_e1; L.Arg c_e2])
+
+
+
+    | R.FuncCall (R.Ident { R.name = "is.numeric" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_numeric_id,
+                                   map convert_arg args)
+ 
+    | R.FuncCall (R.Ident { R.name = "is.integer" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_integer_id,
+                                   map convert_arg args)
+
+    | R.FuncCall (R.Ident { R.name = "is.logical" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_logical_id,
+                                   map convert_arg args)
+
+    | R.FuncCall (R.Ident { R.name = "is.complex" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_complex_id,
+                                   map convert_arg args)
+
+    | R.FuncCall (R.Ident { R.name = "is.character" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_character_id,
+                                   map convert_arg args)
+
+    | R.FuncCall (R.Ident { R.name = "is.null" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_null_id,
+                                   map convert_arg args)
+
+    | R.FuncCall (R.Ident { R.name = "is.na" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_is_na_id,
+                                   map convert_arg args)
+ 
+    | R.FuncCall (R.Ident { R.name = "make.symbolic" }, args) ->
+                              L.LambdaApp
+                                  (L.Ident native_vector_make_symbolic_id,
+                                   map convert_arg args)
     | R.FuncCall (R.Ident { R.name = "return" }, []) ->
                                 L.Return (L.Const L.Nil)
     | R.FuncCall (R.Ident { R.name = "return" }, arg :: []) ->

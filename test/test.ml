@@ -69,7 +69,7 @@ let test_simple = "Simple" >:::
       test_file (test_simple_dir () ^ "/gt.R") 100
                 (rbool_vec_of_bools [0]);
     "arithmetics.R" >::
-      test_file (test_simple_dir () ^ "/arithmetics.R") 100
+      test_file (test_simple_dir () ^ "/arithmetics.R") 150
                 (rint_vec_of_ints [600; 906; 604; 912]);
     "vecs.R" >::
       test_file (test_simple_dir () ^ "/vecs.R") 100
