@@ -9,6 +9,7 @@ open Native_calls
 open Copy
 
 open List
+open Set
 
 let pair_first : 'a * 'b -> 'a =
   fun (a, b) -> a
@@ -27,6 +28,21 @@ let rec split_eithers : (('a , 'b) either) list -> ('a list) * ('b list) =
     | (OptB b :: e_tl) ->
         let (oas, obs) = split_eithers e_tl in
           (oas, b :: obs)
+
+let rec is_pure_expr : expr -> state -> bool =
+  fun expr state ->
+    match expr with
+    | MemRef _ -> true (* Assume we don't use PromiseObj *)
+    | Const _ -> true
+    | LambdaAbs _ -> true
+    | LambdaApp (Ident f, _) -> is_id_pure f state.pure_ids
+    | NativeLambdaApp (f, _) -> is_id_pure f state.pure_ids
+    | Seq es -> fold_left (&&) true (map (fun e -> is_pure_expr e state) es)
+    | While (ec, eb) -> is_pure_expr ec state && is_pure_expr eb state
+    | If (ec, et, ef) ->
+      is_pure_expr ec state && is_pure_expr et state && is_pure_expr ef state
+
+    | _ -> false
 
 let expr_of_arg : arg -> expr =
   fun arg -> match arg with
@@ -442,21 +458,26 @@ let rule_LambdaAppEnter : state -> state list =
               let (mem_binds, expr_binds) = split_binds binds in
               (match env_mem_add_list mem_binds f_env_mem heap2 with
               | Some heap3 ->
-                let a_frames = map (fun (i, e) ->
-                                { frame_default with
+                (* Make sure that all the expressions are pure *)
+                if (fold_left (&&) true
+                   (map (fun (i, e) -> is_pure_expr e state) expr_binds)) then
+                  let a_frames = map (fun (i, e) ->
+                                  { frame_default with
+                                      env_mem = f_env_mem;
+                                      slot = EvalSlot (Assign (Ident i, e)) })
+                                     expr_binds in
+                  let e_frame = { frame_default with
                                     env_mem = f_env_mem;
-                                    slot = EvalSlot (Assign (Ident i, e)) })
-                                   expr_binds in
-                let e_frame = { frame_default with
-                                  env_mem = f_env_mem;
-                                  slot = EvalSlot body } in
-                let c_frame = { frame_default with
-                                  env_mem = c_env_mem;
-                                  slot = LambdaBSlot f_mem } in
-                  [{ state with
-                      heap = heap3;
-                      stack = stack_push_list (a_frames @ [e_frame; c_frame])
-                                               c_stack2 }]
+                                    slot = EvalSlot body } in
+                  let c_frame = { frame_default with
+                                    env_mem = c_env_mem;
+                                    slot = LambdaBSlot f_mem } in
+                    [{ state with
+                        heap = heap3;
+                        stack = stack_push_list (a_frames @ [e_frame; c_frame])
+                                                 c_stack2 }]
+                else
+                  []
               | _ -> [])
             | _ -> [])
           | _ -> [])

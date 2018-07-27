@@ -69,6 +69,7 @@ end
 
 module IdentMap = Map.Make(Ident)
 
+module IdentSet = Set.Make(Ident)
 
 (* Environment *)
 type env =
@@ -144,12 +145,16 @@ type heap =
 type sym_mems =
   { mem_list : memref list }
 
+type pures =
+  { pure_set : IdentSet.t }
+
 (* Execution state *)
 type state =
   { stack : stack;
     heap : heap;
     global_env_mem : memref;
     sym_mems : sym_mems;
+    pure_ids : pures;
     fresh_count : int;
     pred_unique : int;
     unique : int }
@@ -679,12 +684,29 @@ let is_mem_conc_true : memref -> heap -> bool =
     | Some _ -> true
     | None -> false
 
+(* Purity *)
+let pures_empty : unit -> pures =
+  fun _ -> { pure_set = IdentSet.empty }
+
+let is_id_pure : ident -> pures -> bool =
+  fun id pures ->
+    IdentSet.mem id pures.pure_set
+
+let pures_add : ident -> pures -> pures =
+  fun id pures ->
+    { pures with pure_set = IdentSet.add id pures.pure_set }
+
+let pures_add_list : ident list -> pures -> pures =
+  fun ids pures ->
+    List.fold_left (fun p i -> pures_add i p) pures ids
+
 (* Execution state *)
 let state_default : state =
   { stack = stack_empty ();
     heap = heap_empty ();
     global_env_mem = mem_null ();
     sym_mems = empty_sym_mems ();
+    pure_ids = pures_empty ();
     fresh_count = 1;
     pred_unique = 0;
     unique = 1 }

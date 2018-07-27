@@ -5,6 +5,7 @@ open Language
 module R = Rast
 open Syntax
 open Support
+open Pures
 open Langutils
 open Rast_to_language
 open Absyn_generator
@@ -223,6 +224,8 @@ let raw_init_state : string -> string -> state =
           { state_default with
               stack = stack;
               heap = heap3;
+              pure_ids = pures_add_list (known_pures ())
+                                        (state_default.pure_ids);
               global_env_mem = glbl_env_mem }
       | None ->
           failwith "raw_init_state: could not inject native binds"
