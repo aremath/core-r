@@ -41,6 +41,8 @@ let step_rule : state -> redresult =
 (* Dereferences the ReturnSlot on top of the stack if it is the only slot on the stack. *)
 let get_state_result : state -> (value * attributes) option =
   fun state ->
+    (* If popping one value is a ReturnSlot, but we can't pop two values, then
+        the ReturnSlot is the only thing on the stack. *)
     match (stack_pop_v state.stack, stack_pop_v2 state.stack) with
     | (Some (ReturnSlot mem, _, _), None) ->
       (match heap_find mem state.heap with
@@ -73,6 +75,8 @@ let run_pass : (rule list * state) list -> passresult =
                               string_of_int st.unique);
               (c, (hist, st) :: e, i)
           | ReductionOkay (r, sts) ->
+              (* Append the matching rule to the states' history after filtering
+                out only the complete states. *)
               let csts = map (fun s -> (r :: hist, s))
                              (filter is_state_complete sts) in
               let ncsts = map (fun s -> (r :: hist, s))
@@ -82,6 +86,7 @@ let run_pass : (rule list * state) list -> passresult =
               print_endline ("multiple rules match at state " ^
                              string_of_int st.unique);
               print_endline ("pretending as though nothing happened!");
+              (* Apply the same logic as above for each of the matched states. *)
               let expanded =
                     concat (map (fun (r, ss) ->
                                   map (fun s -> (r :: hist, s)) ss)
@@ -91,6 +96,9 @@ let run_pass : (rule list * state) list -> passresult =
               let ncsts = filter (fun (r, s) -> is_state_not_complete s)
                                   expanded in
                 (csts @ c, e, ncsts @ i))
+        (* This is a fold-left on the incomplete states, applying a single step of the
+            production rules to each, and producing the new fringe of the execution tree by
+            concatenating the children of each incomplete state. *)
         (comps, [], []) incomps in
       { (fresh_passresult ()) with
           pass_comps = comps2;
