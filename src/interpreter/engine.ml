@@ -1,4 +1,8 @@
+(*
+    engine.ml
 
+    Actually runs the reduction rules on the state to evaluate a program.
+*)
 open Syntax
 open Smtsyntax
 open Smtutils
@@ -21,6 +25,9 @@ type redresult =
   | MultipleRulesMatch of (rule * state list) list
   | NoRulesMatch
 
+(* Tries to apply every rule in the rule table to the passed state.
+    The rules that yield at least one ouput state "match" the passed state, and
+    ideally only one reduction rule matches at a time. *)
 let step_rule : state -> redresult =
   fun state ->
     let res = map (fun (r, f) -> (r, f state)) rule_table in
@@ -28,9 +35,10 @@ let step_rule : state -> redresult =
       | [] -> NoRulesMatch
       | _ -> match filter (fun (r, ss) -> length ss > 0) res with
         | [] -> NoRulesMatch
-        | ((r, ss) :: []) -> ReductionOkay (r, ss)
+        | [(r, ss)] -> ReductionOkay (r, ss)
         | toomuch -> MultipleRulesMatch toomuch
 
+(* Dereferences the ReturnSlot on top of the stack if it is the only slot on the stack. *)
 let get_state_result : state -> (value * attributes) option =
   fun state ->
     match (stack_pop_v state.stack, stack_pop_v2 state.stack) with
@@ -40,6 +48,7 @@ let get_state_result : state -> (value * attributes) option =
       | _ -> None)
     | _ -> None
 
+(* If the state's stack is only a ReturnSlot *)
 let is_state_complete : state -> bool =
   fun state ->
     match get_state_result state with
@@ -49,6 +58,8 @@ let is_state_complete : state -> bool =
 let is_state_not_complete : state -> bool =
   fun state -> not (is_state_complete state)
 
+(* Runs one pass of the stepper on each (history, state) pair, and produces a passresutlt - defined in
+    interp-commons/rules.ml *)
 let run_pass : (rule list * state) list -> passresult =
   fun states ->
     let comps = filter (fun (a, b) -> is_state_complete b) states in
@@ -88,6 +99,7 @@ let run_pass : (rule list * state) list -> passresult =
 
 (* Different versions of run functions for debugging, etc *)
 
+(* Apply n production rules to the input state list. *)
 let run_n : int -> state list -> passresult =
   fun n inits ->
     let raws = map (fun s -> ([], s)) inits in
@@ -155,6 +167,8 @@ let load_run_n_first_result : string -> int -> (value * attributes) option =
     let state = load_file_guess file in
       run_n_first_result n [state]
 
+(* Creates a SMT-LIBv2 representation of the path constraints on the current state and
+    runs the Z3 prover on it. *)
 let solve_state : state -> smtprog =
   fun state ->
     let stmts = smtcmd_list_of_state state in
