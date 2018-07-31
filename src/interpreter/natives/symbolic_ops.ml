@@ -252,12 +252,16 @@ let symbolic_subscript_assign: smtvar -> S.symvec -> S.symvec -> S.symvec -> S.s
 let sym_fail: unit -> (smtexpr -> smtexpr -> smtexpr) =
     fun _ -> failwith "Symbolic operation not implemented."
 
+(* TODO: This should take an "assumptions" function which is smtvar -> smtvar -> smtexpr *)
 (* General binary operations on symbolic vectors. Assumes that the warning
  will not be thrown if their lengths aren't compatible. The operator in this case
  must combine smtexprs. For example, the op for plus is expr1 -> expr2 -> SmtPlus (expr1, expr2) *)
-let symbolic_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symvec -> S.symdef =
-    fun new_name smt_combo ((name1, ty1, _), _) ((name2, ty2, _), _) ->
+let symbolic_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
+        (smtvar -> smtvar -> smtexpr list) ->
+        S.symvec -> S.symvec -> S.symdef =
+    fun new_name smt_combo combo_assume ((name1, ty1, _), _) ((name2, ty2, _), _) ->
     let new_ty = match_tys ty1 ty2 in
+    let assumes = combo_assume name1 name2 in
     (* The length of a vectorized operator on two vectors is the length of the longer vector *)
     let len = ifelse (SmtGt ((smt_len name1), (smt_len name2)))
         (SmtEq ((smt_len new_name), (smt_len name1)))
@@ -271,22 +275,30 @@ let symbolic_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symv
             (smt_combo (SmtArrGet (SmtVar name1, (SmtMod (SmtVar forall_var, (smt_len name1)))))
                 (SmtArrGet (SmtVar name2, SmtVar forall_var))))
         in
-    (new_name, new_ty, { S.path_list = [len; vals] })
+    (new_name, new_ty, { S.path_list = assumes @ [len; vals] })
 
 (* Binary operations - ops are all smtexpr -> smtexpr -> smtexpr *)
+(* Operations come with assumptions about the vectors that go into them.
+    For example, symbolic div assumes that the divisor's elements are nonzero.
+    The assumptions are smtvar -> smtvar -> smtexpr list, where the smtvars are
+    the names of the symbolic vectors passed into the symbolic expression.
+*)
+
+(* Most binary operations assume nothing. *)
+let empty_assume: smtvar -> smtvar -> smtexpr list =
+    fun n1 n2 -> []
 
 let symbolic_plus: smtexpr -> smtexpr -> smtexpr =
     fun e1 e2 -> SmtPlus (e1, e2)
 let symbolic_sub = fun e1 e2 -> SmtSub (e1, e2)
-(* TODO: Division by zero in SMT is undefined, meaning that the result of such a division can
-  be anything SMT wants it to be. y/0 = x is satisfiable, for all values of x, and does not
-  depend on the value of y. In R, 1/0 = Inf, and -1/0 = -Inf, because it's doing double division.
-  Probably R errors out when dividing literal integers 1/0. We'd like the symbolic behavior to mirror
-  R's behavior, with a catch - it seems like there's no way to get Z3 to throw an exception, but we'd like
-  to error out somehow if the constraint (Exists x.  Get a2 x = 0) is satisfiable. For now,
-  we're just not going to let anyone do symbolic division. *)
 let symbolic_div: smtexpr -> smtexpr -> smtexpr =
     fun e1 e2 -> SmtDiv (e1, e2)
+(* Assumes all elements of the divisor !=0 *)
+let symbolic_div_assume = fun n1 n2 ->
+    [all_elements n2 (SmtNeq (
+        SmtVar forall_var,
+        (smt_int_const 0)))]
+
 let symbolic_mul = fun e1 e2 -> SmtMult (e1, e2)
 (* TODO: SmtMod is defined for integers - might have to encode our own floating-point
   modulus axioms. *)
@@ -298,7 +310,7 @@ let symbolic_exp = fun e1 e2 -> SmtExp (e1, e2)
   bool vector. *)
 let symbolic_cmp: smtvar -> (smtexpr -> smtexpr -> smtexpr) -> S.symvec -> S.symvec -> S.symdef =
     fun new_name smt_combo v1 v2 ->
-    let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo v1 v2 in
+    let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo empty_assume v1 v2 in
     (op_name, S.RBool, op_pcs)
 
 (* TODO: Determine the domains of these functions! Don't want to produce a PC like
@@ -318,7 +330,7 @@ let symbolic_logic_vec_op: smtvar -> (smtexpr -> smtexpr -> smtexpr) ->
         (unit -> S.symdef) -> 
         S.symvec -> S.symvec -> S.symdef =
     fun new_name smt_combo fail v1 v2 ->
-    let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo v1 v2 in
+    let (op_name, op_ty, op_pcs) = symbolic_op new_name smt_combo empty_assume v1 v2 in
     match op_ty with
     | S.RBool -> (op_name, op_ty, op_pcs)
     | _ -> fail ()

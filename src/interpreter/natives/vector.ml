@@ -569,28 +569,6 @@ let make_symbolic_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) 
     S.state_alloc (S.DataObj (S.Vec sym_vec, S.attrs_empty ())) state'
 
 (*
-(* Given n, make a1, a2, ..., an *)
-let make_index_names: S.rstring -> int -> S.rstring array =
-    fun str n ->
-    Array.init n (fun i -> str ^ (string_of_int (i+1)))
-
-(* From ("a", c(2,2)) to ("a1", "a2"), (2,2). Does not allocate the rvectors *)
-let make_vector_help: (S.rstring * S.memref) -> S.state -> (S.rvector * S.rvector) =
-    fun (str, mem) -> let mem_vec = dereference_rvector mem state in
-    let indices = make_index_names (rvec_length mem_vec) in
-    (indices, mem_vec)
-
-(* does make vector help for each vector, and concatenates them *)
-let make_vector: (S.ident option * S.memref) list -> state -> (S.rvector * S.rvector) =
-    fun l state ->
-    List.map
-
-(*let make_vector_mems: S.memref list -> state -> (memref * state)*)
-
-*)
-
-
-(*
 (* assumes defaults have been taken care of *)
 let get_dims: S.rvector -> S.rvector -> S.rvector -> S.rvector =
     fun data nrows ncols ->

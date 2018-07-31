@@ -19,8 +19,9 @@ let bop_rvectors: (S.rint -> S.rint -> S.rint) ->
                   (S.rstring -> S.rstring -> S.rstring) ->
                   (S.rbool -> S.rbool -> S.rbool) ->
                   (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
+                  (S.smtvar -> S.smtvar -> S.smtexpr list) ->
                   S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
-    fun fi ff fc fs fb fsy lhs rhs state ->
+    fun fi ff fc fs fb fsy sym_assume lhs rhs state ->
     match (lhs, rhs) with
     | (S.IntVec l, S.IntVec r) -> (S.IntVec (C.array_map2 fi l r), state)
     | (S.FloatVec l, S.FloatVec r) -> (S.FloatVec (C.array_map2 ff l r), state)
@@ -28,14 +29,14 @@ let bop_rvectors: (S.rint -> S.rint -> S.rint) ->
     | (S.StrVec l, S.StrVec r) -> (S.StrVec (C.array_map2 fs l r), state)
     | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
     | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
-        S.SymVec ((Sym.symbolic_op name fsy syl syr), S.NoDepends), state'
+        S.SymVec ((Sym.symbolic_op name fsy sym_assume syl syr), S.NoDepends), state'
     | (S.SymVec syl, vecr) -> let syr, state' = Sym.vec_to_symvec vecr state in
         let name, state'' = S.name_fresh state' in
         (* syr is implicit casting of vecr to SymVec, so the new vector depends on it. *)
-        S.SymVec ((Sym.symbolic_op name fsy syl syr), S.Depends [syr]), state''
+        S.SymVec ((Sym.symbolic_op name fsy sym_assume syl syr), S.Depends [syr]), state''
     | (vecl, S.SymVec syr) -> let syl, state' = Sym.vec_to_symvec vecl state in
         let name, state'' = S.name_fresh state' in
-        S.SymVec ((Sym.symbolic_op name fsy syl syr), S.Depends [syl]), state''
+        S.SymVec ((Sym.symbolic_op name fsy sym_assume syl syr), S.Depends [syl]), state''
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Addition *)
@@ -52,6 +53,7 @@ let rvector_add = bop_rvectors
     add_rstr
     add_rbool
     Sym.symbolic_plus
+    Sym.empty_assume
 
 (* Multiplication *)
 let mul_rint = opt_bop ( * )
@@ -67,6 +69,7 @@ let rvector_mul = bop_rvectors
     mul_rstr
     mul_rbool
     Sym.symbolic_mul
+    Sym.empty_assume
 
 (* Division *)
 let div_rint = opt_bop ( / )
@@ -82,6 +85,7 @@ let rvector_div = bop_rvectors
     div_rstr
     div_rbool
     Sym.symbolic_div
+    Sym.symbolic_div_assume
 
 (* Subtraction *)
 let sub_rint = opt_bop ( - )
@@ -97,6 +101,7 @@ let rvector_sub = bop_rvectors
     sub_rstr
     sub_rbool
     Sym.symbolic_sub
+    Sym.empty_assume
 
 (* Modulus *)
 let mod_rint = opt_bop ( mod )
@@ -112,6 +117,7 @@ let rvector_mod = bop_rvectors
     mod_rstr
     mod_rbool
     Sym.symbolic_mod
+    Sym.empty_assume
 
 (* Exponentiation *)
 (* ocaml has no int exponentiation. This works, but is prone to overflow and
@@ -131,6 +137,7 @@ let rvector_exp = bop_rvectors
     exp_rstr
     exp_rbool
     Sym.symbolic_exp
+    Sym.empty_assume
 
 (* Comparison. Like bop_rvectors, but always produces a BoolVec *)
 let cmp_rvectors: (S.rint -> S.rint -> S.rbool) ->
