@@ -1,9 +1,15 @@
+(*
+    smttrans.ml
+
+    Helper functions for easily producing smtexprs,
+    and code produce a series of smtexprs from a state.
+*)
 open Smtsyntax
 open Support
 
 open List
 
-
+(* Idenitity function for type aliases *)
 let string_of_smtvar : smtvar -> string =
   fun var -> var
 
@@ -62,8 +68,13 @@ let rec smtexpr_of_langexpr : expr -> state -> smtexpr =
   Because multiple ForAlls can be across the same identifier without conflict,
   we choose a ForAll identifier to avoid introducing a new identifier every
   time we wish to quantify. *)
+(* Note that this cannot be used twice in nested foralls, since the first forall
+    binds forall_var, but this is not an issue in practice because so far none of
+    the path constraints that we construct quantify universally across multiple
+    variables. *)
 let forall_var: smtvar = "__forall__"
 
+(* Constants in smtexpr syntax from OCaml constants. *)
 let smt_int_const: int -> smtexpr =
     fun n -> SmtConst (string_of_int n)
 let smt_float_const: float -> smtexpr =
@@ -90,7 +101,7 @@ let smt_len: smtvar -> smtexpr =
     fun v -> SmtVar (v ^ "_len")
 
 (* Assert that the length of the symbolic array var is
- equal to the actual length of a *)
+ equal to the actual length of a. Used when converting rvectors to symbolic. *)
 let smt_len_array: 'a. smtvar -> 'a array -> smtexpr =
     fun v a ->
     SmtEq (
@@ -144,7 +155,7 @@ let all_elements_eq: smtvar -> smtexpr -> smtexpr =
         SmtArrGet (SmtVar array_name, SmtVar forall_var),
         expr))
 
-(* Ifelse t e1 e2 is two implications:
+(* ifelse t e1 e2 is shorthand for two implications:
     t -> e1
     !t -> e2
 *)
@@ -167,7 +178,8 @@ let is_index_vec: smtvar -> smtvar -> smtexpr =
     let inbounds = array_bounded (smt_getn idx 0) arr in
     SmtAnd (len, inbounds)
 
-(* Return a copy of the smtexpr with all instances of var1 replaced with var2 *)
+(* Return a copy of the smtexpr with all instances of var1 replaced with var2.
+    Used when copying a symbolic value under in natives/copy.ml. *)
 let rec replace: smtvar -> smtvar -> smtexpr -> smtexpr =
   fun var1 var2 e ->
     let vreplace = replace var1 var2 in
@@ -244,12 +256,14 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
           if vsort = var1 then SmtSortApp (var2, vsorts')
               else SmtSortApp (vsort, vsorts')
 
+(* Dereferences a single symbolic vector. *)
 let get_mem_pathcons_list : memref -> heap -> symvec list =
   fun mem heap ->
     match heap_find mem heap with
     | Some (DataObj (Vec (SymVec ((sid, rty, pc), dep)), _)) -> [((sid, rty, pc), dep)]
     | _ -> []
 
+(* Asserts that each of the path constraints holds. *)
 let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
@@ -262,6 +276,7 @@ let rec smtcmd_of_symvec : symvec -> smtcmd list =
     | Depends l -> concat (map smtcmd_of_symvec l) in
     dep_pathcons @ (smtcmd_list_of_pathcons pc)
 
+(* Convert the internal symbolic type to an smtsort used in the SMT-LIBv2 code. *)
 let smtsort_of_rtype : rtype -> smtsort =
   fun ty ->
     match ty with
@@ -279,6 +294,7 @@ let rec smtdecl_of_symvec: symvec -> smtcmd list =
     dep_decls @ [SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty));
     SmtDeclFun (var ^ "_len", [], SmtSortInt)]
 
+(* Various declarations that don't depend on what symbolic vectors there are. *)
 let custom_decls : unit -> smtcmd list =
   fun _ ->
     (* ONLY HANDLES INTEGERS FOR NOW *)
@@ -295,12 +311,15 @@ let custom_decls : unit -> smtcmd list =
                 SmtSortFloat);
     ]
 
+(* What we actually want to do with the declarations we produced *)
 let custom_post : unit -> smtcmd list =
   fun _ ->
     [SmtCheckSat;
      SmtGetModel;
      SmtExit]
 
+(* Ties it all together: produces all the declarations implied by the path constraints
+    on symbolic values that are present in the passed state. *)
 let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
     let smems = mem_list_of_sym_mems state.sym_mems in
