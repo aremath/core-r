@@ -123,13 +123,17 @@ type value =
 type attributes =
   { rstr_map : (rstring, memref) Hashtbl.t }
 
+type loopcontext =
+    LoopCond
+  | LoopBody
+
 (* Stack *)
 type slot =
     EvalSlot of expr
   | ReturnSlot of memref
   | SeqSlot of expr list
   | BranchSlot of expr * expr
-  | LoopSlot of expr * expr * memref option (* body's return value *)
+  | LoopSlot of expr * expr * loopcontext
 
   (* Used for eager stuff *)
   | AssignSlot of ident

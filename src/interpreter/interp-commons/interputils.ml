@@ -150,6 +150,11 @@ let string_of_heap: heap -> string =
       "Heap (next : " ^ string_of_mem heap.next_mem ^ ")\n" ^
                         string_of_list_newline mod_strs
 
+let string_of_loopcontext : loopcontext -> string =
+  function
+    | LoopBody -> "LoopBody"
+    | LoopCond -> "LoopCond"
+
 let string_of_slot: slot -> string =
     function
     | ReturnSlot m -> "Return (" ^ string_of_mem m ^ ")"
@@ -169,14 +174,11 @@ let string_of_slot: slot -> string =
         | None -> "no expr"
       end in
         "AttrSlot (" ^ mstr ^ "," ^ expstr ^ ")"
-    | LoopSlot (e1, e2, mopt) ->
+    | LoopSlot (e1, e2, context) ->
       let e1str = string_of_expr e1 in
       let e2str = string_of_expr e2 in
-      let mstr = begin match mopt with
-        | Some m -> string_of_mem m
-        | None -> "no mem"
-      end in
-        "LoopSlot (" ^ e1str ^ "," ^ e2str ^ "," ^ mstr ^ ")"
+      let lstr = string_of_loopcontext context in
+        "LoopSlot (" ^ e1str ^ "," ^ e2str ^ "," ^ lstr ^ ")"
     | BranchSlot (e1, e2) -> let e1str = string_of_expr e1 in
         let e2str = string_of_expr e2 in
         "Branch (" ^ e1str ^ "," ^ e2str ^ ")"
@@ -239,6 +241,7 @@ let string_of_state_list : state list -> string =
 let string_of_rule : rule -> string =
   fun rule -> match rule with
     | ERuleIdent -> "Ident"
+    | ERuleIdentNull -> "IdentNull"
     | ERuleMemRef -> "MemRef"
     | ERuleConst -> "Const"
     | ERuleSeq -> "Seq"

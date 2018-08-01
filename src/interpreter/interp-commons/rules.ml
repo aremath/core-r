@@ -8,6 +8,7 @@ open Support
 
 type rule =
   | ERuleIdent
+  | ERuleIdentNull
   | ERuleMemRef
   | ERuleConst
   | ERuleSeq

@@ -207,6 +207,8 @@ let native_call : ident -> memref list -> memref -> state -> state option =
     else if id = native_is_null_id then
       (match arg_mems with
       | (val_mem :: []) ->
+        let is_null = if is_mem_null val_mem then 1 else 0 in
+        (*
         let is_null = (match heap_find val_mem state.heap with
                      | Some (DataObj (value, _)) ->
                         (match value with
@@ -217,6 +219,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                         | Vec (BoolVec a) -> min 0 (Array.length a)
                         | _ -> 0) (* Missing symbolics? *)
                      | _ -> 0) in
+        *)
         let bool_const = Bool (rbool_of_bool is_null) in
         let (mem2, heap2) = heap_alloc_const bool_const state.heap in
         let c_frame = { frame_default with

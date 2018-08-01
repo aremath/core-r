@@ -268,14 +268,11 @@ let lift_variadic_binds :
 
 
 let rec unwind_to_loop_slot :
-  stack -> ((expr * expr * memref) * memref * stack) option =
+  stack -> ((expr * expr * loopcontext) * memref * stack) option =
   fun stack ->
     match stack_pop_v stack with
-    | Some (LoopSlot (cond, body, o_body_mem), env_mem, stack2) ->
-        let body_mem = (match o_body_mem with
-                         | None -> mem_null ()
-                         | Some mem -> mem) in
-          Some ((cond, body, body_mem), env_mem, stack2)
+    | Some (LoopSlot (cond, body, context), env_mem, stack2) ->
+        Some ((cond, body, context), env_mem, stack2)
     | Some (_, _, stack2) -> unwind_to_loop_slot stack2
     | None -> None
 
@@ -314,6 +311,24 @@ let rule_Ident : state -> state list =
             [{ state with
                  stack = stack_push c_frame c_stack2 }]
         | _ -> [])
+      | _ -> [])
+    | _ -> []
+
+(* Unbound ident *)
+let rule_IdentNull : state -> state list =
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (EvalSlot (Ident id), c_env_mem, c_stack2) ->
+      (match env_mem_find id c_env_mem state.heap with
+      | Some mem ->
+        if is_mem_null mem then
+          let c_frame = { frame_default with
+                            env_mem = c_env_mem;
+                            slot = ReturnSlot (mem_null ())} in
+            [{ state with
+                 stack = stack_push c_frame c_stack2 }]
+        else
+          []
       | _ -> [])
     | _ -> []
 
@@ -638,7 +653,7 @@ let rule_WhileEval : state -> state list =
                         slot = EvalSlot cond } in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
-                        slot = LoopSlot (cond, body, Some (mem_null ())) } in
+                        slot = LoopSlot (cond, body, LoopCond) } in
       [{ state with
            stack = stack_push_list [d_frame; c_frame] c_stack2 }]
     | _ -> []
@@ -648,7 +663,7 @@ let rule_WhileCondTrue : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
     | Some (ReturnSlot cond_mem, _,
-            LoopSlot (cond, body, Some body_mem), c_env_mem,
+            LoopSlot (cond, body, LoopCond), c_env_mem,
             c_stack2) ->
       if (not (is_mem_symval cond_mem state.heap) &&
          (is_mem_conc_true cond_mem state.heap)) then
@@ -657,7 +672,7 @@ let rule_WhileCondTrue : state -> state list =
                           slot = EvalSlot body } in
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = LoopSlot (cond, body, None) } in
+                          slot = LoopSlot (cond, body, LoopBody) } in
           [{ state with
                stack = stack_push_list [b_frame; c_frame] c_stack2 }]
       else
@@ -669,7 +684,7 @@ let rule_WhileCondFalse : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
     | Some (ReturnSlot cond_mem, _,
-            LoopSlot (cond, body, Some body_mem), c_env_mem,
+            LoopSlot (cond, body, LoopCond), c_env_mem,
             c_stack2) ->
       if (not (is_mem_symval cond_mem state.heap) &&
          (is_mem_conc_true cond_mem state.heap)) then
@@ -677,7 +692,7 @@ let rule_WhileCondFalse : state -> state list =
       else
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
-                          slot = ReturnSlot body_mem } in
+                          slot = ReturnSlot (mem_null ())} in
           [{ state with
                stack = stack_push c_frame c_stack2 }]
     | _ -> []
@@ -687,25 +702,28 @@ let rule_WhileCondSym : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
     | Some (ReturnSlot cond_mem, _,
-            LoopSlot (cond, body, Some body_mem), c_env_mem,
+            LoopSlot (cond, body, LoopCond), c_env_mem,
             c_stack2) ->
       (match heap_find cond_mem state.heap with
       | Some (DataObj (Vec (SymVec ((sid, sty, spath), deps)), attrs)) ->
           let arr_smt = SmtArrGet (SmtVar sid, SmtConst "0") in
 
+          let b_frame_t = { frame_default with
+                              env_mem = c_env_mem;
+                              slot = EvalSlot body } in
           let c_frame_t = { frame_default with
                               env_mem = c_env_mem;
-                              slot = LoopSlot (cond, body, None) } in
+                              slot = LoopSlot (cond, body, LoopBody) } in
           let path_t = add_pathcons arr_smt spath in
           let obj_t = DataObj (Vec (SymVec ((sid, sty, path_t), deps)), attrs) in
           let heap_t = heap_add cond_mem obj_t state.heap in
           let state_t = { state with
-                            stack = stack_push c_frame_t c_stack2;
-                            heap = heap_t } in
+                      stack = stack_push_list [b_frame_t; c_frame_t] c_stack2;
+                      heap = heap_t } in
 
           let c_frame_f = { frame_default with
                               env_mem = c_env_mem;
-                              slot = ReturnSlot body_mem } in
+                              slot = ReturnSlot (mem_null ())} in
           let path_f = add_pathcons (SmtNeg arr_smt) spath in
           let obj_f = DataObj (Vec (SymVec ((sid, sty, path_f), deps)), attrs) in
           let heap_f = heap_add cond_mem obj_f state.heap in
@@ -720,15 +738,15 @@ let rule_WhileCondSym : state -> state list =
 let rule_WhileBodyDone : state -> state list =
   fun state ->
     match stack_pop_v2 state.stack with
-    | Some (ReturnSlot body_mem, _,
-            LoopSlot (cond, body, None), c_env_mem,
+    | Some (ReturnSlot null_mem, _,
+            LoopSlot (cond, body, LoopBody), c_env_mem,
             c_stack2) ->
       let d_frame = { frame_default with
                         env_mem = c_env_mem;
                         slot = EvalSlot cond } in
       let c_frame = { frame_default with
                         env_mem = c_env_mem;
-                        slot = LoopSlot (cond, body, Some body_mem) } in
+                        slot = LoopSlot (cond, body, LoopCond) } in
         [{ state with
              stack = stack_push_list [d_frame; c_frame] c_stack2 }]
     | _ -> []
@@ -739,10 +757,10 @@ let rule_Break : state -> state list =
     match stack_pop_v state.stack with
     | Some (EvalSlot Break, _, c_stack2) ->
       (match unwind_to_loop_slot c_stack2 with
-      | Some ((_, _, body_mem), l_env_mem, c_stack3) ->
+      | Some ((_, _, context), l_env_mem, c_stack3) ->
         let c_frame = { frame_default with
                           env_mem = l_env_mem;
-                          slot = ReturnSlot body_mem } in
+                          slot = ReturnSlot (mem_null ())} in
           [{ state with
                stack = stack_push c_frame c_stack3 }]
       | _ -> [])
@@ -754,13 +772,13 @@ let rule_Next : state -> state list =
     match stack_pop_v state.stack with
     | Some (EvalSlot Next, _, c_stack2) ->
       (match unwind_to_loop_slot c_stack2 with
-      | Some ((cond, body, body_mem), l_env_mem, c_stack3) ->
+      | Some ((cond, body, context), l_env_mem, c_stack3) ->
         let b_frame = { frame_default with
                           env_mem = l_env_mem;
                           slot = EvalSlot body } in
         let c_frame = { frame_default with
                           env_mem = l_env_mem;
-                          slot = LoopSlot (cond, body, Some body_mem) } in
+                          slot = LoopSlot (cond, body, LoopBody)} in
           [{ state with
                stack = stack_push_list [b_frame; c_frame] c_stack3 }]
       | _ -> [])
@@ -807,6 +825,7 @@ let rule_Blank : state -> state list =
 (***********************)
 let rule_table : (rule * (state -> state list)) list =
   [ (ERuleIdent, rule_Ident);
+    (ERuleIdentNull, rule_IdentNull);
     (ERuleMemRef, rule_MemRef);
     (ERuleConst, rule_Const);
     (ERuleSeq, rule_Seq);
