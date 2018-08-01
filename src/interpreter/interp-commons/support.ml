@@ -1,3 +1,10 @@
+(*
+    support.ml
+
+    Type definitions and various helper functions for the interpreter.
+    Defines all heap objects, the heap, the stack, etc., and provides
+    some basic functions for manipulating each.
+*)
 
 module R = Syntax
 module A = Annotations
@@ -26,7 +33,7 @@ type smtvar = S.smtvar
 type smtconst = S.smtconst
 type smtexpr = S.smtexpr
 
-(* RTypes *)
+(* R data types. A symbolic vector uses this to store its type information. *)
 type rtype =
   | RBool
   | RInt
@@ -43,6 +50,7 @@ module MemRef = struct
       compare a.R.addr b.R.addr
 end
 
+(* The heap is a MemRefMap *)
 module MemRefMap = Map.Make(MemRef)
 
 
@@ -71,6 +79,10 @@ module IdentMap = Map.Make(Ident)
 
 module IdentSet = Set.Make(Ident)
 
+(* The environment is an RStringMap with a pointer to its predecessor. 
+    Looking up a variable amounts to searching the current environment, then
+    going up a level and repeating this process until the variable is found, or
+    the current environment has no predecessor. *)
 (* Environment *)
 type env =
   { id_map : memref IdentMap.t;
@@ -80,10 +92,14 @@ type env =
 type pathcons =
   { path_list : smtexpr list }
 
+(* Note: cannot do symvec = (smtvar * rtype * pathcons * symvec list) because
+    of how type checking works. *)
+(* For info on why symbolic vectors have symdepends, see natives/symbolic_ops.ml *)
 (* Named type for symbolic definition *)
 type symdef = (smtvar * rtype * pathcons)
 type symvec = (symdef * symdepends)
 
+(* Hack to fix type alias checking *)
 and symdepends =
   | NoDepends
   | Depends of symvec list
@@ -103,6 +119,7 @@ type value =
   | FuncVal of param list * expr * memref
   | EnvVal of env
 
+(* Implemented as a hashtbl for ease of use and efficiency of copying. *)
 type attributes =
   { rstr_map : (rstring, memref) Hashtbl.t }
 
@@ -138,10 +155,14 @@ type heapobj =
     PromiseObj of expr * memref
   | DataObj of value * attributes
 
+(* next_mem used to produce fresh memory references *)
 type heap =
   { mem_map : heapobj MemRefMap.t;
     next_mem : memref }
 
+(* The list of symbolic memory references that will be used to ouput Z3 path constraints.
+    Every symbolic vector ever allocated should be a part of this list, and should not be
+    deallocated. *)
 type sym_mems =
   { mem_list : memref list }
 
@@ -241,7 +262,7 @@ let rvector_length : rvector -> int =
     | ComplexVec cvec -> Array.length cvec
     | StrVec svec -> Array.length svec
     | BoolVec bvec -> Array.length bvec
-    | SymVec _ -> 0 (* ??? *)
+    | SymVec _ -> failwith "No integer length for symbolic vectors."
 
 (* One-based indexing *)
 let rvector_get_rint : rvector -> int -> rint option =
@@ -310,12 +331,14 @@ let id_of_string : string -> ident =
   fun name ->
     id_of_rstring (rstring_of_string name)
 
+(* Produce a fresh identifier for a variable. Unused. *)
 let id_fresh : state -> ident * state =
   fun state ->
     let count2 = state.fresh_count + 1 in
     let name = rstring_of_string ("fs" ^ string_of_int count2) in
       (id_of_rstring name, { state with fresh_count = count2 })
 
+(* Produce a fresh name for a symbolic vector. *)
 let name_fresh: state -> string * state =
     fun state ->
     let count2 = state.fresh_count + 1 in
@@ -334,7 +357,8 @@ let rec state_map:
         (b::bs, state'')
     | [] -> ([], state)
 
-(* List.fold_left that preserves changes in the state during the operation. *)
+(* List.fold_left that preserves changes in the state during the operation, just like
+    state_map. *)
 let rec state_fold_left:
   ('a -> 'b -> state -> ('a * state)) -> 'a -> 'b list -> state ->
     ('a * state) =
@@ -472,6 +496,7 @@ let rec heap_add_list : (memref * heapobj) list -> heap -> heap =
     | ((mem, hobj) :: binds_tl) ->
         heap_add_list binds (heap_add mem hobj heap)
 
+(* Allocate a heap object on the heap. *)
 let heap_alloc : heapobj -> heap -> memref * heap =
   fun hobj heap ->
     let used_mem = heap.next_mem in
@@ -491,12 +516,12 @@ let heap_alloc_const : R.const -> heap -> (memref * heap) =
   fun const heap ->
     heap_alloc
       (DataObj ((match const with
-          R.Str s -> Vec (StrVec (Array.of_list [s]))
-        | R.Num (R.Int i) -> Vec (IntVec (Array.of_list [i]))
-        | R.Num (R.Float f) -> Vec (FloatVec (Array.of_list [f]))
-        | R.Num (R.Complex c) -> Vec (ComplexVec (Array.of_list [c]))
-        | R.Bool b -> Vec (BoolVec (Array.of_list [b]))
-        | R.Nil -> Vec (BoolVec (Array.of_list []))
+          R.Str s -> Vec (StrVec ([|s|]))
+        | R.Num (R.Int i) -> Vec (IntVec ([|i|]))
+        | R.Num (R.Float f) -> Vec (FloatVec ([|f|]))
+        | R.Num (R.Complex c) -> Vec (ComplexVec ([|c|]))
+        | R.Bool b -> Vec (BoolVec ([|b|]))
+        | R.Nil -> Vec (BoolVec ([||]))
         ), attrs_empty ())) heap
 
 let heap_remove : memref -> heap -> heap =
@@ -542,6 +567,7 @@ let rec env_find_rstr : rstring -> env -> heap -> memref option =
         | Some (DataObj (EnvVal env2, _)) -> env_find_rstr rstr env2 heap
         | _ -> None
 
+(* Finds id in the environment pointed to by env_mem *)
 let env_mem_find : ident -> memref -> heap -> memref option =
   fun id env_mem heap ->
     match heap_find env_mem heap with
@@ -554,7 +580,7 @@ let env_mem_find_rstr : rstring -> memref -> heap -> memref option =
     | Some (DataObj (EnvVal env, _)) -> env_find_rstr rstr env heap
     | _ -> None
 
-(* Add to outrmost level of environment *)
+(* Add to outermost level of environment *)
 let env_add : ident -> memref -> env -> env =
   fun id mem env ->
     { env with id_map = IdentMap.add id mem env.id_map }
@@ -712,9 +738,14 @@ let state_default : state =
     unique = 1 }
     
 (* Bindings for e.g. heap_alloc that work on states. The state alloc-er will
-  automatically register symbolic values with its sym_mems list. *)
+  automatically register symbolic values with its sym_mems list. State alloc is
+  used for this default behavior, and because native functions will typically get
+  access to the state rather than the heap since they might need to create new
+  symbolic names with name_fresh. *)
 let state_alloc : heapobj -> state -> memref * state =
   fun hobj state ->
+    (* Pattern match on the type of heap object being allocated to add it's location
+        to the symbolic memory list if necessary. *)
     match hobj with
     | DataObj (Vec (SymVec _), _) as symobj ->
       let (memref, heap2) = heap_alloc symobj state.heap in
@@ -724,6 +755,7 @@ let state_alloc : heapobj -> state -> memref * state =
     | _ -> let (memref, heap2) = heap_alloc hobj state.heap in
         (memref, { state with heap = heap2 })
 
+(* Dereference memref in the state's heap. *)
 let state_find : memref -> state -> heapobj option =
     fun mem state ->
     heap_find mem state.heap

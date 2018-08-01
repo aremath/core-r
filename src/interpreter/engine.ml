@@ -1,4 +1,8 @@
+(*
+    engine.ml
 
+    Actually runs the reduction rules on the state to evaluate a program.
+*)
 open Syntax
 open Smtsyntax
 open Smtutils
@@ -21,6 +25,9 @@ type redresult =
   | MultipleRulesMatch of (rule * state list) list
   | NoRulesMatch
 
+(* Tries to apply every rule in the rule table to the passed state.
+    The rules that yield at least one ouput state "match" the passed state, and
+    ideally only one reduction rule matches at a time. *)
 let step_rule : state -> redresult =
   fun state ->
     let res = map (fun (r, f) -> (r, f state)) rule_table in
@@ -28,11 +35,14 @@ let step_rule : state -> redresult =
       | [] -> NoRulesMatch
       | _ -> match filter (fun (r, ss) -> length ss > 0) res with
         | [] -> NoRulesMatch
-        | ((r, ss) :: []) -> ReductionOkay (r, ss)
+        | [(r, ss)] -> ReductionOkay (r, ss)
         | toomuch -> MultipleRulesMatch toomuch
 
+(* Dereferences the ReturnSlot on top of the stack if it is the only slot on the stack. *)
 let get_state_result : state -> (value * attributes) option =
   fun state ->
+    (* If popping one value is a ReturnSlot, but we can't pop two values, then
+        the ReturnSlot is the only thing on the stack. *)
     match (stack_pop_v state.stack, stack_pop_v2 state.stack) with
     | (Some (ReturnSlot mem, _, _), None) ->
       (match heap_find mem state.heap with
@@ -40,6 +50,7 @@ let get_state_result : state -> (value * attributes) option =
       | _ -> None)
     | _ -> None
 
+(* If the state's stack is only a ReturnSlot *)
 let is_state_complete : state -> bool =
   fun state ->
     match get_state_result state with
@@ -49,6 +60,8 @@ let is_state_complete : state -> bool =
 let is_state_not_complete : state -> bool =
   fun state -> not (is_state_complete state)
 
+(* Runs one pass of the stepper on each (history, state) pair, and produces a passresutlt - defined in
+    interp-commons/rules.ml *)
 let run_pass : (rule list * state) list -> passresult =
   fun states ->
     let comps = filter (fun (a, b) -> is_state_complete b) states in
@@ -62,6 +75,8 @@ let run_pass : (rule list * state) list -> passresult =
                               string_of_int st.unique);
               (c, (hist, st) :: e, i)
           | ReductionOkay (r, sts) ->
+              (* Append the matching rule to the states' history after filtering
+                out only the complete states. *)
               let csts = map (fun s -> (r :: hist, s))
                              (filter is_state_complete sts) in
               let ncsts = map (fun s -> (r :: hist, s))
@@ -71,6 +86,7 @@ let run_pass : (rule list * state) list -> passresult =
               print_endline ("multiple rules match at state " ^
                              string_of_int st.unique);
               print_endline ("pretending as though nothing happened!");
+              (* Apply the same logic as above for each of the matched states. *)
               let expanded =
                     concat (map (fun (r, ss) ->
                                   map (fun s -> (r :: hist, s)) ss)
@@ -80,6 +96,9 @@ let run_pass : (rule list * state) list -> passresult =
               let ncsts = filter (fun (r, s) -> is_state_not_complete s)
                                   expanded in
                 (csts @ c, e, ncsts @ i))
+        (* This is a fold-left on the incomplete states, applying a single step of the
+            production rules to each, and producing the new fringe of the execution tree by
+            concatenating the children of each incomplete state. *)
         (comps, [], []) incomps in
       { (fresh_passresult ()) with
           pass_comps = comps2;
@@ -88,6 +107,7 @@ let run_pass : (rule list * state) list -> passresult =
 
 (* Different versions of run functions for debugging, etc *)
 
+(* Apply n production rules to the input state list. *)
 let run_n : int -> state list -> passresult =
   fun n inits ->
     let raws = map (fun s -> ([], s)) inits in
@@ -155,6 +175,8 @@ let load_run_n_first_result : string -> int -> (value * attributes) option =
     let state = load_file_guess file in
       run_n_first_result n [state]
 
+(* Creates a SMT-LIBv2 representation of the path constraints on the current state and
+    runs the Z3 prover on it. *)
 let solve_state : state -> smtprog =
   fun state ->
     let stmts = smtcmd_list_of_state state in
