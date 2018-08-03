@@ -1,3 +1,12 @@
+(* 
+    type_convert.ml
+
+    UNUSED
+    Contains some old type conversion code.
+    Kept around because it holds some of R's type conversion
+    rules that are strange.
+*)
+
 module S = Syntax
 
 (* Based on R's coerce.c *)

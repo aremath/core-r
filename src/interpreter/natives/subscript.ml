@@ -1,3 +1,9 @@
+(*
+    subscript.ml
+
+    Functions for subscripting vectors (possibly eventually lists?)
+    Implements x[], x[[]], x[[]]<- and x[]<-.
+*)
 module S = Support
 module C = Native_support
 module V = Vector
@@ -62,7 +68,9 @@ let out_indices: int -> int array -> int array list -> int array -> int -> int a
 
 (* Produce a vector which is the right subset of the original,
  given the dimensions of the original vector, and which indices to
- slice. *)
+ slice.
+ If x is 3x3x3, you can say x[,2,]. We do not do this kind of elision or arguments,
+ the equivalent is x[c(1,2,3), 2, c(1,2,3)]. *)
 let do_subset: 'a. ('a array * int array) -> int array list -> ('a array * int array) =
     fun (in_array, in_dims) subs ->
     let n_dims = Array.length in_dims in
@@ -113,6 +121,8 @@ let do_subset_assign: 'a. ('a array * int array) -> int array list -> 'a array -
     (* Do the assignments - wrap assigns using mod *)
     Array.iteri (fun i v -> in_array.(v) <- assign_array.(i mod n_assigns)) final_indices
 
+(* Does subset assignment at the rvector level (in-place).
+    To use this properly, it should be called on the COPY of the input argument. *)
 let rvector_subset_assign: S.rvector -> int array -> int array list -> S.rvector -> unit =
     fun data data_dims subs assign ->
     match (data, assign) with
@@ -132,6 +142,7 @@ let sub_refs_to_subs: S.memref list -> S.state -> int array list =
         let rvec = C.dereference_rvector m state in
         C.resolve_vec (C.rvector_to_int_array rvec)) sub_refs
 
+(* Dereference the dims attribute as an int array. *)
 let get_dims: S.attributes -> S.state -> int array =
     fun attrs state ->
     let data_dims_ref = begin match S.attrs_find (Some "dim") attrs with
@@ -140,7 +151,7 @@ let get_dims: S.attributes -> S.state -> int array =
         | None      -> failwith "data has no dim attribute" 
     end in
     let data_dims = C.dereference_rvector data_dims_ref state in
-    (* coerce it to an int array *)
+    (* Coerce it to an int array *)
     C.resolve_vec (C.rvector_to_int_array data_dims)
 
 
@@ -192,6 +203,9 @@ let find_names_index: S.rstring array -> S.rstring array -> int =
     let sub = subscript_vec.(0) in
     find names sub 0
 
+(* Subscripts a vector by using its names. Finds the index of the passed string 
+    in the names array, then takes that index from the data vector into a new 
+    vector of length 1. *)
 let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.rvector = 
     fun data_rvec names subscript_vec ->
     let idx = find_names_index names subscript_vec in
@@ -203,7 +217,7 @@ let subscript_str: S.rvector -> S.rstring array -> S.rstring array -> S.rvector 
     | S.BoolVec b -> S.BoolVec (Array.make 1 b.(idx))
     | S.SymVec s -> failwith "symbolic unimplemented"
 
-(* Find the true index into the vector given an integer *)
+(* Find the true index into the vector given an integer. *)
 let find_int_index: int -> int array -> int =
     fun data_length subscript_vec ->
     let _ = if Array.length subscript_vec = 1 then () else failwith "Subscript of length not 1" in
@@ -215,6 +229,7 @@ let find_int_index: int -> int array -> int =
     let _ = if n < 0 then failwith "Attempt to select more than one element in subscript" else () in
     n - 1
 
+(* Extracts the nth element of the data vector as a new rvector of length 1. *)
 let subscript_int: S.rvector -> int array -> S.rvector =
     fun data_rvec subscript_vec ->
     let true_n = find_int_index (V.rvector_length data_rvec) subscript_vec in
