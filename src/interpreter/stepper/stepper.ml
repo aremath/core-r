@@ -644,6 +644,7 @@ let rule_IfRetSym : state -> state list =
 
 
 (* While *)
+(*
 let rule_WhileEval : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
@@ -657,9 +658,8 @@ let rule_WhileEval : state -> state list =
         [{ state with
              stack = stack_push c_frame c_stack2 }]
     | _ -> []
+*)
 
-
-(*
 let rule_WhileEval : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
@@ -720,7 +720,8 @@ let rule_WhileCondSym : state -> state list =
             LoopSlot (cond, body, LoopCond), c_env_mem,
             c_stack2) ->
       (match heap_find cond_mem state.heap with
-      | Some (DataObj (Vec (SymVec ((sid, sty, spath), deps)), attrs)) ->
+      | Some (DataObj (Vec (SymVec ((sid, sty), deps)), attrs)) ->
+          let spath = state.pathcons in
           let arr_smt = SmtArrGet (SmtVar sid, SmtConst "0") in
 
           let b_frame_t = { frame_default with
@@ -730,21 +731,23 @@ let rule_WhileCondSym : state -> state list =
                               env_mem = c_env_mem;
                               slot = LoopSlot (cond, body, LoopBody) } in
           let path_t = add_pathcons arr_smt spath in
-          let obj_t = DataObj (Vec (SymVec ((sid, sty, path_t), deps)), attrs) in
+          let obj_t = DataObj (Vec (SymVec ((sid, sty), deps)), attrs) in
           let heap_t = heap_add cond_mem obj_t state.heap in
           let state_t = { state with
                       stack = stack_push_list [b_frame_t; c_frame_t] c_stack2;
-                      heap = heap_t } in
+                      heap = heap_t;
+                      pathcons = path_t } in
 
           let c_frame_f = { frame_default with
                               env_mem = c_env_mem;
                               slot = ReturnSlot (mem_null ())} in
           let path_f = add_pathcons (SmtNeg arr_smt) spath in
-          let obj_f = DataObj (Vec (SymVec ((sid, sty, path_f), deps)), attrs) in
+          let obj_f = DataObj (Vec (SymVec ((sid, sty), deps)), attrs) in
           let heap_f = heap_add cond_mem obj_f state.heap in
           let state_f = { state with
                             stack = stack_push c_frame_f c_stack2;
-                            heap = heap_f } in
+                            heap = heap_f;
+                            pathcons = path_f } in
             [state_t; state_f]
       | _ -> [])
     | _ -> []
@@ -798,8 +801,6 @@ let rule_Next : state -> state list =
                stack = stack_push_list [b_frame; c_frame] c_stack3 }]
       | _ -> [])
     | _ -> []
-
-*)
 
 let rule_Return : state -> state list =
   fun state ->
@@ -860,14 +861,12 @@ let rule_table : (rule * (state -> state list)) list =
     (ERuleIfRet, rule_IfRet);
     (ERuleIfRetSym, rule_IfRetSym);
     (ERuleWhileEval, rule_WhileEval);
-    (*
     (ERuleWhileCondTrue, rule_WhileCondTrue);
     (ERuleWhileCondFalse, rule_WhileCondFalse);
     (ERuleWhileCondSym, rule_WhileCondSym);
     (ERuleWhileBodyDone, rule_WhileBodyDone);
     (ERuleBreak, rule_Break);
     (ERuleNext, rule_Next);
-    *)
     (ERuleReturn, rule_Return);
     (ERuleDiscard, rule_Discard);
     (ERuleBlank, rule_Blank) ]
