@@ -1,3 +1,15 @@
+(*
+    arithmetic.ml
+
+    Binary operations on vectors. These functions assume that the
+    vectors are both the same length, and vector.ml takes care of the
+    wrapping for vectors that do not have the same length.
+    Uses binops from symbolic_ops.ml to handle symbolic vectors.
+    converts from rvector -> rvector, using state to name new symbolics.
+    Most operations are effectively a map2 of a binary operation which
+    is wrapped to work with NAs, represented as options.
+*)
+
 module S = Support
 module C = Native_support
 module Sym = Symbolic_ops
@@ -9,7 +21,7 @@ let opt_bop: ('a -> 'b -> 'c) -> ('a option -> 'b option -> 'c option) =
     | (Some l, Some r) -> Some (f l r)
     | _ -> None
 
-(* Applies five functions to rvectors as cases for each type of rvector.
+(* Applies functions to rvectors as cases for each type of rvector.
  Reuses code nicely, but not general in the sense that the operation
  on two float vectors must produce a float vector, and there's no way
  for an operation to work on two vectors with mismatched types. *)
@@ -56,6 +68,7 @@ let rvector_add = bop_rvectors
     Sym.empty_assume
 
 (* Multiplication *)
+(* Types are the same as above... *)
 let mul_rint = opt_bop ( * )
 let mul_rfloat = opt_bop ( *. )
 let mul_rcomplex = opt_bop Complex.mul
@@ -85,6 +98,7 @@ let rvector_div = bop_rvectors
     div_rstr
     div_rbool
     Sym.symbolic_div
+    (* Assumes that the entries of the divisor are nonzero. *)
     Sym.symbolic_div_assume
 
 (* Subtraction *)
@@ -120,7 +134,7 @@ let rvector_mod = bop_rvectors
     Sym.empty_assume
 
 (* Exponentiation *)
-(* ocaml has no int exponentiation. This works, but is prone to overflow and
+(* OCaml has no int exponentiation. This works, but is prone to overflow and
  rounding errors *)
 let exp_rint = opt_bop (fun i1 i2 -> let f1 = float_of_int i1 in
     let f2 = float_of_int i2 in
@@ -167,7 +181,9 @@ let cmp_rvectors: (S.rint -> S.rint -> S.rbool) ->
 (* Error behavior when comparing two complex numbers *)
 let complex_compare_failure = (fun _ _ -> failwith "Complex comparison")
 
-(* Because ocaml comparisons return bool but R bools are int *)
+(* Because OCaml comparisons return bool but R bools are int, we
+    need to convert the normal OCaml operations that produce bools into
+    ones that produce ints. *)
 let int_of_bool: bool -> int =
     fun b -> if b then 1 else 0
 let bool_of_int: int -> bool =
@@ -175,8 +191,12 @@ let bool_of_int: int -> bool =
 let rbool_wrap: ('a -> 'b -> bool) -> ('a -> 'b -> int) =
     fun f l r -> int_of_bool (f l r)
 
-(* Less Than. Thankfully, ocaml does sensible things *)
-(* let rlt = rbool_wrap (<) -- Can't do this because the ocaml typechecker is bad :( *)
+(* Less Than. Thankfully, OCaml does sensible things *)
+(* let rlt = rbool_wrap (<) -- Can't do this because the OCaml typechecker is bad :( *)
+(* TODO: might be able to do this with type quantifiers, but 
+    rlt: 'b. 'b -> 'b -> int = rbool_wrap (<)
+    did not check because rlt's type is more general than the type returned by rbool_wrap
+    which is 'b -> 'b -> bool... *)
 let lt_rint = opt_bop (rbool_wrap (<))
 let lt_rfloat = opt_bop (rbool_wrap (<))
 let lt_rcomplex = complex_compare_failure 
@@ -207,9 +227,7 @@ let rvector_gt = cmp_rvectors
     Sym.symbolic_gt
 
 (* Equality. Thankfully R does not have NA == NA *)
-(* I could define it once and pass the same function to cmp_rvectors five times
- but I think this is clearer. *)
-(* TODO: Note that this can differ subtly from R's behavior if R and ocaml use a different fuzz
+(* TODO: Note that this can differ subtly from R's behavior if R and OCaml use a different fuzz
  to compare floating point numbers *)
 let eq_rint = opt_bop (rbool_wrap (=))
 let eq_rfloat = opt_bop (rbool_wrap (=))
@@ -225,7 +243,7 @@ let rvector_eq = cmp_rvectors
     eq_rbool
     Sym.symbolic_eq
 
-(* Inequality *)
+(* Inequality - use OCaml's structural inequality. *)
 let neq_rint = opt_bop (rbool_wrap (<>))
 let neq_rfloat = opt_bop (rbool_wrap (<>))
 let neq_rcomplex = opt_bop (rbool_wrap (<>))
@@ -276,6 +294,7 @@ let rvector_leq = cmp_rvectors
   on boolean vectors. Requires both cfail and symfail because ocaml's type system
   will complain if it takes fail as (unit -> 'a) and uses it in two different places
   with two different types. Thanks ocaml. *)
+(* TODO: this might work with a single failure by quantifying the type over 'a. *)
 let logic_vec_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
                     (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
                     (unit -> (S.rvector * S.state)) ->
@@ -298,7 +317,7 @@ let logic_vec_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
         (S.SymVec ((Sym.symbolic_logic_vec_op name fsy symfail syl syr), S.Depends [syl]), state'')
     | _ -> failwith "Can't bop vectors with incompatible types"
 
-(* convert an ocaml bool function to an R bool function *)
+(* Convert an ocaml bool function to an R bool function *)
 let rboolize: (bool -> bool -> bool) -> (int -> int -> int) =
     fun fb li ri ->
     let lb = bool_of_int li in
@@ -369,6 +388,7 @@ let rvector_or = logic_single_rvectors
 
 (* xor *)
 (* For some reason it seems like R only has vectorized xor *)
+(* Note that this is basically equivalent to != *)
 let xor_failure = (fun _ -> failwith "Non-boolean xor")
 let rbool_xor = opt_bop (rbool_wrap (<>))
 let rvector_xor = logic_vec_rvectors

@@ -1,5 +1,14 @@
+(*
+    constants.ml
 
-(* We do the constant folding here *)
+    Constant folding. Does some implicit coercion to reduce
+    things like 3 + 2.5i to a single Complex value rather than
+    needing to allocate 3 as an intvec, allocate 2.5i as a
+    complexvec, then do the addition and 
+        a) Get a type error since we do not do any implicit coercion and
+        b) If it goes through, need to allocate an additional vector
+        to hold the result.
+*)
 
 open Syntax
 module C = Complex

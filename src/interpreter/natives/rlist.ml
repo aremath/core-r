@@ -1,3 +1,10 @@
+(*
+    rlist.ml
+    
+    Functions for working with lists a la vector.ml.
+    Most list operations are not implemented:
+    lists are not actually a very common structure to use in R.
+*)
 module S = Support
 module C = Native_support
 module Copy = Copy
