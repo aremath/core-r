@@ -96,8 +96,8 @@ type pathcons =
     of how type checking works. *)
 (* For info on why symbolic vectors have symdepends, see natives/symbolic_ops.ml *)
 (* Named type for symbolic definition *)
-type symdef = (smtvar * rtype * pathcons)
-type symvec = (symdef * symdepends)
+type symdef = smtvar * rtype
+type symvec = symdef * symdepends
 
 (* Hack to fix type alias checking *)
 and symdepends =
@@ -372,6 +372,15 @@ let rec state_fold_left:
     | (hd :: tl) -> let a, state' = f init hd state in
         state_fold_left f a tl state'
     | [] -> (init, state)
+
+(* List.iter preserving state changes. *)
+let rec state_iter:
+    ('a -> state -> state) -> 'a list -> state -> state =
+    fun f alist state ->
+        match alist with
+        | hd :: tl -> let state' = f hd state in
+            state_iter f tl state'
+        | [] -> state
 
 let rec id_fresh_list : int -> state -> (ident list) * state =
   fun n state ->
@@ -770,4 +779,7 @@ let state_add_pathcons : smtexpr -> state -> state =
   fun smt state ->
     { state with pathcons = add_pathcons smt state.pathcons }
 
+let state_add_pathcons_list : smtexpr list -> state -> state =
+    fun smts state ->
+    state_iter state_add_pathcons smts state
 

@@ -94,7 +94,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                         | Vec (IntVec _) -> 1
                         | Vec (FloatVec _) -> 1
                         | Vec (ComplexVec _) -> 1
-                        | Vec (SymVec ((_, ty, _), _)) ->
+                        | Vec (SymVec ((_, ty), _)) ->
                             (match ty with
                             | RInt -> 1
                             | RFloat -> 1
@@ -119,7 +119,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                      | Some (DataObj (value, _)) ->
                         (match value with
                         | Vec (IntVec _) -> 1
-                        | Vec (SymVec ((_, ty, _), _)) ->
+                        | Vec (SymVec ((_, ty), _)) ->
                             (match ty with
                             | RInt -> 1
                             | _ -> 0)
@@ -142,7 +142,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                      | Some (DataObj (value, _)) ->
                         (match value with
                         | Vec (BoolVec _) -> 1
-                        | Vec (SymVec ((_, ty, _), _)) ->
+                        | Vec (SymVec ((_, ty), _)) ->
                             (match ty with
                             | RBool -> 1
                             | _ -> 0)
@@ -165,7 +165,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                      | Some (DataObj (value, _)) ->
                         (match value with
                         | Vec (StrVec _) -> 1
-                        | Vec (SymVec ((_, ty, _), _)) ->
+                        | Vec (SymVec ((_, ty), _)) ->
                             (match ty with
                             | RString -> 1
                             | _ -> 0)
@@ -188,7 +188,7 @@ let native_call : ident -> memref list -> memref -> state -> state option =
                      | Some (DataObj (value, _)) ->
                         (match value with
                         | Vec (ComplexVec _) -> 1
-                        | Vec (SymVec ((_, ty, _), _)) ->
+                        | Vec (SymVec ((_, ty), _)) ->
                             (match ty with
                             | RComplex -> 1
                             | _ -> 0)
