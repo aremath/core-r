@@ -612,28 +612,31 @@ let rule_IfRetSym : state -> state list =
             BranchSlot (t_expr, f_expr), c_env_mem,
             c_stack2) ->
       (match heap_find cond_mem state.heap with
-      | Some (DataObj ((Vec (SymVec ((sid, sty, spath), deps))), attrs)) ->
+      | Some (DataObj ((Vec (SymVec ((sid, sty), deps))), attrs)) ->
+          let spath = state.pathcons in
           let arr_smt = SmtArrGet (SmtVar sid, SmtConst "0") in
 
           let c_frame_t = { frame_default with
                             env_mem = c_env_mem;
                             slot = EvalSlot t_expr } in
           let path_t = add_pathcons arr_smt spath in
-          let obj_t = DataObj (Vec (SymVec ((sid, sty, path_t), deps)), attrs) in
+          let obj_t = DataObj (Vec (SymVec ((sid, sty), deps)), attrs) in
           let heap_t = heap_add cond_mem obj_t state.heap in
           let state_t = { state with
                             stack = stack_push c_frame_t c_stack2;
-                            heap = heap_t; } in
+                            heap = heap_t;
+                            pathcons = path_t } in
 
           let c_frame_f = { frame_default with
                             env_mem = c_env_mem;
                             slot = EvalSlot f_expr } in
           let path_f = add_pathcons (SmtNeg arr_smt) spath in
-          let obj_f = DataObj (Vec (SymVec ((sid, sty, path_f), deps)), attrs) in
+          let obj_f = DataObj (Vec (SymVec ((sid, sty), deps)), attrs) in
           let heap_f = heap_add cond_mem obj_f state.heap in
           let state_f = { state with
                             stack = stack_push c_frame_f c_stack2;
-                            heap = heap_f; } in
+                            heap = heap_f;
+                            pathcons = path_f } in
             [state_t; state_f]
 
       | _ -> [])
