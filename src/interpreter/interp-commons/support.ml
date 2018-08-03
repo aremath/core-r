@@ -179,6 +179,7 @@ type state =
     heap : heap;
     global_env_mem : memref;
     sym_mems : sym_mems;
+    pathcons : pathcons;
     pure_ids : pures;
     fresh_count : int;
     pred_unique : int;
@@ -736,6 +737,7 @@ let state_default : state =
     heap = heap_empty ();
     global_env_mem = mem_null ();
     sym_mems = empty_sym_mems ();
+    pathcons = empty_pathcons ();
     pure_ids = pures_empty ();
     fresh_count = 1;
     pred_unique = 0;
@@ -763,4 +765,9 @@ let state_alloc : heapobj -> state -> memref * state =
 let state_find : memref -> state -> heapobj option =
     fun mem state ->
     heap_find mem state.heap
+
+let state_add_pathcons : smtexpr -> state -> state =
+  fun smt state ->
+    { state with pathcons = add_pathcons smt state.pathcons }
+
 
