@@ -44,7 +44,7 @@ let rvector_length_vec: S.rvector -> S.state -> S.rvector * S.state =
     | S.ComplexVec c -> (S.IntVec (Array.make 1 (Some (Array.length c))), state)
     | S.StrVec s -> (S.IntVec (Array.make 1 (Some (Array.length s))), state)
     | S.BoolVec b -> (S.IntVec (Array.make 1 (Some (Array.length b))), state)
-    | S.SymVec ((n, _, _), deps) -> let new_name, state' = S.name_fresh state in
+    | S.SymVec ((n, _), deps) -> let new_name, state' = S.name_fresh state in
         (* out has length 1 *)
         let len = SmtEq (
             smt_len new_name,
@@ -53,8 +53,9 @@ let rvector_length_vec: S.rvector -> S.state -> S.rvector * S.state =
         let value = SmtEq (
             smt_getn new_name 0,
             smt_len n) in
-        let vec = S.SymVec ((new_name, S.RInt, { S.path_list = [len; value] }), S.NoDepends) in
-        vec, state'
+        let vec = S.SymVec ((new_name, S.RInt), S.NoDepends) in
+        let state'' = S.state_add_pathcons_list [len; value] state' in
+        vec, state''
 
 let rvector_length_mem: S.memref -> S.state -> (S.memref * S.state) =
     fun data_ref state ->
@@ -107,11 +108,12 @@ let mk_empty_symvec: S.state -> S.rtype -> S.rvector * S.state =
         smt_len name,
         smt_int_const 0) in
     (* vec is implicit - still need to allocate it! *)
-    let vec = ((name, ty, { S.path_list = [len] }), S.NoDepends) in
+    let vec = ((name, ty), S.NoDepends) in
+    let state'' = S.state_add_pathcons len state' in
     (* Memory address is dropped on the floor, we do not need it to refer to this vector since
       the symbolic operations we use it in will refer by name. *)
-    let _, state'' = S.state_alloc (S.DataObj (S.Vec (S.SymVec vec), S.attrs_empty ())) state' in
-    (S.SymVec vec), state''
+    let _, state''' = S.state_alloc (S.DataObj (S.Vec (S.SymVec vec), S.attrs_empty ())) state'' in
+    (S.SymVec vec), state'''
 
 (* Concatenate two vectors - For now does not do type coercion. *)
 let concat_rvectors: S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
@@ -141,7 +143,7 @@ let fold_rvectors: S.rvector list -> S.state -> (S.rvector * S.state) =
         | S.ComplexVec _ -> S.state_fold_left concat_rvectors (mk_empty_complexvec ()) vlist state
         | S.StrVec _ -> S.state_fold_left concat_rvectors (mk_empty_strvec ()) vlist state
         | S.BoolVec _ -> S.state_fold_left concat_rvectors (mk_empty_boolvec ()) vlist state
-        | S.SymVec ((_, t, _), _) -> let name, state' = S.name_fresh state in
+        | S.SymVec ((_, t), _) -> let name, state' = S.name_fresh state in
             let empty, state'' = mk_empty_symvec state t in
             S.state_fold_left concat_rvectors (empty) vlist state'
         end
@@ -279,7 +281,8 @@ let mk_range_vec: S.rtype -> smtexpr -> smtexpr -> S.state -> (S.rvector * S.sta
     let name, state' = S.name_fresh state in
     let len = mk_range_len name x0 y0 in
     let vals = mk_range_vals name x0 y0 in
-    (S.SymVec ((name, ty, { S.path_list = [len;vals] }), S.NoDepends)), state'
+    let state'' = S.state_add_pathcons_list [len;vals] state' in
+    (S.SymVec ((name, ty), S.NoDepends)), state''
 
 (* Handles 1:5 and 5:-5, etc, as well as symbolic ex. x:3 *)
 let range_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
@@ -296,17 +299,17 @@ let range_mems: S.memref -> S.memref -> S.state -> (S.memref * S.state) =
     (* Symbolic ops. Doesn't use sym_op as usual because we want to use
       the actual value of a concrete vector if we can. *)
     (* TODO: Constrain each symvec which is an argument to have length 1. *)
-    | (S.SymVec ((n1, S.RInt, _), _), S.SymVec ((n2, S.RInt, _), _)) ->
+    | (S.SymVec ((n1, S.RInt), _), S.SymVec ((n2, S.RInt), _)) ->
         mk_range_vec S.RInt (smt_getn n1 0) (smt_getn n2 0) state
-    | (S.SymVec ((n1, S.RFloat, _), _), S.SymVec ((n2, S.RFloat, _), _)) ->
+    | (S.SymVec ((n1, S.RFloat), _), S.SymVec ((n2, S.RFloat), _)) ->
         mk_range_vec S.RFloat (smt_getn n1 0) (smt_getn n2 0) state
-    | (S.SymVec ((n1, S.RInt, _), _), S.IntVec [|Some ei|]) ->
+    | (S.SymVec ((n1, S.RInt), _), S.IntVec [|Some ei|]) ->
         mk_range_vec S.RInt (smt_getn n1 0) (smt_int_const ei) state
-    | (S.IntVec [|Some si|], S.SymVec ((n2, S.RInt, _), _)) ->
+    | (S.IntVec [|Some si|], S.SymVec ((n2, S.RInt), _)) ->
         mk_range_vec S.RInt (smt_int_const si) (smt_getn n2 0) state
-    | (S.SymVec ((n1, S.RFloat, _), _), S.FloatVec [|Some ef|]) ->
+    | (S.SymVec ((n1, S.RFloat), _), S.FloatVec [|Some ef|]) ->
         mk_range_vec S.RFloat (smt_getn n1 0) (smt_float_const ef) state
-    | (S.FloatVec [|Some sf|], S.SymVec ((n2, S.RFloat, _), _)) ->
+    | (S.FloatVec [|Some sf|], S.SymVec ((n2, S.RFloat), _)) ->
         mk_range_vec S.RFloat (smt_float_const sf) (smt_getn n2 0) state
     | _ -> failwith "Bad range call" in (* TODO: better error messaging *)
     S.state_alloc (S.DataObj (S.Vec out_rvec, S.attrs_empty ())) state'
@@ -537,11 +540,13 @@ let make_symbolic_vector: S.rvector -> S.rtype -> S.state -> (S.rvector * S.stat
     | S.IntVec [| Some i |] when (i >= 0) -> let len = SmtEq (
             smt_len new_name,
             smt_int_const i) in
-        (S.SymVec ((new_name, ty, { S.path_list = [len] }), S.NoDepends), state')
-    | S.SymVec ((n,S.RInt,_), _) -> let  len = SmtEq (
+        let state'' = S.state_add_pathcons len state' in
+        (S.SymVec ((new_name, ty), S.NoDepends), state'')
+    | S.SymVec ((n,S.RInt), _) -> let  len = SmtEq (
             smt_len new_name,
             smt_getn n 0) in
-        (S.SymVec ((new_name, ty, { S.path_list = [len] }), S.NoDepends), state')
+        let state'' = S.state_add_pathcons len state' in
+        (S.SymVec ((new_name, ty), S.NoDepends), state'')
     | _ -> failwith "Bad call to make_symbolic"
 
 let get_ty: S.rvector -> S.rtype =

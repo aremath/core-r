@@ -70,10 +70,9 @@ let string_of_rtype : rtype -> string =
     | RString -> "RString"
 
 let rec string_of_symvec : symvec -> string =
-  fun ((v, t, p), ds) ->
+  fun ((v, t), ds) ->
     "SymVec (" ^ string_of_smtvar v ^ "," ^
                  string_of_rtype t ^ "," ^
-                 string_of_pathcons p ^ "," ^
                  string_of_symdepends ds ^ ")"
 
 and string_of_symdepends : symdepends -> string =
@@ -94,10 +93,9 @@ let string_of_rvector: rvector -> string =
         string_of_list_comma (map Langutils.string_of_rstring (Array.to_list s))
     | BoolVec b ->
         string_of_list_comma (map string_of_rbool (Array.to_list b))
-    | SymVec ((i, t, p), ds) ->
+    | SymVec ((i, t), ds) ->
         "(" ^ string_of_smtvar i ^ ";" ^
-              string_of_rtype t ^ ";" ^
-              string_of_pathcons p ^ ")"
+              string_of_rtype t ^ ")"
 
 let string_of_env: env -> string =
   fun env ->
@@ -224,13 +222,15 @@ let string_of_state: state -> string =
     let stack_str = string_of_stack state.stack in
     let heap_str = string_of_heap state.heap in
     let env_str = string_of_mem state.global_env_mem in
+    let path_str = string_of_pathcons state.pathcons in
     (* let count = string_of_int state.fresh_count in *)
       "State " ^ "(global: " ^ env_str ^ ") " ^
                  "(" ^ string_of_int state.unique ^ ") "^
                  "(pred : " ^ string_of_int state.pred_unique ^ ")" ^
                  "\n" ^
       "\n" ^  tab2 ^ stack_str ^ "\n" ^
-      "\n" ^ tab2 ^ heap_str ^ ""
+      "\n" ^ tab2 ^ heap_str ^ "\n" ^
+      "\n" ^ tab2 ^ path_str ^ ""
 
 let string_of_state_list : state list -> string =
   fun states ->

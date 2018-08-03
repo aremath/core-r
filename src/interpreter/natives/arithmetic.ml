@@ -28,15 +28,8 @@ let bop_rvectors: (S.rint -> S.rint -> S.rint) ->
     | (S.ComplexVec l, S.ComplexVec r) -> (S.ComplexVec (C.array_map2 fc l r), state)
     | (S.StrVec l, S.StrVec r) -> (S.StrVec (C.array_map2 fs l r), state)
     | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
-    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
-        S.SymVec ((Sym.symbolic_op name fsy sym_assume syl syr), S.NoDepends), state'
-    | (S.SymVec syl, vecr) -> let syr, state' = Sym.vec_to_symvec vecr state in
-        let name, state'' = S.name_fresh state' in
-        (* syr is implicit casting of vecr to SymVec, so the new vector depends on it. *)
-        S.SymVec ((Sym.symbolic_op name fsy sym_assume syl syr), S.Depends [syr]), state''
-    | (vecl, S.SymVec syr) -> let syl, state' = Sym.vec_to_symvec vecl state in
-        let name, state'' = S.name_fresh state' in
-        S.SymVec ((Sym.symbolic_op name fsy sym_assume syl syr), S.Depends [syl]), state''
+    | (_, _) -> let partial_op = fun name sy1 sy2 -> Sym.symbolic_op name fsy sym_assume sy1 sy2 in
+        Sym.sym_op (Sym.arg2listize partial_op) [lhs;rhs] state
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Addition *)
@@ -154,14 +147,8 @@ let cmp_rvectors: (S.rint -> S.rint -> S.rbool) ->
     | (S.ComplexVec l, S.ComplexVec r) -> (S.BoolVec (C.array_map2 fc l r), state)
     | (S.StrVec l, S.StrVec r) -> (S.BoolVec (C.array_map2 fs l r), state)
     | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
-    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
-        (S.SymVec ((Sym.symbolic_cmp name fsy syl syr), S.NoDepends), state')
-    | (S.SymVec syl, vecr) -> let syr, state' = Sym.vec_to_symvec vecr state in
-        let name, state'' = S.name_fresh state' in
-        (S.SymVec ((Sym.symbolic_cmp name fsy syl syr), S.Depends [syr]), state'')
-    | (vecl, S.SymVec syr) -> let syl, state' = Sym.vec_to_symvec vecl state in
-        let name, state'' = S.name_fresh state' in
-        (S.SymVec ((Sym.symbolic_cmp name fsy syl syr), S.Depends [syl]), state'')
+    | (_, _) -> let partial_op = fun name sy1 sy2 -> Sym.symbolic_cmp name fsy sy1 sy2 in
+        Sym.sym_op (Sym.arg2listize partial_op) [lhs;rhs] state
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* Error behavior when comparing two complex numbers *)
@@ -279,7 +266,7 @@ let rvector_leq = cmp_rvectors
 let logic_vec_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
                     (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
                     (unit -> (S.rvector * S.state)) ->
-                    (unit -> (S.symdef)) ->
+                    (unit -> (S.symdef * S.smtexpr list)) ->
                     S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
     fun fb fsy cfail symfail lhs rhs state ->
     match (lhs, rhs) with
@@ -288,14 +275,8 @@ let logic_vec_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
     | (S.ComplexVec l, S.ComplexVec r) -> cfail ()
     | (S.StrVec l, S.StrVec r) -> cfail ()
     | (S.BoolVec l, S.BoolVec r) -> (S.BoolVec (C.array_map2 fb l r), state)
-    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
-        (S.SymVec ((Sym.symbolic_logic_vec_op name fsy symfail syl syr), S.NoDepends), state')
-    | (S.SymVec syl, vecr) -> let syr, state' = Sym.vec_to_symvec vecr state in
-        let name, state'' = S.name_fresh state' in
-        (S.SymVec ((Sym.symbolic_logic_vec_op name fsy symfail syl syr), S.Depends [syr]), state'')
-    | (vecl, S.SymVec syr) -> let syl, state' = Sym.vec_to_symvec vecl state in
-        let name, state'' = S.name_fresh state' in
-        (S.SymVec ((Sym.symbolic_logic_vec_op name fsy symfail syl syr), S.Depends [syl]), state'')
+    | (_, _) -> let partial_op = fun name sy1 sy2 -> Sym.symbolic_logic_vec_op name fsy symfail sy1 sy2 in
+        Sym.sym_op (Sym.arg2listize partial_op) [lhs;rhs] state
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* convert an ocaml bool function to an R bool function *)
@@ -329,7 +310,7 @@ let rvector_orvec = logic_vec_rvectors
 let logic_single_rvectors: (S.rbool -> S.rbool -> S.rbool) -> 
         (S.smtexpr -> S.smtexpr -> S.smtexpr) ->
         (unit -> (S.rvector * S.state)) -> 
-        (unit -> S.symdef) ->
+        (unit -> S.symdef * S.smtexpr list) ->
         S.rvector -> S.rvector -> S.state -> (S.rvector * S.state) =
     fun fb fsy cfail symfail lhs rhs state ->
     match (lhs, rhs) with
@@ -341,14 +322,8 @@ let logic_single_rvectors: (S.rbool -> S.rbool -> S.rbool) ->
         let v = Array.make 1 None in
         v.(0) <- fb l.(0) r.(0);
         (S.BoolVec v, state)
-    | (S.SymVec syl, S.SymVec syr) -> let name, state' = S.name_fresh state in
-        (S.SymVec ((Sym.symbolic_logic_single_op name fsy symfail syl syr), S.NoDepends), state')
-    | (S.SymVec syl, vecr) -> let syr, state' = Sym.vec_to_symvec vecr state in
-        let name, state'' = S.name_fresh state' in
-        (S.SymVec ((Sym.symbolic_logic_single_op name fsy symfail syl syr), S.Depends [syr]), state'')
-    | (vecl, S.SymVec syr) -> let syl, state' = Sym.vec_to_symvec vecl state in
-        let name, state'' = S.name_fresh state' in
-        (S.SymVec ((Sym.symbolic_logic_single_op name fsy symfail syl syr), S.Depends [syl]), state'')
+    | (_, _) -> let partial_op = fun name sy1 sy2 -> Sym.symbolic_logic_single_op name fsy symfail sy1 sy2 in
+        Sym.sym_op (Sym.arg2listize partial_op) [lhs;rhs] state
     | _ -> failwith "Can't bop vectors with incompatible types"
 
 (* && - non-vectorized only compares first two elements *)

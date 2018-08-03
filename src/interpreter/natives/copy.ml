@@ -52,8 +52,7 @@ let copy_rvector: S.state -> S.rvector -> (S.rvector * S.state) =
     | S.ComplexVec v -> (S.ComplexVec (Array.copy v), state)
     | S.StrVec v -> (S.StrVec (Array.copy v), state)
     | S.BoolVec v -> (S.BoolVec (Array.copy v), state)
-    | S.SymVec s -> let name, state' = S.name_fresh state in
-        (S.SymVec (Sym.copy_symbolic name s), state')
+    | S.SymVec s -> S.SymVec s, state
 
 (*
 (* recursively copy the elements of a reference list *)

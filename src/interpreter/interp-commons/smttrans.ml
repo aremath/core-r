@@ -256,25 +256,10 @@ and replace_sort: smtvar -> smtvar -> smtsort -> smtsort =
           if vsort = var1 then SmtSortApp (var2, vsorts')
               else SmtSortApp (vsort, vsorts')
 
-(* Dereferences a single symbolic vector. *)
-let get_mem_pathcons_list : memref -> heap -> symvec list =
-  fun mem heap ->
-    match heap_find mem heap with
-    | Some (DataObj (Vec (SymVec ((sid, rty, pc), dep)), _)) -> [((sid, rty, pc), dep)]
-    | _ -> []
-
 (* Asserts that each of the path constraints holds. *)
 let smtcmd_list_of_pathcons : pathcons -> smtcmd list =
   fun path ->
     map (fun e -> SmtAssert e) path.path_list
-
-(* Assert each path constraint for a symvec and its implicit dependencies *)
-let rec smtcmd_of_symvec : symvec -> smtcmd list =
-    fun ((_, _, pc), deps) ->
-    let dep_pathcons = match deps with
-    | NoDepends -> []
-    | Depends l -> concat (map smtcmd_of_symvec l) in
-    dep_pathcons @ (smtcmd_list_of_pathcons pc)
 
 (* Convert the internal symbolic type to an smtsort used in the SMT-LIBv2 code. *)
 let smtsort_of_rtype : rtype -> smtsort =
@@ -285,14 +270,23 @@ let smtsort_of_rtype : rtype -> smtsort =
     | RFloat -> SmtSortFloat
     | t -> failwith ("smtsort_of_rtype: no support for complex and string")
 
+
 (* Create the declaration for a symvec and its implicit dependencies *)
 let rec smtdecl_of_symvec: symvec -> smtcmd list =
-  fun ((var, ty, _), deps) ->
+  fun ((var, ty), deps) ->
     let dep_decls = match deps with
     | NoDepends -> []
     | Depends l -> concat (map smtdecl_of_symvec l) in
     dep_decls @ [SmtDeclFun (var, [], SmtSortArray ([SmtSortInt], smtsort_of_rtype ty));
     SmtDeclFun (var ^ "_len", [], SmtSortInt)]
+
+(* Dereference a symbolic vector into a list of symvecs *)
+let smtdecl_of_symmem: memref -> state -> smtcmd list =
+    fun m state ->
+    match state_find m state with 
+    | Some (DataObj (Vec (SymVec s), _)) ->
+        smtdecl_of_symvec s
+    | _ -> failwith "Mem not symbolic!"
 
 (* Various declarations that don't depend on what symbolic vectors there are. *)
 let custom_decls : unit -> smtcmd list =
@@ -324,8 +318,7 @@ let smtcmd_list_of_state : state -> smtcmd list =
   fun state ->
     let smems = mem_list_of_sym_mems state.sym_mems in
     let heap = state.heap in
-    let paths = concat (map (fun m -> get_mem_pathcons_list m heap) smems) in
-    let decls = concat (map smtdecl_of_symvec paths) in
-    let asserts = concat (map smtcmd_of_symvec paths) in
+    let decls = concat (map (fun m -> smtdecl_of_symmem m state) smems) in
+    let asserts = smtcmd_list_of_pathcons state.pathcons in
       custom_decls () @ decls @ asserts @ custom_post ()
 
