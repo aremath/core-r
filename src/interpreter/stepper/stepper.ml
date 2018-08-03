@@ -337,14 +337,11 @@ let rule_MemRef : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (MemRef mem), c_env_mem, c_stack2) ->
-      (match heap_find mem state.heap with
-      | Some (DataObj _) ->
         let c_frame = { frame_default with
                           env_mem = c_env_mem;
                           slot = ReturnSlot mem } in
           [{ state with
                stack = stack_push c_frame c_stack2 }]
-      | _ -> [])
     | _ -> []
 
 (* Const *)
@@ -648,6 +645,22 @@ let rule_WhileEval : state -> state list =
   fun state ->
     match stack_pop_v state.stack with
     | Some (EvalSlot (While (cond, body)), c_env_mem, c_stack2) ->
+      let c_frame = { frame_default with
+                        env_mem = c_env_mem;
+                        slot = EvalSlot
+                                (If (cond,
+                                     Seq [body; While (cond, body)],
+                                     MemRef (mem_null ()))) } in
+        [{ state with
+             stack = stack_push c_frame c_stack2 }]
+    | _ -> []
+
+
+(*
+let rule_WhileEval : state -> state list =
+  fun state ->
+    match stack_pop_v state.stack with
+    | Some (EvalSlot (While (cond, body)), c_env_mem, c_stack2) ->
       let d_frame = { frame_default with
                         env_mem = c_env_mem;
                         slot = EvalSlot cond } in
@@ -657,7 +670,6 @@ let rule_WhileEval : state -> state list =
       [{ state with
            stack = stack_push_list [d_frame; c_frame] c_stack2 }]
     | _ -> []
-
 
 let rule_WhileCondTrue : state -> state list =
   fun state ->
@@ -784,6 +796,7 @@ let rule_Next : state -> state list =
       | _ -> [])
     | _ -> []
 
+*)
 
 let rule_Return : state -> state list =
   fun state ->
@@ -844,12 +857,14 @@ let rule_table : (rule * (state -> state list)) list =
     (ERuleIfRet, rule_IfRet);
     (ERuleIfRetSym, rule_IfRetSym);
     (ERuleWhileEval, rule_WhileEval);
+    (*
     (ERuleWhileCondTrue, rule_WhileCondTrue);
     (ERuleWhileCondFalse, rule_WhileCondFalse);
     (ERuleWhileCondSym, rule_WhileCondSym);
     (ERuleWhileBodyDone, rule_WhileBodyDone);
     (ERuleBreak, rule_Break);
     (ERuleNext, rule_Next);
+    *)
     (ERuleReturn, rule_Return);
     (ERuleDiscard, rule_Discard);
     (ERuleBlank, rule_Blank) ]
